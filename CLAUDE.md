@@ -148,7 +148,7 @@
 
 | 영역 | 선택 | 비고 |
 |---|---|---|
-| 백엔드 | Spring Boot 3.x (Java 21) | 본업 스택과 동일, 생산성 우선 |
+| 백엔드 | Spring Boot 4.1.x (Java 21) | 3.x는 2026년 6월 OSS 지원 종료. Spring Framework 7 기반 |
 | 프론트 | Next.js 14+ (App Router) + TypeScript | SSR로 토론 페이지 SEO 확보 (결정 D8) |
 | 스타일 | Tailwind CSS | 디자인 토큰은 11절 참조 |
 | DB | PostgreSQL 16 | 2단계에서 pgvector 확장 |
@@ -292,7 +292,7 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
 ### 17.0 첫 작업 (M1-1) — 이 문서를 처음 읽는 세션은 여기서 시작
 
 오늘 밤 작업 범위 (이 범위를 벗어나는 작업 금지):
-1. 모노레포 구조 생성 — /backend (Spring Boot 3.x, Java 21, Gradle),
+1. 모노레포 구조 생성 — /backend (Spring Boot 4.1.x, Java 21, Gradle),
    /frontend (Next.js 14+ App Router, TypeScript, Tailwind), /crawler (Python 3.12),
    /infra (Dockerfile, docker-compose: postgres+pgvector, redis)
 2. 12절 스키마를 Flyway 마이그레이션 SQL로 작성 (V1__init.sql), 로컬 compose로 검증
@@ -315,3 +315,9 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
   좌/우 전용 컴포넌트 중복 작성 금지
 - 크롤러: 새 소스 추가 시 반드시 robots.txt 체크 코드가 선행 실행되는 구조 유지
 - 시크릿은 전부 환경변수, 레포에 커밋 금지
+- 백엔드는 Spring Boot 4.1 / Spring Framework 7 기준으로 작성한다.
+  3.x 시절 스타일의 설정·의존성(javax 네임스페이스, 구버전
+  spring-boot-starter 관행 등)을 사용하지 말고, 의존성 버전은
+  Spring Boot 4.1 BOM이 관리하는 버전을 따른다.
+- 확신이 없는 Spring Boot 4 API는 임의로 추측하지 말고 공식 문서를
+  확인하거나 주석으로 TODO를 남긴다.
