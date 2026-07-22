@@ -4,24 +4,9 @@ import { ACCENT } from "@/components/PostCard";
 import type { TopicPair } from "@/lib/pairs";
 import type { Side } from "@/lib/posts";
 
-const TAG_BG: Record<Side, string> = {
-  left: "bg-left-blue",
-  right: "bg-right-red",
-};
-
-const TAG_LABEL: Record<Side, string> = {
-  left: "좌",
-  right: "우",
-};
-
 function PairHalf({ side, title, summary }: { side: Side; title: string; summary: string }) {
   return (
     <div className="p-3">
-      <span
-        className={`mb-1.5 inline-block rounded-full px-2 py-0.5 text-[10.5px] font-extrabold text-white ${TAG_BG[side]}`}
-      >
-        {TAG_LABEL[side]}
-      </span>
       <h4 className={`mb-1 line-clamp-2 text-[13px] font-bold ${ACCENT[side]}`}>{title}</h4>
       <p className="line-clamp-2 text-[11.5px] text-[#6B6960]">{summary}</p>
     </div>

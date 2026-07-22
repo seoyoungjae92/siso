@@ -13,6 +13,12 @@ export function Playground({ pairs }: { pairs: TopicPair[] }) {
 
   return (
     <>
+      {/* 좌/우 구분은 색상으로 이미 충분해서(파랑/빨강) 카드마다 반복
+          표시하지 않고 목록 전체에 한 번만 라벨을 둠 */}
+      <div className="mb-1.5 grid grid-cols-2 px-1 text-[11px] font-bold">
+        <span className="text-left-blue">좌</span>
+        <span className="text-right text-right-red">우</span>
+      </div>
       <PairCard pair={today} large />
       {rest.map((pair) => (
         <PairCard key={pair.id} pair={pair} />
