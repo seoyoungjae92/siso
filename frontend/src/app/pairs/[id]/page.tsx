@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CommentThread } from "@/components/CommentThread";
 import { Header } from "@/components/Header";
 import { PostCard } from "@/components/PostCard";
+import { VoteWidget } from "@/components/VoteWidget";
 import { fetchComments, fetchPairDetail } from "@/lib/comments";
 
 export default async function PairDetailPage({
@@ -28,6 +29,7 @@ export default async function PairDetailPage({
         <div className="mb-4 text-xs text-[#8A877E]">
           유사도 {Math.round(pair.similarity * 100)}%
         </div>
+        <VoteWidget pairId={id} pair={pair} />
         <CommentThread pairId={id} comments={comments} />
       </div>
     </div>

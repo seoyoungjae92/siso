@@ -1,3 +1,4 @@
+import { getAnonId } from "@/lib/anon";
 import { BACKEND_API_URL, type PostSummary } from "@/lib/posts";
 
 export type TopicPairDetail = {
@@ -6,6 +7,10 @@ export type TopicPairDetail = {
   createdAt: string;
   leftPost: PostSummary;
   rightPost: PostSummary;
+  leftVotes: number;
+  rightVotes: number;
+  neutralVotes: number;
+  myStance: "left" | "right" | "neutral" | null;
 };
 
 export type Comment = {
@@ -17,12 +22,21 @@ export type Comment = {
   upCount: number;
   downCount: number;
   selfReply: boolean;
+  myReaction: "up" | "down" | null;
   createdAt: string;
 };
 
+async function anonHeaders(): Promise<HeadersInit> {
+  const anonId = await getAnonId();
+  return anonId ? { "X-Anon-Id": anonId } : {};
+}
+
 export async function fetchPairDetail(pairId: string): Promise<TopicPairDetail | null> {
   try {
-    const res = await fetch(`${BACKEND_API_URL}/api/pairs/${pairId}`, { cache: "no-store" });
+    const res = await fetch(`${BACKEND_API_URL}/api/pairs/${pairId}`, {
+      cache: "no-store",
+      headers: await anonHeaders(),
+    });
     if (!res.ok) {
       return null;
     }
@@ -36,6 +50,7 @@ export async function fetchComments(pairId: string): Promise<Comment[]> {
   try {
     const res = await fetch(`${BACKEND_API_URL}/api/pairs/${pairId}/comments`, {
       cache: "no-store",
+      headers: await anonHeaders(),
     });
     if (!res.ok) {
       return [];

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
+import { postReaction } from "@/app/pairs/[id]/actions";
 import { CommentForm } from "@/components/CommentForm";
 import type { Comment } from "@/lib/comments";
 import { formatRelativeTime } from "@/lib/format";
@@ -13,7 +14,40 @@ const STANCE_COLOR: Record<string, string> = {
   neutral: "bg-playground",
 };
 
-function CommentRow({ comment }: { comment: Comment }) {
+function ReactionButton({
+  pairId,
+  commentId,
+  type,
+  count,
+  active,
+}: {
+  pairId: string;
+  commentId: number;
+  type: "up" | "down";
+  count: number;
+  active: boolean;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <button
+      type="button"
+      disabled={isPending}
+      onClick={() =>
+        startTransition(async () => {
+          await postReaction(pairId, commentId, type);
+        })
+      }
+      className={`rounded-full border px-2 py-0.5 text-[11px] font-bold disabled:opacity-50 ${
+        active ? "border-playground bg-pg-tint text-playground" : "border-line text-[#8A877E]"
+      }`}
+    >
+      {type === "up" ? "👍" : "👎"} {count}
+    </button>
+  );
+}
+
+function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
   return (
     <div className="rounded-[10px] border border-line bg-white p-2.5">
       <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold">
@@ -34,7 +68,23 @@ function CommentRow({ comment }: { comment: Comment }) {
           {formatRelativeTime(comment.createdAt)}
         </time>
       </div>
-      <p className="text-[13px]">{comment.body}</p>
+      <p className="mb-2 text-[13px]">{comment.body}</p>
+      <div className="flex gap-1.5">
+        <ReactionButton
+          pairId={pairId}
+          commentId={comment.id}
+          type="up"
+          count={comment.upCount}
+          active={comment.myReaction === "up"}
+        />
+        <ReactionButton
+          pairId={pairId}
+          commentId={comment.id}
+          type="down"
+          count={comment.downCount}
+          active={comment.myReaction === "down"}
+        />
+      </div>
     </div>
   );
 }
@@ -63,7 +113,7 @@ export function CommentThread({ pairId, comments }: { pairId: string; comments: 
       <div className="flex flex-col gap-2.5">
         {topLevel.map((comment) => (
           <div key={comment.id}>
-            <CommentRow comment={comment} />
+            <CommentRow pairId={pairId} comment={comment} />
             <button
               type="button"
               onClick={() => setOpenReplyId(openReplyId === comment.id ? null : comment.id)}
@@ -83,7 +133,7 @@ export function CommentThread({ pairId, comments }: { pairId: string; comments: 
 
             <div className="mt-2 flex flex-col gap-2 border-l-2 border-line pl-3">
               {(repliesByParent.get(comment.id) ?? []).map((reply) => (
-                <CommentRow key={reply.id} comment={reply} />
+                <CommentRow key={reply.id} pairId={pairId} comment={reply} />
               ))}
             </div>
           </div>
