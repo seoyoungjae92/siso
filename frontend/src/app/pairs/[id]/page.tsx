@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CommentThread } from "@/components/CommentThread";
@@ -22,6 +23,12 @@ export default async function PairDetailPage({
     <div className="flex flex-1 flex-col">
       <Header />
       <div className="mx-auto w-full max-w-3xl px-4 py-6">
+        <Link
+          href="/"
+          className="mb-4 inline-block text-[13px] font-bold text-[#6B6960]"
+        >
+          ← 목록으로
+        </Link>
         <div className="mb-4 grid grid-cols-2 gap-3">
           <PostCard post={pair.leftPost} side="left" />
           <PostCard post={pair.rightPost} side="right" />
