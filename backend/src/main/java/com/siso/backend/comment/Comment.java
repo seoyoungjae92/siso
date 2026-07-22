@@ -124,6 +124,14 @@ public class Comment {
         return downCount;
     }
 
+    public void adjustUpCount(int delta) {
+        this.upCount += delta;
+    }
+
+    public void adjustDownCount(int delta) {
+        this.downCount += delta;
+    }
+
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

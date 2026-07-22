@@ -12,11 +12,15 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,12 +28,21 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class PairServiceTest {
 
+    private static final UUID ANON_A = UUID.fromString("11111111-1111-1111-1111-111111111111");
+
     @Mock
     private TopicPairRepository topicPairRepository;
 
+    @Mock
+    private VoteRepository voteRepository;
+
+    private PairService newService() {
+        return new PairService(topicPairRepository, voteRepository);
+    }
+
     @Test
     void getPairs_queriesActiveStatus() {
-        PairService pairService = new PairService(topicPairRepository);
+        PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
         when(topicPairRepository.findByStatus(eq("active"), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of()));
@@ -42,7 +55,7 @@ class PairServiceTest {
 
     @Test
     void getPairs_mapsTopicPairToDto() {
-        PairService pairService = new PairService(topicPairRepository);
+        PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
 
         Source leftSource = Mockito.mock(Source.class);
@@ -81,5 +94,39 @@ class PairServiceTest {
         assertThat(dto.similarity()).isEqualTo(0.62f);
         assertThat(dto.leftPost().sourceName()).isEqualTo("루리웹");
         assertThat(dto.rightPost().sourceName()).isEqualTo("일베");
+    }
+
+    @Test
+    void vote_withNoExistingVote_createsOne() {
+        PairService pairService = newService();
+        when(topicPairRepository.existsById(1L)).thenReturn(true);
+        when(voteRepository.findByPair_IdAndAnonId(1L, ANON_A)).thenReturn(Optional.empty());
+        when(topicPairRepository.getReferenceById(1L)).thenReturn(Mockito.mock(TopicPair.class));
+
+        pairService.vote(1L, ANON_A, "left");
+
+        verify(voteRepository).save(org.mockito.ArgumentMatchers.any(Vote.class));
+    }
+
+    @Test
+    void vote_withExistingVote_updatesStanceInPlace() {
+        PairService pairService = newService();
+        TopicPair pair = Mockito.mock(TopicPair.class);
+        Vote existing = new Vote(pair, ANON_A, "left", OffsetDateTime.now());
+        when(topicPairRepository.existsById(1L)).thenReturn(true);
+        when(voteRepository.findByPair_IdAndAnonId(1L, ANON_A)).thenReturn(Optional.of(existing));
+
+        pairService.vote(1L, ANON_A, "right");
+
+        assertThat(existing.getStance()).isEqualTo("right");
+        verify(voteRepository, Mockito.never()).save(org.mockito.ArgumentMatchers.any(Vote.class));
+    }
+
+    @Test
+    void vote_invalidStance_isRejected() {
+        PairService pairService = newService();
+
+        assertThatThrownBy(() -> pairService.vote(1L, ANON_A, "up"))
+                .isInstanceOf(ResponseStatusException.class);
     }
 }
