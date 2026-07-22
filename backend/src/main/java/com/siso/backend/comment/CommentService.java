@@ -4,8 +4,10 @@ import com.siso.backend.anon.AnonUser;
 import com.siso.backend.anon.AnonUserRepository;
 import com.siso.backend.anon.IpHasher;
 import com.siso.backend.anon.NicknameGenerator;
+import com.siso.backend.moderation.ProfanityFilter;
 import com.siso.backend.pair.TopicPair;
 import com.siso.backend.pair.TopicPairRepository;
+import com.siso.backend.ratelimit.RateLimiter;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -31,18 +33,24 @@ public class CommentService {
     private final TopicPairRepository topicPairRepository;
     private final AnonUserRepository anonUserRepository;
     private final IpHasher ipHasher;
+    private final ProfanityFilter profanityFilter;
+    private final RateLimiter rateLimiter;
 
     public CommentService(
             CommentRepository commentRepository,
             ReactionRepository reactionRepository,
             TopicPairRepository topicPairRepository,
             AnonUserRepository anonUserRepository,
-            IpHasher ipHasher) {
+            IpHasher ipHasher,
+            ProfanityFilter profanityFilter,
+            RateLimiter rateLimiter) {
         this.commentRepository = commentRepository;
         this.reactionRepository = reactionRepository;
         this.topicPairRepository = topicPairRepository;
         this.anonUserRepository = anonUserRepository;
         this.ipHasher = ipHasher;
+        this.profanityFilter = profanityFilter;
+        this.rateLimiter = rateLimiter;
     }
 
     @Transactional(readOnly = true)
@@ -92,6 +100,13 @@ public class CommentService {
     @Transactional
     public CommentDto create(
             Long pairId, UUID anonId, String remoteAddr, Long parentId, String body, String stance) {
+        rateLimiter.checkOrThrow("comment", anonId);
+
+        if (profanityFilter.containsBannedWord(body)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "부적절한 표현이 포함되어 있어 작성할 수 없습니다");
+        }
+
         TopicPair pair = topicPairRepository.findById(pairId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "pair not found"));
 
@@ -125,6 +140,8 @@ public class CommentService {
         if (!REACTION_TYPES.contains(type)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type must be 'up' or 'down'");
         }
+
+        rateLimiter.checkOrThrow("reaction", anonId);
 
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "comment not found"));

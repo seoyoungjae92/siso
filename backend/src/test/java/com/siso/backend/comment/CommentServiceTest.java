@@ -2,14 +2,17 @@ package com.siso.backend.comment;
 
 import com.siso.backend.anon.AnonUserRepository;
 import com.siso.backend.anon.IpHasher;
+import com.siso.backend.moderation.ProfanityFilter;
 import com.siso.backend.pair.TopicPair;
 import com.siso.backend.pair.TopicPairRepository;
+import com.siso.backend.ratelimit.RateLimiter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -22,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,9 +51,21 @@ class CommentServiceTest {
     @Mock
     private IpHasher ipHasher;
 
+    @Mock
+    private ProfanityFilter profanityFilter;
+
+    @Mock
+    private RateLimiter rateLimiter;
+
     private CommentService newService() {
         return new CommentService(
-                commentRepository, reactionRepository, topicPairRepository, anonUserRepository, ipHasher);
+                commentRepository,
+                reactionRepository,
+                topicPairRepository,
+                anonUserRepository,
+                ipHasher,
+                profanityFilter,
+                rateLimiter);
     }
 
     @Test
@@ -66,6 +82,29 @@ class CommentServiceTest {
         assertThat(dto.body()).isEqualTo("본문");
         assertThat(dto.selfReply()).isFalse();
         assertThat(dto.myReaction()).isNull();
+    }
+
+    @Test
+    void create_rateLimited_isRejectedBeforeAnyLookup() {
+        CommentService service = newService();
+        doThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS))
+                .when(rateLimiter).checkOrThrow("comment", ANON_A);
+
+        assertThatThrownBy(() -> service.create(1L, ANON_A, "127.0.0.1", null, "본문", null))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    void create_containsBannedWord_isRejected() {
+        CommentService service = newService();
+        when(profanityFilter.containsBannedWord("나쁜말")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(1L, ANON_A, "127.0.0.1", null, "나쁜말", null))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
