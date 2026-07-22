@@ -26,3 +26,41 @@ class FakePostRepository:
             }
         )
         self.existing_hashes.add(origin_url_hash)
+
+
+class FakeEmbeddingProvider:
+    def __init__(self):
+        self.embedded_texts: list[str] = []
+
+    def embed(self, text: str) -> list[float]:
+        self.embedded_texts.append(text)
+        return [float(len(text))]
+
+
+class FakeMatchingRepository:
+    def __init__(
+        self,
+        pending_embeddings: list[tuple[int, str, str]] | None = None,
+        unmatched_left: list[int] | None = None,
+        best_matches: dict[int, tuple[int, float]] | None = None,
+    ):
+        self.pending_embeddings = pending_embeddings or []
+        self.unmatched_left = unmatched_left or []
+        self.best_matches = best_matches or {}
+        self.updated_embeddings: dict[int, list[float]] = {}
+        self.created_pairs: list[tuple[int, int, float]] = []
+
+    def find_posts_missing_embedding(self, limit: int) -> list[tuple[int, str, str]]:
+        return self.pending_embeddings[:limit]
+
+    def update_embedding(self, post_id: int, embedding: list[float]) -> None:
+        self.updated_embeddings[post_id] = embedding
+
+    def find_unmatched_posts(self, side: str) -> list[int]:
+        return self.unmatched_left if side == "left" else []
+
+    def find_best_cross_side_match(self, post_id: int) -> tuple[int, float] | None:
+        return self.best_matches.get(post_id)
+
+    def create_pair(self, left_id: int, right_id: int, similarity: float) -> None:
+        self.created_pairs.append((left_id, right_id, similarity))
