@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { postVote } from "@/app/pairs/[id]/actions";
 import type { TopicPairDetail } from "@/lib/comments";
@@ -15,11 +15,22 @@ const STANCE_CONFIG: { value: Stance; label: string }[] = [
 
 export function VoteWidget({ pairId, pair }: { pairId: string; pair: TopicPairDetail }) {
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const total = pair.leftVotes + pair.rightVotes + pair.neutralVotes;
 
   const leftPct = total === 0 ? 0 : Math.round((pair.leftVotes / total) * 100);
   const neutralPct = total === 0 ? 0 : Math.round((pair.neutralVotes / total) * 100);
   const rightPct = total === 0 ? 0 : 100 - leftPct - neutralPct;
+
+  function handleVote(stance: Stance) {
+    setError(null);
+    startTransition(async () => {
+      const result = await postVote(pairId, stance);
+      if (!result.ok) {
+        setError(result.error ?? "투표 처리에 실패했습니다.");
+      }
+    });
+  }
 
   return (
     <div className="mb-4 rounded-[10px] border border-line bg-white p-3">
@@ -29,11 +40,7 @@ export function VoteWidget({ pairId, pair }: { pairId: string; pair: TopicPairDe
             key={option.value}
             type="button"
             disabled={isPending}
-            onClick={() =>
-              startTransition(async () => {
-                await postVote(pairId, option.value);
-              })
-            }
+            onClick={() => handleVote(option.value)}
             className={`flex-1 rounded-full border px-2 py-1.5 text-xs font-bold disabled:opacity-50 ${
               pair.myStance === option.value
                 ? "border-playground bg-pg-tint text-playground"
@@ -44,6 +51,8 @@ export function VoteWidget({ pairId, pair }: { pairId: string; pair: TopicPairDe
           </button>
         ))}
       </div>
+
+      {error && <p className="mb-1.5 text-[11px] text-right-red">{error}</p>}
 
       <div className="mb-1.5 flex h-2.5 overflow-hidden rounded-full border border-line">
         <span className="block h-full bg-left-blue" style={{ width: `${leftPct}%` }} />

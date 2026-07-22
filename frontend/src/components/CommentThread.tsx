@@ -27,12 +27,14 @@ function ReactionButton({
   type,
   count,
   active,
+  onError,
 }: {
   pairId: string;
   commentId: number;
   type: "up" | "down";
   count: number;
   active: boolean;
+  onError: (message: string | null) => void;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -42,7 +44,11 @@ function ReactionButton({
       disabled={isPending}
       onClick={() =>
         startTransition(async () => {
-          await postReaction(pairId, commentId, type);
+          onError(null);
+          const result = await postReaction(pairId, commentId, type);
+          if (!result.ok) {
+            onError(result.error ?? "추천 처리에 실패했습니다.");
+          }
         })
       }
       className={`rounded-full border px-2 py-0.5 text-[11px] font-bold disabled:opacity-50 ${
@@ -112,6 +118,8 @@ function ReportControl({ pairId, commentId }: { pairId: string; commentId: numbe
 }
 
 function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
+  const [reactionError, setReactionError] = useState<string | null>(null);
+
   return (
     <div className="rounded-[10px] border border-line bg-white p-2.5">
       <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold">
@@ -140,6 +148,7 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
           type="up"
           count={comment.upCount}
           active={comment.myReaction === "up"}
+          onError={setReactionError}
         />
         <ReactionButton
           pairId={pairId}
@@ -147,7 +156,11 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
           type="down"
           count={comment.downCount}
           active={comment.myReaction === "down"}
+          onError={setReactionError}
         />
+        {reactionError && (
+          <span className="text-[10.5px] text-right-red">{reactionError}</span>
+        )}
         <div className="ml-auto">
           <ReportControl pairId={pairId} commentId={comment.id} />
         </div>
