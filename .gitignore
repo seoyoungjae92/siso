@@ -1,0 +1,12 @@
+# crawler (Python)
+crawler/.venv/
+crawler/__pycache__/
+crawler/**/__pycache__/
+crawler/.pytest_cache/
+
+# env
+.env
+.env.local
+
+# OS
+.DS_Store
