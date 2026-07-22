@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { ACCENT } from "@/components/PostCard";
 import type { TopicPair } from "@/lib/pairs";
 import type { Side } from "@/lib/posts";
@@ -28,8 +30,9 @@ function PairHalf({ side, title, summary }: { side: Side; title: string; summary
 
 export function PairCard({ pair, large = false }: { pair: TopicPair; large?: boolean }) {
   return (
-    <div
-      className={`mb-2.5 overflow-hidden rounded-xl border border-line bg-white ${large ? "shadow-[0_8px_24px_rgba(110,61,116,.10)]" : ""}`}
+    <Link
+      href={`/pairs/${pair.id}`}
+      className={`mb-2.5 block overflow-hidden rounded-xl border border-line bg-white ${large ? "shadow-[0_8px_24px_rgba(110,61,116,.10)]" : ""}`}
     >
       {large && (
         <div className="flex items-center justify-between bg-playground px-4 py-2.5 text-white">
@@ -43,6 +46,6 @@ export function PairCard({ pair, large = false }: { pair: TopicPair; large?: boo
       <div className="border-t border-line px-3.5 py-2 text-[11px] text-[#8A877E]">
         유사도 {Math.round(pair.similarity * 100)}%
       </div>
-    </div>
+    </Link>
   );
 }
