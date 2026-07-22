@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,6 +36,9 @@ class CommentServiceTest {
     private CommentRepository commentRepository;
 
     @Mock
+    private ReactionRepository reactionRepository;
+
+    @Mock
     private TopicPairRepository topicPairRepository;
 
     @Mock
@@ -44,7 +48,8 @@ class CommentServiceTest {
     private IpHasher ipHasher;
 
     private CommentService newService() {
-        return new CommentService(commentRepository, topicPairRepository, anonUserRepository, ipHasher);
+        return new CommentService(
+                commentRepository, reactionRepository, topicPairRepository, anonUserRepository, ipHasher);
     }
 
     @Test
@@ -60,6 +65,7 @@ class CommentServiceTest {
         assertThat(dto.parentId()).isNull();
         assertThat(dto.body()).isEqualTo("본문");
         assertThat(dto.selfReply()).isFalse();
+        assertThat(dto.myReaction()).isNull();
     }
 
     @Test
@@ -120,8 +126,68 @@ class CommentServiceTest {
         when(commentRepository.findByPair_IdAndStatusNot(eq(1L), eq("deleted"), any(Sort.class)))
                 .thenReturn(List.of());
 
-        List<CommentDto> result = service.getComments(1L, "top");
+        List<CommentDto> result = service.getComments(1L, "top", null);
 
         assertThat(result).isEmpty();
+    }
+
+    private Comment commentWithId(long id, UUID anonId) {
+        TopicPair pair = Mockito.mock(TopicPair.class);
+        Comment comment = new Comment(pair, null, anonId, "닉네임", "본문", "hash", null, OffsetDateTime.now());
+        ReflectionTestUtils.setField(comment, "id", id);
+        return comment;
+    }
+
+    @Test
+    void react_withNoExistingReaction_createsAndIncrementsCount() {
+        CommentService service = newService();
+        Comment comment = commentWithId(1L, ANON_A);
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        when(reactionRepository.findByComment_IdAndAnonId(1L, ANON_B)).thenReturn(Optional.empty());
+
+        service.react(1L, ANON_B, "up");
+
+        assertThat(comment.getUpCount()).isEqualTo(1);
+        assertThat(comment.getDownCount()).isEqualTo(0);
+        verify(reactionRepository).save(any(Reaction.class));
+    }
+
+    @Test
+    void react_sameTypeAgain_togglesOff() {
+        CommentService service = newService();
+        Comment comment = commentWithId(1L, ANON_A);
+        comment.adjustUpCount(1);
+        Reaction existing = new Reaction(comment, ANON_B, "up");
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        when(reactionRepository.findByComment_IdAndAnonId(1L, ANON_B)).thenReturn(Optional.of(existing));
+
+        service.react(1L, ANON_B, "up");
+
+        assertThat(comment.getUpCount()).isEqualTo(0);
+        verify(reactionRepository).delete(existing);
+    }
+
+    @Test
+    void react_switchingType_adjustsBothCounts() {
+        CommentService service = newService();
+        Comment comment = commentWithId(1L, ANON_A);
+        comment.adjustUpCount(1);
+        Reaction existing = new Reaction(comment, ANON_B, "up");
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        when(reactionRepository.findByComment_IdAndAnonId(1L, ANON_B)).thenReturn(Optional.of(existing));
+
+        service.react(1L, ANON_B, "down");
+
+        assertThat(comment.getUpCount()).isEqualTo(0);
+        assertThat(comment.getDownCount()).isEqualTo(1);
+        assertThat(existing.getType()).isEqualTo("down");
+    }
+
+    @Test
+    void react_invalidType_isRejected() {
+        CommentService service = newService();
+
+        assertThatThrownBy(() -> service.react(1L, ANON_A, "sideways"))
+                .isInstanceOf(ResponseStatusException.class);
     }
 }
