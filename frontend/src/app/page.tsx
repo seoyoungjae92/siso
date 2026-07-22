@@ -1,11 +1,14 @@
 import { FeedColumn } from "@/components/FeedColumn";
 import { Header } from "@/components/Header";
+import { Playground } from "@/components/Playground";
+import { fetchPairs } from "@/lib/pairs";
 import { fetchPosts } from "@/lib/posts";
 
 export default async function Home() {
-  const [leftPosts, rightPosts] = await Promise.all([
+  const [leftPosts, rightPosts, pairs] = await Promise.all([
     fetchPosts("left"),
     fetchPosts("right"),
+    fetchPairs(),
   ]);
 
   return (
@@ -20,7 +23,7 @@ export default async function Home() {
             </h2>
             <span className="text-xs text-[#8A877E]">같은 주제, 좌우 병렬 비교</span>
           </div>
-          <p className="text-sm text-[#6B6960]">준비 중입니다.</p>
+          <Playground pairs={pairs} />
         </section>
         <FeedColumn side="right" posts={rightPosts} />
       </div>

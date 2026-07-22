@@ -1,7 +1,7 @@
 import { formatRelativeTime } from "@/lib/format";
 import type { PostSummary, Side } from "@/lib/posts";
 
-const ACCENT: Record<Side, string> = {
+export const ACCENT: Record<Side, string> = {
   left: "text-left-blue",
   right: "text-right-red",
 };
