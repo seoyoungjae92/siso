@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="h-full overflow-x-hidden overscroll-none antialiased">
+    <html lang="ko" className="h-full antialiased">
       <head>
         <link
           rel="stylesheet"
@@ -22,9 +22,7 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css"
         />
       </head>
-      <body className="min-h-full flex flex-col overflow-x-hidden overscroll-none font-sans">
-        {children}
-      </body>
+      <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );
 }
