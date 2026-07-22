@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-const appName = process.env.APP_NAME ?? "siso";
+const appName = process.env.APP_NAME ?? "시소";
 
 export const metadata: Metadata = {
   title: appName,
