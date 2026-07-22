@@ -1,0 +1,12 @@
+const LABELS: Record<string, string> = {
+  "feed-left": "AD · 좌 피드 슬롯",
+  "feed-right": "AD · 우 피드 슬롯",
+};
+
+export function AdSlot({ position }: { position: keyof typeof LABELS }) {
+  return (
+    <div className="flex h-24 items-center justify-center rounded-[10px] border-[1.5px] border-dashed border-[#BDBAB0] bg-[#FBFAF7] text-xs font-bold tracking-widest text-[#A09D94]">
+      {LABELS[position]}
+    </div>
+  );
+}
