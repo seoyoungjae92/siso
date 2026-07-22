@@ -1,5 +1,6 @@
 import { FeedColumn } from "@/components/FeedColumn";
 import { Header } from "@/components/Header";
+import { MobileTabs } from "@/components/MobileTabs";
 import { Playground } from "@/components/Playground";
 import { fetchPairs } from "@/lib/pairs";
 import { fetchPosts } from "@/lib/posts";
@@ -14,7 +15,7 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col">
       <Header />
-      <div className="grid flex-1 grid-cols-[1fr_1.35fr_1fr]">
+      <div className="hidden flex-1 grid-cols-[1fr_1.35fr_1fr] lg:grid">
         <FeedColumn side="left" posts={leftPosts} />
         <section className="bg-pg-tint px-[18px] py-5">
           <div className="mb-3.5 flex items-baseline gap-2">
@@ -26,6 +27,9 @@ export default async function Home() {
           <Playground pairs={pairs} />
         </section>
         <FeedColumn side="right" posts={rightPosts} />
+      </div>
+      <div className="flex flex-1 flex-col lg:hidden">
+        <MobileTabs leftPosts={leftPosts} rightPosts={rightPosts} pairs={pairs} />
       </div>
     </div>
   );
