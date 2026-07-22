@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { postReaction } from "@/app/pairs/[id]/actions";
+import { postReaction, postReport } from "@/app/pairs/[id]/actions";
 import { CommentForm } from "@/components/CommentForm";
 import type { Comment } from "@/lib/comments";
 import { formatRelativeTime } from "@/lib/format";
@@ -13,6 +13,13 @@ const STANCE_COLOR: Record<string, string> = {
   right: "bg-right-red",
   neutral: "bg-playground",
 };
+
+const REPORT_REASONS: { value: "abuse" | "hate" | "spam" | "etc"; label: string }[] = [
+  { value: "abuse", label: "욕설·인신공격" },
+  { value: "hate", label: "혐오 표현" },
+  { value: "spam", label: "도배·스팸" },
+  { value: "etc", label: "기타" },
+];
 
 function ReactionButton({
   pairId,
@@ -47,6 +54,63 @@ function ReactionButton({
   );
 }
 
+function ReportControl({ pairId, commentId }: { pairId: string; commentId: number }) {
+  const [open, setOpen] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  if (done) {
+    return <span className="text-[11px] text-[#8A877E]">신고 접수됨</span>;
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-[11px] font-bold text-[#8A877E]"
+      >
+        신고
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {REPORT_REASONS.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          disabled={isPending}
+          onClick={() =>
+            startTransition(async () => {
+              setError(null);
+              const result = await postReport(pairId, commentId, option.value);
+              if (!result.ok) {
+                setError(result.error ?? "오류가 발생했습니다.");
+                return;
+              }
+              setDone(true);
+            })
+          }
+          className="rounded-full border border-line px-2 py-0.5 text-[10.5px] text-[#8A877E] disabled:opacity-50"
+        >
+          {option.label}
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="text-[10.5px] text-[#A09D94]"
+      >
+        취소
+      </button>
+      {error && <span className="text-[10.5px] text-right-red">{error}</span>}
+    </div>
+  );
+}
+
 function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
   return (
     <div className="rounded-[10px] border border-line bg-white p-2.5">
@@ -69,7 +133,7 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
         </time>
       </div>
       <p className="mb-2 text-[13px]">{comment.body}</p>
-      <div className="flex gap-1.5">
+      <div className="flex items-center gap-1.5">
         <ReactionButton
           pairId={pairId}
           commentId={comment.id}
@@ -84,6 +148,9 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
           count={comment.downCount}
           active={comment.myReaction === "down"}
         />
+        <div className="ml-auto">
+          <ReportControl pairId={pairId} commentId={comment.id} />
+        </div>
       </div>
     </div>
   );

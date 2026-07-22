@@ -42,6 +42,12 @@ export function CommentForm({
 
   return (
     <form onSubmit={handleSubmit} className="mb-3">
+      {!parentId && (
+        <p className="mb-1.5 text-[11px] text-[#8A877E]">
+          욕설·비속어, 인신공격성 표현은 작성이 제한되며 신고 누적 시 운영자
+          검토 후 가려질 수 있습니다.
+        </p>
+      )}
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}

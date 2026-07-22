@@ -1,6 +1,7 @@
 package com.siso.backend.pair;
 
 import com.siso.backend.post.Post;
+import com.siso.backend.ratelimit.RateLimiter;
 import com.siso.backend.source.Source;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,8 +37,11 @@ class PairServiceTest {
     @Mock
     private VoteRepository voteRepository;
 
+    @Mock
+    private RateLimiter rateLimiter;
+
     private PairService newService() {
-        return new PairService(topicPairRepository, voteRepository);
+        return new PairService(topicPairRepository, voteRepository, rateLimiter);
     }
 
     @Test

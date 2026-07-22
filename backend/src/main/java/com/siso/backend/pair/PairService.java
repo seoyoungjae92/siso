@@ -1,5 +1,6 @@
 package com.siso.backend.pair;
 
+import com.siso.backend.ratelimit.RateLimiter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -21,10 +22,13 @@ public class PairService {
 
     private final TopicPairRepository topicPairRepository;
     private final VoteRepository voteRepository;
+    private final RateLimiter rateLimiter;
 
-    public PairService(TopicPairRepository topicPairRepository, VoteRepository voteRepository) {
+    public PairService(
+            TopicPairRepository topicPairRepository, VoteRepository voteRepository, RateLimiter rateLimiter) {
         this.topicPairRepository = topicPairRepository;
         this.voteRepository = voteRepository;
+        this.rateLimiter = rateLimiter;
     }
 
     @Transactional(readOnly = true)
@@ -60,6 +64,9 @@ public class PairService {
         if (!STANCES.contains(stance)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "stance must be left, right, or neutral");
         }
+
+        rateLimiter.checkOrThrow("vote", anonId);
+
         if (!topicPairRepository.existsById(pairId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "pair not found");
         }
