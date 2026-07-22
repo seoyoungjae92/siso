@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>좌우당간 — 디자인 목업</title>
+<style>
+  :root{
+    --left-blue:#0047A0;
+    --right-red:#CD2E3A;
+    --playground:#6E3D74;
+    --ink:#1B1B22;
+    --paper:#F7F6F3;
+    --line:#E3E1DB;
+    --blue-tint:#EEF3FA;
+    --red-tint:#FBF0F1;
+    --pg-tint:#F5EFF6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Pretendard Variable',Pretendard,-apple-system,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+    background:#E9E7E1;color:var(--ink);line-height:1.5;
+    padding:40px 16px 80px;
+  }
+  .mock-label{
+    max-width:1280px;margin:0 auto 12px;font-size:13px;font-weight:700;
+    letter-spacing:.12em;color:#8A877E;text-transform:uppercase;
+  }
+  .mock-note{max-width:1280px;margin:0 auto 20px;font-size:13px;color:#6B6960}
+
+  /* ===================== PC MOCKUP ===================== */
+  .pc-frame{
+    max-width:1280px;margin:0 auto 72px;background:var(--paper);
+    border:1px solid #D5D2CA;border-radius:14px;overflow:hidden;
+    box-shadow:0 24px 60px rgba(27,27,34,.14);
+  }
+  header.site{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 28px;border-bottom:1px solid var(--line);background:#fff;
+  }
+  .logo{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:800;letter-spacing:-.02em}
+  .logo .taegeuk{width:26px;height:26px;border-radius:50%;
+    background:linear-gradient(180deg,var(--right-red) 0 50%,var(--left-blue) 50% 100%);position:relative}
+  .logo .taegeuk::before,.logo .taegeuk::after{content:'';position:absolute;width:13px;height:13px;border-radius:50%}
+  .logo .taegeuk::before{background:var(--right-red);left:0;top:6.5px}
+  .logo .taegeuk::after{background:var(--left-blue);right:0;top:6.5px}
+  .logo small{font-size:11px;font-weight:500;color:#8A877E;letter-spacing:.02em}
+  nav.top{display:flex;gap:22px;font-size:14px;color:#55534B}
+  nav.top b{color:var(--playground)}
+
+  .columns{display:grid;grid-template-columns:1fr 1.35fr 1fr;min-height:760px;position:relative}
+
+  .col{padding:20px 18px 28px}
+  .col.left{background:var(--blue-tint)}
+  .col.right{background:var(--red-tint)}
+  .col.center{background:var(--pg-tint)}
+
+  /* taegeuk S-curve dividers */
+  .scurve{position:absolute;top:0;bottom:0;width:22px;z-index:2;pointer-events:none}
+  .scurve svg{height:100%;width:100%}
+  .scurve.one{left:calc(100%/3.35 * 1.0 - 11px)}
+  .col-head{display:flex;align-items:baseline;gap:8px;margin-bottom:14px}
+  .col-head h2{font-size:15px;font-weight:800;letter-spacing:-.01em}
+  .col.left  .col-head h2{color:var(--left-blue)}
+  .col.right .col-head h2{color:var(--right-red)}
+  .col.center .col-head h2{color:var(--playground)}
+  .col-head span{font-size:12px;color:#8A877E}
+
+  .post{background:#fff;border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;margin-bottom:10px}
+  .post .src{font-size:11px;font-weight:700;margin-bottom:4px;display:flex;justify-content:space-between}
+  .col.left  .post .src{color:var(--left-blue)}
+  .col.right .post .src{color:var(--right-red)}
+  .post .src time{color:#A09D94;font-weight:500}
+  .post h3{font-size:14px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px}
+  .post p{font-size:12.5px;color:#6B6960;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .post .meta{font-size:11px;color:#A09D94;margin-top:8px}
+
+  .ad{border:1.5px dashed #BDBAB0;border-radius:10px;background:#FBFAF7;
+    color:#A09D94;font-size:12px;font-weight:700;letter-spacing:.14em;
+    display:flex;align-items:center;justify-content:center;height:96px;margin-bottom:10px}
+
+  /* center column */
+  .ring{background:#fff;border:1px solid #E0D5E2;border-radius:14px;overflow:hidden;margin-bottom:16px;
+    box-shadow:0 8px 24px rgba(110,61,116,.10)}
+  .ring .ring-head{background:var(--playground);color:#fff;padding:10px 16px;
+    display:flex;justify-content:space-between;align-items:center}
+  .ring .ring-head b{font-size:13px;letter-spacing:.04em}
+  .ring .ring-head span{font-size:11px;opacity:.85}
+  .ring .topic{padding:14px 16px 6px;font-size:16px;font-weight:800;letter-spacing:-.02em}
+  .pair{display:grid;grid-template-columns:1fr 1fr;position:relative}
+  .pair::after{content:'';position:absolute;left:50%;top:8%;bottom:8%;width:1px;
+    background:linear-gradient(var(--left-blue),var(--playground),var(--right-red))}
+  .pair .half{padding:12px 16px 16px}
+  .pair .half.l{background:linear-gradient(90deg,rgba(0,71,160,.06),transparent)}
+  .pair .half.r{background:linear-gradient(270deg,rgba(205,46,58,.06),transparent)}
+  .pair .tag{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:99px;color:#fff;display:inline-block;margin-bottom:6px}
+  .pair .half.l .tag{background:var(--left-blue)}
+  .pair .half.r .tag{background:var(--right-red)}
+  .pair h4{font-size:13px;font-weight:700;margin-bottom:4px}
+  .pair p{font-size:11.5px;color:#6B6960}
+  .vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    background:#fff;border:1px solid var(--line);border-radius:99px;
+    font-size:10px;font-weight:900;color:var(--playground);padding:3px 8px;z-index:1}
+  .votebar{margin:0 16px 14px;height:10px;border-radius:99px;overflow:hidden;display:flex;border:1px solid var(--line)}
+  .votebar i{display:block;height:100%}
+  .votebar .b{width:44%;background:var(--left-blue)}
+  .votebar .n{width:13%;background:var(--playground)}
+  .votebar .r{width:43%;background:var(--right-red)}
+  .votelabels{display:flex;justify-content:space-between;margin:0 16px 14px;font-size:11px;color:#8A877E}
+  .ring .cta{display:block;text-align:center;border-top:1px solid var(--line);
+    padding:10px;font-size:12.5px;font-weight:700;color:var(--playground);text-decoration:none}
+
+  .paircard{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+  .paircard .topic-sm{font-size:12.5px;font-weight:800;padding:10px 14px 0;color:var(--ink)}
+  .paircard .pair .half{padding:8px 14px 12px}
+  .paircard .meta{display:flex;gap:14px;padding:8px 14px;border-top:1px solid var(--line);
+    font-size:11px;color:#8A877E}
+
+  /* ===================== MOBILE MOCKUP ===================== */
+  .mobile-row{max-width:1280px;margin:0 auto;display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start}
+  .phone{width:340px;background:#111;border-radius:38px;padding:10px;box-shadow:0 24px 60px rgba(27,27,34,.22)}
+  .screen{background:var(--paper);border-radius:30px;overflow:hidden;height:660px;display:flex;flex-direction:column}
+  .m-head{padding:14px 16px 10px;background:#fff;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:8px}
+  .m-head .taegeuk{width:20px;height:20px;border-radius:50%;
+    background:linear-gradient(180deg,var(--right-red) 0 50%,var(--left-blue) 50% 100%)}
+  .m-head b{font-size:15px;font-weight:800}
+  .m-body{flex:1;overflow:hidden;padding:12px}
+  .m-body.pg{background:var(--pg-tint)}
+  .m-body.lft{background:var(--blue-tint)}
+  .m-chip{display:inline-block;font-size:10.5px;font-weight:800;color:#fff;
+    background:var(--playground);border-radius:99px;padding:3px 10px;margin-bottom:8px}
+  .m-paircard{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+  .m-paircard .topic-sm{font-size:12px;font-weight:800;padding:9px 12px 0}
+  .m-pair{display:grid;grid-template-columns:1fr 1fr;position:relative}
+  .m-pair::after{content:'';position:absolute;left:50%;top:10%;bottom:10%;width:1px;
+    background:linear-gradient(var(--left-blue),var(--playground),var(--right-red))}
+  .m-pair .half{padding:8px 10px 10px}
+  .m-pair .tag{font-size:9.5px;font-weight:800;padding:1.5px 7px;border-radius:99px;color:#fff;display:inline-block;margin-bottom:4px}
+  .m-pair .half.l .tag{background:var(--left-blue)}
+  .m-pair .half.r .tag{background:var(--right-red)}
+  .m-pair h5{font-size:11px;font-weight:700;margin-bottom:2px}
+  .m-pair p{font-size:10px;color:#6B6960;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .m-meta{display:flex;gap:10px;padding:7px 12px;border-top:1px solid var(--line);font-size:10px;color:#8A877E}
+  .m-ad{border:1.5px dashed #BDBAB0;border-radius:10px;background:#FBFAF7;color:#A09D94;
+    font-size:10.5px;font-weight:700;letter-spacing:.14em;display:flex;align-items:center;justify-content:center;height:64px;margin-bottom:10px}
+  .m-post{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:8px}
+  .m-post .src{font-size:9.5px;font-weight:800;color:var(--left-blue);margin-bottom:2px}
+  .m-post h5{font-size:11.5px;font-weight:700;margin-bottom:2px}
+  .m-post p{font-size:10px;color:#6B6960;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .tabs{display:grid;grid-template-columns:1fr 1fr 1fr;background:#fff;border-top:1px solid var(--line)}
+  .tabs button{border:0;background:none;padding:10px 0 14px;font-size:11px;font-weight:800;
+    font-family:inherit;color:#A09D94;position:relative}
+  .tabs button.on-l{color:var(--left-blue)}
+  .tabs button.on-p{color:var(--playground)}
+  .tabs button.on-r{color:var(--right-red)}
+  .tabs button.on-l::before,.tabs button.on-p::before,.tabs button.on-r::before{
+    content:'';position:absolute;top:0;left:20%;right:20%;height:3px;border-radius:0 0 4px 4px}
+  .tabs button.on-l::before{background:var(--left-blue)}
+  .tabs button.on-p::before{background:var(--playground)}
+  .tabs button.on-r::before{background:var(--right-red)}
+  .phone-caption{font-size:12.5px;color:#6B6960;margin-top:12px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="mock-label">PC — 3단 레이아웃 (1280px)</div>
+<div class="mock-note">좌 컬럼(태극 청 틴트) · 중앙 플레이그라운드(혼합 자주색) · 우 컬럼(태극 홍 틴트). 컬럼 사이 구분선은 태극 S-커브. AD 표시는 애드센스 슬롯 자리.</div>
+
+<div class="pc-frame">
+  <header class="site">
+    <div class="logo">
+      <span class="taegeuk"></span>
+      좌우당간 <small>같은 주제, 다른 시선</small>
+    </div>
+    <nav class="top"><b>플레이그라운드</b><span>좌 피드</span><span>우 피드</span><span>인기 토론</span><span>서비스 소개</span></nav>
+  </header>
+
+  <div class="columns">
+    <!-- LEFT COLUMN -->
+    <section class="col left">
+      <div class="col-head"><h2>좌 성향 커뮤니티</h2><span>실시간 수집</span></div>
+      <article class="post">
+        <div class="src">커뮤니티 A<time>7분 전</time></div>
+        <h3>전기요금 개편안, 서민 부담부터 보자</h3>
+        <p>누진 구간을 손보지 않으면 결국 부담은 아래로 내려온다는 게시글 요약이 이 자리에 200자 이내로 들어갑니다.</p>
+        <div class="meta">원문 보기 ↗ · 토론 12</div>
+      </article>
+      <article class="post">
+        <div class="src">커뮤니티 B<time>21분 전</time></div>
+        <h3>플랫폼 노동자 보호법, 지금이 적기</h3>
+        <p>배달·대리 기사 사례를 근거로 입법 필요성을 주장하는 글 요약.</p>
+        <div class="meta">원문 보기 ↗ · 토론 8</div>
+      </article>
+      <article class="post">
+        <div class="src">커뮤니티 A<time>40분 전</time></div>
+        <h3>지역 의료 공백, 공공병원 확충이 답</h3>
+        <p>지방 응급실 사례를 들어 공공 인프라 투자를 강조하는 글 요약.</p>
+        <div class="meta">원문 보기 ↗ · 토론 5</div>
+      </article>
+      <div class="ad">AD · 좌 피드 슬롯</div>
+      <article class="post">
+        <div class="src">커뮤니티 C<time>1시간 전</time></div>
+        <h3>주 4일제 실험, 해외 사례 정리</h3>
+        <p>생산성 지표 중심으로 도입 찬성 근거를 정리한 글 요약.</p>
+        <div class="meta">원문 보기 ↗ · 토론 19</div>
+      </article>
+    </section>
+
+    <!-- CENTER: PLAYGROUND -->
+    <section class="col center">
+      <div class="col-head"><h2>플레이그라운드</h2><span>같은 주제, 좌우 병렬 비교</span></div>
+
+      <div class="ring">
+        <div class="ring-head"><b>🔥 오늘의 링</b><span>댓글 342 · 참여 1,208</span></div>
+        <div class="topic">전기요금 개편안, 어떻게 볼 것인가</div>
+        <div class="pair">
+          <div class="half l">
+            <span class="tag">좌 시선</span>
+            <h4>서민 부담 완화가 먼저다</h4>
+            <p>누진제 개편 없는 인상은 취약계층에 직격, 복지 연계 필요…</p>
+          </div>
+          <div class="half r">
+            <span class="tag">우 시선</span>
+            <h4>원가 반영 없인 적자만 쌓인다</h4>
+            <p>시장 원리에 맞는 요금 정상화가 장기적으로 모두에게 이익…</p>
+          </div>
+          <span class="vs">VS</span>
+        </div>
+        <div class="votebar"><i class="b"></i><i class="n"></i><i class="r"></i></div>
+        <div class="votelabels"><span>좌에 공감 44%</span><span>중립 13%</span><span>우에 공감 43%</span></div>
+        <a class="cta" href="#">토론 참여하기 →</a>
+      </div>
+
+      <div class="paircard">
+        <div class="topic-sm">플랫폼 노동자 보호 입법</div>
+        <div class="pair">
+          <div class="half l"><span class="tag">좌</span><h4>최소 안전망은 국가 몫</h4><p>산재·고용보험 사각지대 해소가 핵심…</p></div>
+          <div class="half r"><span class="tag">우</span><h4>과잉 규제가 일자리 줄인다</h4><p>유연성 훼손 시 플랫폼 생태계 위축…</p></div>
+          <span class="vs">VS</span>
+        </div>
+        <div class="meta">💬 87 · 투표 412 · 유사도 0.83</div>
+      </div>
+
+      <div class="paircard">
+        <div class="topic-sm">주 4일제 도입 논쟁</div>
+        <div class="pair">
+          <div class="half l"><span class="tag">좌</span><h4>삶의 질이 곧 생산성</h4><p>해외 실험에서 이직률 감소 확인…</p></div>
+          <div class="half r"><span class="tag">우</span><h4>중소기업엔 비현실적</h4><p>인건비 구조상 대기업만 가능한 제도…</p></div>
+          <span class="vs">VS</span>
+        </div>
+        <div class="meta">💬 154 · 투표 623 · 유사도 0.79</div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN -->
+    <section class="col right">
+      <div class="col-head"><h2>우 성향 커뮤니티</h2><span>실시간 수집</span></div>
+      <article class="post">
+        <div class="src" style="color:var(--right-red)">커뮤니티 D<time>3분 전</time></div>
+        <h3>전기요금, 원가주의로 돌아가야</h3>
+        <p>공기업 적자 구조를 지적하며 요금 정상화를 주장하는 글 요약이 이 자리에 들어갑니다.</p>
+        <div class="meta">원문 보기 ↗ · 토론 15</div>
+      </article>
+      <article class="post">
+        <div class="src" style="color:var(--right-red)">커뮤니티 E<time>18분 전</time></div>
+        <h3>플랫폼 규제, 혁신부터 죽인다</h3>
+        <p>스타트업 투자 위축 데이터를 근거로 규제 신중론을 펴는 글 요약.</p>
+        <div class="meta">원문 보기 ↗ · 토론 9</div>
+      </article>
+      <article class="post">
+        <div class="src" style="color:var(--right-red)">커뮤니티 D<time>52분 전</time></div>
+        <h3>의료 공백, 민간 유인책이 빠르다</h3>
+        <p>수가 현실화와 민간 참여 확대를 대안으로 제시하는 글 요약.</p>
+        <div class="meta">원문 보기 ↗ · 토론 6</div>
+      </article>
+      <div class="ad">AD · 우 피드 슬롯</div>
+      <article class="post">
+        <div class="src" style="color:var(--right-red)">커뮤니티 F<time>1시간 전</time></div>
+        <h3>주 4일제, 성장 없인 공염불</h3>
+        <p>노동 생산성 통계를 들어 시기상조론을 펴는 글 요약.</p>
+        <div class="meta">원문 보기 ↗ · 토론 11</div>
+      </article>
+    </section>
+  </div>
+</div>
+
+<div class="mock-label">모바일 — 하단 탭 3개, 플레이그라운드가 디폴트</div>
+<div class="mock-note">글 쌍은 카드 안에서 좌우 반반(상하 배치 금지). 좌/우 탭은 각 성향 피드 리스트.</div>
+
+<div class="mobile-row">
+  <div>
+    <div class="phone">
+      <div class="screen">
+        <div class="m-head"><span class="taegeuk"></span><b>좌우당간</b></div>
+        <div class="m-body pg">
+          <span class="m-chip">🔥 오늘의 링</span>
+          <div class="m-paircard">
+            <div class="topic-sm">전기요금 개편안</div>
+            <div class="m-pair">
+              <div class="half l"><span class="tag">좌</span><h5>서민 부담 완화 먼저</h5><p>누진제 개편 없는 인상은 취약계층 직격…</p></div>
+              <div class="half r"><span class="tag">우</span><h5>원가 반영이 정상화</h5><p>적자 구조 방치가 더 큰 부담…</p></div>
+            </div>
+            <div class="m-meta">💬 342 · 좌 44% | 중립 13% | 우 43%</div>
+          </div>
+          <div class="m-paircard">
+            <div class="topic-sm">플랫폼 노동자 보호 입법</div>
+            <div class="m-pair">
+              <div class="half l"><span class="tag">좌</span><h5>안전망은 국가 몫</h5><p>보험 사각지대 해소가 핵심…</p></div>
+              <div class="half r"><span class="tag">우</span><h5>규제가 일자리 줄여</h5><p>생태계 위축 우려…</p></div>
+            </div>
+            <div class="m-meta">💬 87 · 투표 412</div>
+          </div>
+          <div class="m-ad">AD</div>
+          <div class="m-paircard">
+            <div class="topic-sm">주 4일제 도입 논쟁</div>
+            <div class="m-pair">
+              <div class="half l"><span class="tag">좌</span><h5>삶의 질이 생산성</h5><p>이직률 감소 확인…</p></div>
+              <div class="half r"><span class="tag">우</span><h5>중소기업엔 무리</h5><p>인건비 구조 한계…</p></div>
+            </div>
+            <div class="m-meta">💬 154 · 투표 623</div>
+          </div>
+        </div>
+        <div class="tabs">
+          <button>좌</button>
+          <button class="on-p">플레이그라운드</button>
+          <button>우</button>
+        </div>
+      </div>
+    </div>
+    <div class="phone-caption">기본 진입: 플레이그라운드 탭</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="screen">
+        <div class="m-head"><span class="taegeuk"></span><b>좌우당간</b></div>
+        <div class="m-body lft">
+          <div class="m-post">
+            <div class="src">커뮤니티 A · 7분 전</div>
+            <h5>전기요금 개편안, 서민 부담부터 보자</h5>
+            <p>누진 구간을 손보지 않으면 부담은 아래로 내려온다는 요약…</p>
+          </div>
+          <div class="m-post">
+            <div class="src">커뮤니티 B · 21분 전</div>
+            <h5>플랫폼 노동자 보호법, 지금이 적기</h5>
+            <p>배달·대리 기사 사례 근거 입법 필요성 주장…</p>
+          </div>
+          <div class="m-post">
+            <div class="src">커뮤니티 A · 40분 전</div>
+            <h5>지역 의료 공백, 공공병원 확충이 답</h5>
+            <p>지방 응급실 사례로 공공 인프라 투자 강조…</p>
+          </div>
+          <div class="m-post">
+            <div class="src">커뮤니티 C · 1시간 전</div>
+            <h5>주 4일제 실험, 해외 사례 정리</h5>
+            <p>생산성 지표 중심 도입 찬성 근거 정리…</p>
+          </div>
+          <div class="m-ad">AD</div>
+          <div class="m-post">
+            <div class="src">커뮤니티 B · 2시간 전</div>
+            <h5>공공임대 확대 로드맵 평가</h5>
+            <p>공급 물량과 입지 중심으로 정리한 글 요약…</p>
+          </div>
+        </div>
+        <div class="tabs">
+          <button class="on-l">좌</button>
+          <button>플레이그라운드</button>
+          <button>우</button>
+        </div>
+      </div>
+    </div>
+    <div class="phone-caption">좌 탭: 파랑 틴트 피드 (우 탭은 동일 구조, 빨강)</div>
+  </div>
+</div>
+
+</body>
+</html>

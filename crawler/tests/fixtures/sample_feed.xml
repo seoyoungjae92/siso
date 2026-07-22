@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Sample Community News</title>
+    <link>https://example-community.test</link>
+    <description>Fixture feed for crawler unit tests</description>
+
+    <item>
+      <title>첫 번째 테스트 게시글 제목입니다</title>
+      <link>https://example-community.test/posts/1</link>
+      <description>&lt;p&gt;이것은 &lt;b&gt;HTML 태그&lt;/b&gt;가 섞인 본문 요약입니다. 200자를 넘는지 확인하기 위한 더미 텍스트를 이어서 채웁니다. 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트, 더미 텍스트&lt;/p&gt;</description>
+      <pubDate>Tue, 21 Jul 2026 09:00:00 GMT</pubDate>
+    </item>
+
+    <item>
+      <title>두 번째 테스트 게시글</title>
+      <link>https://example-community.test/posts/2</link>
+      <description>짧은 요약 본문입니다.</description>
+      <pubDate>Tue, 21 Jul 2026 10:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

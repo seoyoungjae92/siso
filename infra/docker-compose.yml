@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: siso
+      POSTGRES_PASSWORD: siso_dev_only
+      POSTGRES_DB: siso
+    ports:
+      - "5432:5432"
+    volumes:
+      - siso_postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  siso_postgres_data:
