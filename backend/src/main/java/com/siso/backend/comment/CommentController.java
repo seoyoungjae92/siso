@@ -18,9 +18,11 @@ import java.util.List;
 public class CommentController {
 
     private final CommentService commentService;
+    private final ReportService reportService;
 
-    public CommentController(CommentService commentService) {
+    public CommentController(CommentService commentService, ReportService reportService) {
         this.commentService = commentService;
+        this.reportService = reportService;
     }
 
     @GetMapping("/api/pairs/{pairId}/comments")
@@ -53,5 +55,14 @@ public class CommentController {
             @RequestHeader(value = "X-Anon-Id", required = false) String anonId,
             @RequestBody ReactionCreateRequest request) {
         commentService.react(commentId, AnonIdHeader.parse(anonId, true), request.type());
+    }
+
+    @PostMapping("/api/comments/{commentId}/reports")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void report(
+            @PathVariable Long commentId,
+            @RequestHeader(value = "X-Anon-Id", required = false) String anonId,
+            @RequestBody ReportCreateRequest request) {
+        reportService.create(commentId, AnonIdHeader.parse(anonId, true), request.reason(), request.detail());
     }
 }
