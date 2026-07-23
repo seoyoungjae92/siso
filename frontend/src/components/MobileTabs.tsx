@@ -19,12 +19,18 @@ const TABS: Tab[] = ["left", "playground", "right"];
 
 export function MobileTabs({
   leftPosts,
+  leftHasMore,
   rightPosts,
+  rightHasMore,
   pairs,
+  pairsHasMore,
 }: {
   leftPosts: PostSummary[];
+  leftHasMore: boolean;
   rightPosts: PostSummary[];
+  rightHasMore: boolean;
   pairs: TopicPair[];
+  pairsHasMore: boolean;
 }) {
   const [index, setIndex] = useState(TABS.indexOf("playground"));
   const [dragPx, setDragPx] = useState(0);
@@ -96,13 +102,13 @@ export function MobileTabs({
           }}
         >
           <div className="h-full w-1/3 shrink-0 overflow-y-auto">
-            <FeedColumn side="left" posts={leftPosts} />
+            <FeedColumn side="left" posts={leftPosts} hasMore={leftHasMore} />
           </div>
           <div className="h-full w-1/3 shrink-0 overflow-y-auto bg-pg-tint px-[14px] py-4">
-            <Playground pairs={pairs} />
+            <Playground pairs={pairs} hasMore={pairsHasMore} />
           </div>
           <div className="h-full w-1/3 shrink-0 overflow-y-auto">
-            <FeedColumn side="right" posts={rightPosts} />
+            <FeedColumn side="right" posts={rightPosts} hasMore={rightHasMore} />
           </div>
         </div>
       </div>

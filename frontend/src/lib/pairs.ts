@@ -10,21 +10,27 @@ export type TopicPair = {
 
 type PairsPage = {
   content: TopicPair[];
+  last: boolean;
 };
 
-export async function fetchPairs(): Promise<TopicPair[]> {
+export type PairsResult = {
+  pairs: TopicPair[];
+  hasMore: boolean;
+};
+
+export async function fetchPairs(page = 0): Promise<PairsResult> {
   try {
-    const res = await fetch(`${BACKEND_API_URL}/api/pairs?size=10`, {
+    const res = await fetch(`${BACKEND_API_URL}/api/pairs?page=${page}&size=10`, {
       cache: "no-store",
     });
 
     if (!res.ok) {
-      return [];
+      return { pairs: [], hasMore: false };
     }
 
-    const page: PairsPage = await res.json();
-    return page.content;
+    const data: PairsPage = await res.json();
+    return { pairs: data.content, hasMore: !data.last };
   } catch {
-    return [];
+    return { pairs: [], hasMore: false };
   }
 }
