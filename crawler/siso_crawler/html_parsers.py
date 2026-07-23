@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -9,6 +9,11 @@ from .parser import RawEntry
 
 TODAYHUMOR_BASE_URL = "https://www.todayhumor.co.kr"
 DCINSIDE_BASE_URL = "https://gall.dcinside.com"
+
+# 오늘의유머/디시인사이드 둘 다 국내 커뮤니티라 목록 페이지에 찍힌 시각은
+# 항상 한국 시간(KST, DST 없음) — 타임존 정보 없이 그대로 저장하면
+# timestamptz 컬럼에 UTC로 오인되어 실제보다 9시간 미래로 밀려 저장된다.
+KST = timezone(timedelta(hours=9))
 
 
 def parse_todayhumor_bestofbest(html: bytes) -> list[RawEntry]:
@@ -24,9 +29,11 @@ def parse_todayhumor_bestofbest(html: bytes) -> list[RawEntry]:
         published_at = None
         if date_td is not None:
             try:
-                published_at = datetime.strptime(
-                    date_td.get_text(strip=True), "%y/%m/%d %H:%M"
-                ).isoformat()
+                published_at = (
+                    datetime.strptime(date_td.get_text(strip=True), "%y/%m/%d %H:%M")
+                    .replace(tzinfo=KST)
+                    .isoformat()
+                )
             except ValueError:
                 published_at = None
 
@@ -55,7 +62,16 @@ def parse_dcinside_gallery(html: bytes) -> list[RawEntry]:
             continue
 
         date_td = row.select_one("td.gall_date")
-        published_at = date_td["title"] if date_td and date_td.has_attr("title") else None
+        published_at = None
+        if date_td is not None and date_td.has_attr("title"):
+            try:
+                published_at = (
+                    datetime.strptime(date_td["title"], "%Y-%m-%d %H:%M:%S")
+                    .replace(tzinfo=KST)
+                    .isoformat()
+                )
+            except ValueError:
+                published_at = None
 
         entries.append(
             RawEntry(

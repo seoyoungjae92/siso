@@ -45,15 +45,12 @@ class PostServiceTest {
         stubDisplayWindowDays(7);
         PostService postService = new PostService(postRepository, crawlSettingsRepository);
         Pageable pageable = PageRequest.of(0, 20);
-        when(postRepository.findBySource_SideAndSource_EnabledTrueAndCollectedAtAfter(
-                        eq(Side.LEFT), any(OffsetDateTime.class), eq(pageable)))
+        when(postRepository.findFeed(eq(Side.LEFT), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of()));
 
         Page<PostSummaryDto> result = postService.getFeed(Side.LEFT, pageable);
 
-        verify(postRepository)
-                .findBySource_SideAndSource_EnabledTrueAndCollectedAtAfter(
-                        eq(Side.LEFT), any(OffsetDateTime.class), eq(pageable));
+        verify(postRepository).findFeed(eq(Side.LEFT), any(OffsetDateTime.class), eq(pageable));
         assertThat(result.getContent()).isEmpty();
     }
 
@@ -74,8 +71,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "originUrl", "https://example.test/1");
         ReflectionTestUtils.setField(post, "collectedAt", OffsetDateTime.parse("2026-07-21T00:00:00Z"));
 
-        when(postRepository.findBySource_SideAndSource_EnabledTrueAndCollectedAtAfter(
-                        eq(Side.RIGHT), any(OffsetDateTime.class), eq(pageable)))
+        when(postRepository.findFeed(eq(Side.RIGHT), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(post)));
 
         Page<PostSummaryDto> result = postService.getFeed(Side.RIGHT, pageable);
