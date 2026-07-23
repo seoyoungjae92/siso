@@ -140,31 +140,35 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
           {formatRelativeTime(comment.createdAt)}
         </time>
       </div>
-      <p className="mb-2 text-[13px]">{comment.body}</p>
-      <div className="flex items-center gap-1.5">
-        <ReactionButton
-          pairId={pairId}
-          commentId={comment.id}
-          type="up"
-          count={comment.upCount}
-          active={comment.myReaction === "up"}
-          onError={setReactionError}
-        />
-        <ReactionButton
-          pairId={pairId}
-          commentId={comment.id}
-          type="down"
-          count={comment.downCount}
-          active={comment.myReaction === "down"}
-          onError={setReactionError}
-        />
-        {reactionError && (
-          <span className="text-[10.5px] text-right-red">{reactionError}</span>
-        )}
-        <div className="ml-auto">
-          <ReportControl pairId={pairId} commentId={comment.id} />
+      <p className={`mb-2 text-[13px] ${comment.blinded ? "italic text-[#A09D94]" : ""}`}>
+        {comment.body}
+      </p>
+      {!comment.blinded && (
+        <div className="flex items-center gap-1.5">
+          <ReactionButton
+            pairId={pairId}
+            commentId={comment.id}
+            type="up"
+            count={comment.upCount}
+            active={comment.myReaction === "up"}
+            onError={setReactionError}
+          />
+          <ReactionButton
+            pairId={pairId}
+            commentId={comment.id}
+            type="down"
+            count={comment.downCount}
+            active={comment.myReaction === "down"}
+            onError={setReactionError}
+          />
+          {reactionError && (
+            <span className="text-[10.5px] text-right-red">{reactionError}</span>
+          )}
+          <div className="ml-auto">
+            <ReportControl pairId={pairId} commentId={comment.id} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

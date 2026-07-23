@@ -23,6 +23,7 @@ export type Comment = {
   downCount: number;
   selfReply: boolean;
   myReaction: "up" | "down" | null;
+  blinded: boolean;
   createdAt: string;
 };
 
