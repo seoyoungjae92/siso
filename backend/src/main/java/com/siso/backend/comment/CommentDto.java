@@ -12,5 +12,6 @@ public record CommentDto(
         int downCount,
         boolean selfReply,
         String myReaction,
+        boolean blinded,
         OffsetDateTime createdAt) {
 }

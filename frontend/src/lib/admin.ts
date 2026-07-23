@@ -1,0 +1,38 @@
+import { headers } from "next/headers";
+
+import { BACKEND_API_URL } from "@/lib/posts";
+
+export function adminAuthHeader(): string {
+  const user = process.env.ADMIN_USERNAME ?? "admin";
+  const pass = process.env.ADMIN_PASSWORD ?? "local-dev-only-password";
+  return "Basic " + Buffer.from(`${user}:${pass}`).toString("base64");
+}
+
+// proxy.ts가 /admin 페이지 진입은 막아주지만, Server Action은 미들웨어
+// 매칭과 무관하게 직접 호출 가능한 별도 엔드포인트라 액션 안에서도
+// 다시 검증한다.
+export async function requireAdmin() {
+  const requestHeaders = await headers();
+  if (requestHeaders.get("authorization") !== adminAuthHeader()) {
+    throw new Error("admin auth required");
+  }
+}
+
+export type PendingReportGroup = {
+  commentId: number;
+  commentBody: string;
+  nickname: string;
+  pairId: number | null;
+  reasonCounts: Record<string, number>;
+  totalReports: number;
+  oldestReportAt: string;
+};
+
+export async function fetchPendingReports(): Promise<PendingReportGroup[]> {
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/reports`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return [];
+  return res.json();
+}

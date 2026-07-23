@@ -170,6 +170,30 @@ class CommentServiceTest {
         assertThat(result).isEmpty();
     }
 
+    @Test
+    void getComments_blindedComment_bodyIsReplacedWithPlaceholder() {
+        CommentService service = newService();
+        TopicPair pair = Mockito.mock(TopicPair.class);
+        Comment parent = new Comment(pair, null, ANON_A, "닉네임", "원본 내용", "hash", null, OffsetDateTime.now());
+        ReflectionTestUtils.setField(parent, "id", 10L);
+        parent.blind();
+        Comment reply = new Comment(pair, parent, ANON_B, "닉네임2", "대댓글", "hash", null, OffsetDateTime.now());
+        ReflectionTestUtils.setField(reply, "id", 11L);
+
+        when(commentRepository.findByPair_IdAndStatusNot(eq(1L), eq("deleted"), any(Sort.class)))
+                .thenReturn(List.of(parent, reply));
+
+        List<CommentDto> result = service.getComments(1L, "top", null);
+
+        CommentDto parentDto = result.stream().filter(c -> c.id().equals(10L)).findFirst().orElseThrow();
+        CommentDto replyDto = result.stream().filter(c -> c.id().equals(11L)).findFirst().orElseThrow();
+
+        assertThat(parentDto.blinded()).isTrue();
+        assertThat(parentDto.body()).isEqualTo("신고 처리로 가려진 댓글입니다");
+        assertThat(replyDto.blinded()).isFalse();
+        assertThat(replyDto.parentId()).isEqualTo(10L);
+    }
+
     private Comment commentWithId(long id, UUID anonId) {
         TopicPair pair = Mockito.mock(TopicPair.class);
         Comment comment = new Comment(pair, null, anonId, "닉네임", "본문", "hash", null, OffsetDateTime.now());
