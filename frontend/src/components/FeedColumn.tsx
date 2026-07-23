@@ -12,7 +12,7 @@ const COLUMN: Record<Side, { bg: string; heading: string; title: string }> = {
   right: { bg: "bg-red-tint", heading: "text-right-red", title: "우 성향 커뮤니티" },
 };
 
-const AD_EVERY = 8;
+const AD_EVERY = 5;
 
 export function FeedColumn({
   side,

@@ -7,7 +7,7 @@ import { AdSlot } from "@/components/AdSlot";
 import { PairCard } from "@/components/PairCard";
 import type { TopicPair } from "@/lib/pairs";
 
-const AD_EVERY = 5;
+const AD_EVERY = 3;
 
 export function Playground({
   pairs: initialPairs,
