@@ -2,6 +2,8 @@ package com.siso.backend.pair;
 
 import com.siso.backend.post.Post;
 import com.siso.backend.ratelimit.RateLimiter;
+import com.siso.backend.settings.CrawlSettings;
+import com.siso.backend.settings.CrawlSettingsRepository;
 import com.siso.backend.source.Source;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,7 +24,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,25 +44,37 @@ class PairServiceTest {
     @Mock
     private RateLimiter rateLimiter;
 
+    @Mock
+    private CrawlSettingsRepository crawlSettingsRepository;
+
     private PairService newService() {
-        return new PairService(topicPairRepository, voteRepository, rateLimiter);
+        return new PairService(topicPairRepository, voteRepository, rateLimiter, crawlSettingsRepository);
+    }
+
+    private void stubDisplayWindowDays(int days) {
+        CrawlSettings settings = mock(CrawlSettings.class);
+        when(settings.getDisplayWindowDays()).thenReturn(days);
+        when(crawlSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
     }
 
     @Test
-    void getPairs_queriesActiveStatus() {
+    void getPairs_queriesActiveStatusWithinDisplayWindow() {
+        stubDisplayWindowDays(7);
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
-        when(topicPairRepository.findByStatus(eq("active"), eq(pageable)))
+        when(topicPairRepository.findByStatusAndCreatedAtAfter(eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of()));
 
         Page<TopicPairDto> result = pairService.getPairs(pageable);
 
-        verify(topicPairRepository).findByStatus("active", pageable);
+        verify(topicPairRepository)
+                .findByStatusAndCreatedAtAfter(eq("active"), any(OffsetDateTime.class), eq(pageable));
         assertThat(result.getContent()).isEmpty();
     }
 
     @Test
     void getPairs_mapsTopicPairToDto() {
+        stubDisplayWindowDays(7);
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
 
@@ -87,7 +103,7 @@ class PairServiceTest {
         ReflectionTestUtils.setField(pair, "similarity", 0.62f);
         ReflectionTestUtils.setField(pair, "createdAt", OffsetDateTime.parse("2026-07-22T00:00:00Z"));
 
-        when(topicPairRepository.findByStatus(eq("active"), eq(pageable)))
+        when(topicPairRepository.findByStatusAndCreatedAtAfter(eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(pair)));
 
         Page<TopicPairDto> result = pairService.getPairs(pageable);
