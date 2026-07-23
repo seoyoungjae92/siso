@@ -52,3 +52,31 @@ def fetch_feed(url: str, timeout: float = TIMEOUT_SECONDS) -> bytes:
     )
     response.raise_for_status()
     return response.content
+
+
+_DEAD_STATUS_CODES = (404, 410)
+_HEAD_NOT_SUPPORTED_STATUS_CODES = (405, 501)
+
+
+def check_dead_link(url: str, timeout: float = TIMEOUT_SECONDS) -> bool:
+    """원문 링크가 확실히 죽었다고(404/410) 판단될 때만 True를 반환한다.
+
+    네트워크 에러·타임아웃·그 외 상태 코드는 일시적 장애일 수 있어
+    "죽었다고 확인 안 됨"(False)으로 보수적으로 처리한다 — 삭제는
+    호출부에서 True인 경우에만 수행."""
+    try:
+        response = httpx.head(
+            url, timeout=timeout, follow_redirects=True, headers={"User-Agent": USER_AGENT}
+        )
+    except httpx.HTTPError:
+        return False
+
+    if response.status_code in _HEAD_NOT_SUPPORTED_STATUS_CODES:
+        try:
+            response = httpx.get(
+                url, timeout=timeout, follow_redirects=True, headers={"User-Agent": USER_AGENT}
+            )
+        except httpx.HTTPError:
+            return False
+
+    return response.status_code in _DEAD_STATUS_CODES

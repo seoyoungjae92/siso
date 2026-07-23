@@ -5,6 +5,7 @@ from siso_crawler.fetch import (
     DEFAULT_MIN_INTERVAL_SECONDS,
     USER_AGENT,
     CrawlNotAllowed,
+    check_dead_link,
     check_robots_allowed,
     fetch_feed,
 )
@@ -79,3 +80,58 @@ def test_fetch_feed_sends_user_agent_and_returns_content(monkeypatch):
 
     assert content == b"<rss></rss>"
     assert captured["headers"]["User-Agent"] == USER_AGENT
+
+
+def _head_response(status_code: int) -> httpx.Response:
+    request = httpx.Request("HEAD", "https://example-community.test/post/1")
+    return httpx.Response(status_code, request=request)
+
+
+def _get_response(status_code: int) -> httpx.Response:
+    request = httpx.Request("GET", "https://example-community.test/post/1")
+    return httpx.Response(status_code, request=request)
+
+
+def test_check_dead_link_true_on_404(monkeypatch):
+    monkeypatch.setattr(httpx, "head", lambda *a, **k: _head_response(404))
+
+    assert check_dead_link("https://example-community.test/post/1") is True
+
+
+def test_check_dead_link_true_on_410(monkeypatch):
+    monkeypatch.setattr(httpx, "head", lambda *a, **k: _head_response(410))
+
+    assert check_dead_link("https://example-community.test/post/1") is True
+
+
+def test_check_dead_link_false_on_200(monkeypatch):
+    monkeypatch.setattr(httpx, "head", lambda *a, **k: _head_response(200))
+
+    assert check_dead_link("https://example-community.test/post/1") is False
+
+
+def test_check_dead_link_false_on_network_error(monkeypatch):
+    def raise_error(*args, **kwargs):
+        raise httpx.ConnectError("connection failed")
+
+    monkeypatch.setattr(httpx, "head", raise_error)
+
+    assert check_dead_link("https://example-community.test/post/1") is False
+
+
+def test_check_dead_link_falls_back_to_get_when_head_not_supported(monkeypatch):
+    monkeypatch.setattr(httpx, "head", lambda *a, **k: _head_response(405))
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: _get_response(404))
+
+    assert check_dead_link("https://example-community.test/post/1") is True
+
+
+def test_check_dead_link_false_when_get_fallback_errors(monkeypatch):
+    monkeypatch.setattr(httpx, "head", lambda *a, **k: _head_response(405))
+
+    def raise_error(*args, **kwargs):
+        raise httpx.ConnectError("connection failed")
+
+    monkeypatch.setattr(httpx, "get", raise_error)
+
+    assert check_dead_link("https://example-community.test/post/1") is False
