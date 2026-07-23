@@ -88,7 +88,7 @@ export function MobileTabs({
       <div
         ref={containerRef}
         className="relative flex-1 overflow-hidden"
-        style={{ touchAction: "pan-y", overscrollBehaviorX: "none" }}
+        style={{ touchAction: "pan-y" }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
