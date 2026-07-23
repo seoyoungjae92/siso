@@ -12,6 +12,12 @@ class MatchingRepository(Protocol):
 
     def create_pair(self, left_id: int, right_id: int, similarity: float) -> None: ...
 
+    def count_similar_posts(self, post_id: int, threshold: float) -> int: ...
+
+    def find_prunable_posts(self, grace_period_hours: int) -> list[int]: ...
+
+    def delete_post(self, post_id: int) -> bool: ...
+
 
 class PsycopgMatchingRepository:
     def __init__(self, conn):
@@ -87,3 +93,67 @@ class PsycopgMatchingRepository:
                 (left_id, right_id, similarity),
             )
         self._conn.commit()
+
+    def count_similar_posts(self, post_id: int, threshold: float) -> int:
+        """post_id 자신을 제외하고, 좌/우 구분 없이 유사도 임계값 이상인
+        다른 글의 개수. 클러스터 크기 판정("자기 포함 N개") 시 호출부에서
+        +1 해서 사용한다."""
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM posts p1
+                JOIN posts p2 ON p2.id != p1.id AND p2.embedding IS NOT NULL
+                WHERE p1.id = %s
+                  AND (1 - (p1.embedding <=> p2.embedding)) >= %s
+                """,
+                (post_id, threshold),
+            )
+            return cur.fetchone()[0]
+
+    def find_prunable_posts(self, grace_period_hours: int) -> list[int]:
+        """유예기간이 지났고, embedding이 있고(임베딩 안 된 글은 아직
+        평가 자체가 안 된 것이라 제외), topic_pairs/comments에 상태와
+        무관하게 참조되지 않은 후보. 클러스터 크기 판정은 호출부에서
+        count_similar_posts로 별도 확인한다."""
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT p.id
+                FROM posts p
+                WHERE p.collected_at < now() - (%s || ' hours')::interval
+                  AND p.embedding IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM topic_pairs tp
+                      WHERE tp.left_post_id = p.id OR tp.right_post_id = p.id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM comments c WHERE c.post_id = p.id
+                  )
+                """,
+                (grace_period_hours,),
+            )
+            return [row[0] for row in cur.fetchall()]
+
+    def delete_post(self, post_id: int) -> bool:
+        """조회~삭제 사이에 댓글/매칭이 새로 생겼을 수 있으므로 DELETE
+        자체의 WHERE 절에도 참조 조건을 다시 확인한다 — 조건에 안 맞으면
+        조용히 0행 삭제로 끝나고 FK 위반 에러가 나지 않는다."""
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM posts
+                WHERE id = %s
+                  AND NOT EXISTS (
+                      SELECT 1 FROM topic_pairs tp
+                      WHERE tp.left_post_id = posts.id OR tp.right_post_id = posts.id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM comments c WHERE c.post_id = posts.id
+                  )
+                """,
+                (post_id,),
+            )
+            deleted = cur.rowcount > 0
+        self._conn.commit()
+        return deleted

@@ -43,12 +43,19 @@ class FakeMatchingRepository:
         pending_embeddings: list[tuple[int, str, str]] | None = None,
         unmatched_left: list[int] | None = None,
         best_matches: dict[int, tuple[int, float]] | None = None,
+        similar_counts: dict[int, int] | None = None,
+        prunable_posts: list[int] | None = None,
+        undeletable_posts: set[int] | None = None,
     ):
         self.pending_embeddings = pending_embeddings or []
         self.unmatched_left = unmatched_left or []
         self.best_matches = best_matches or {}
         self.updated_embeddings: dict[int, list[float]] = {}
         self.created_pairs: list[tuple[int, int, float]] = []
+        self.similar_counts = similar_counts or {}
+        self.prunable_posts = prunable_posts or []
+        self.undeletable_posts = undeletable_posts or set()
+        self.deleted_posts: list[int] = []
 
     def find_posts_missing_embedding(self, limit: int) -> list[tuple[int, str, str]]:
         return self.pending_embeddings[:limit]
@@ -64,3 +71,15 @@ class FakeMatchingRepository:
 
     def create_pair(self, left_id: int, right_id: int, similarity: float) -> None:
         self.created_pairs.append((left_id, right_id, similarity))
+
+    def count_similar_posts(self, post_id: int, threshold: float) -> int:
+        return self.similar_counts.get(post_id, 0)
+
+    def find_prunable_posts(self, grace_period_hours: int) -> list[int]:
+        return self.prunable_posts
+
+    def delete_post(self, post_id: int) -> bool:
+        if post_id in self.undeletable_posts:
+            return False
+        self.deleted_posts.append(post_id)
+        return True

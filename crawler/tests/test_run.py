@@ -132,3 +132,24 @@ def test_run_cycle_runs_embedding_and_matching_after_ingest(sample_feed_bytes):
 
     assert 1 in matching_repo.updated_embeddings
     assert matching_repo.created_pairs == [(10, 20, 0.8)]
+
+
+def test_run_cycle_prunes_stale_candidates_using_settings(sample_feed_bytes):
+    post_repo = FakePostRepository()
+    matching_repo = FakeMatchingRepository(
+        prunable_posts=[99],
+        similar_counts={99: 0},  # 자기 포함 1개 < min_cluster_size(3) → 삭제 대상
+    )
+    embedder = FakeEmbeddingProvider()
+
+    run_cycle(
+        sources=[],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        matching_repo=matching_repo,
+        embedder=embedder,
+        check_robots_allowed=lambda base_url, target_url: 0,
+        fetch_feed=lambda url: sample_feed_bytes,
+    )
+
+    assert matching_repo.deleted_posts == [99]
