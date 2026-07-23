@@ -12,4 +12,6 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     List<Report> findByStatusOrderByCreatedAtAsc(String status);
 
     List<Report> findByStatusAndComment_Id(String status, Long commentId);
+
+    long countByStatus(String status);
 }
