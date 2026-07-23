@@ -26,6 +26,8 @@ import java.util.UUID;
 public class CommentService {
 
     private static final String DELETED_STATUS = "deleted";
+    private static final String BLINDED_STATUS = "blinded";
+    private static final String BLINDED_PLACEHOLDER = "신고 처리로 가려진 댓글입니다";
     private static final Set<String> REACTION_TYPES = Set.of("up", "down");
 
     private final CommentRepository commentRepository;
@@ -83,17 +85,19 @@ public class CommentService {
         Long parentId = comment.getParent() == null ? null : comment.getParent().getId();
         boolean selfReply = parentId != null
                 && comment.getAnonId().equals(anonIdById.get(parentId));
+        boolean blinded = BLINDED_STATUS.equals(comment.getStatus());
 
         return new CommentDto(
                 comment.getId(),
                 parentId,
                 comment.getNickname(),
-                comment.getBody(),
+                blinded ? BLINDED_PLACEHOLDER : comment.getBody(),
                 comment.getStance(),
                 comment.getUpCount(),
                 comment.getDownCount(),
                 selfReply,
                 myReaction,
+                blinded,
                 comment.getCreatedAt());
     }
 

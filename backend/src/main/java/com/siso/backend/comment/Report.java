@@ -58,4 +58,24 @@ public class Report {
     public Comment getComment() {
         return comment;
     }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void accept() {
+        this.status = "accepted";
+    }
+
+    public void reject() {
+        this.status = "rejected";
+    }
 }

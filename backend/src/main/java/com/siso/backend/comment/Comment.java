@@ -124,6 +124,10 @@ public class Comment {
         return downCount;
     }
 
+    public void blind() {
+        this.status = "blinded";
+    }
+
     public void adjustUpCount(int delta) {
         this.upCount += delta;
     }
