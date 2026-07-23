@@ -82,3 +82,21 @@ export async function fetchDashboard(): Promise<DashboardData | null> {
   if (!res.ok) return null;
   return res.json();
 }
+
+export type CrawlSettings = {
+  matchSimilarityThreshold: number;
+  pruneSimilarityThreshold: number;
+  minClusterSize: number;
+  gracePeriodHours: number;
+  displayWindowDays: number;
+  updatedAt: string;
+};
+
+export async function fetchCrawlSettings(): Promise<CrawlSettings | null> {
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/crawl-settings`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
