@@ -37,7 +37,7 @@ def test_run_cycle_ingests_each_source_and_runs_matching(sample_feed_bytes):
         post_repo=post_repo,
         matching_repo=matching_repo,
         embedder=embedder,
-        check_robots_allowed=lambda base_url, target_url: 0,
+        check_robots_allowed=lambda target_url: 0,
         fetch_feed=lambda url: sample_feed_bytes,
     )
 
@@ -55,7 +55,7 @@ def test_run_cycle_skips_source_without_feed_url(sample_feed_bytes):
         post_repo=post_repo,
         matching_repo=matching_repo,
         embedder=embedder,
-        check_robots_allowed=lambda base_url, target_url: 0,
+        check_robots_allowed=lambda target_url: 0,
         fetch_feed=lambda url: sample_feed_bytes,
     )
 
@@ -67,7 +67,7 @@ def test_run_cycle_skips_source_disallowed_by_robots_and_continues(sample_feed_b
     matching_repo = FakeMatchingRepository()
     embedder = FakeEmbeddingProvider()
 
-    def check_robots_allowed(base_url, target_url):
+    def check_robots_allowed(target_url):
         if "rss2" not in target_url:
             raise CrawlNotAllowed("disallowed")
         return 0
@@ -103,7 +103,7 @@ def test_run_cycle_skips_source_on_fetch_failure_and_continues(sample_feed_bytes
         post_repo=post_repo,
         matching_repo=matching_repo,
         embedder=embedder,
-        check_robots_allowed=lambda base_url, target_url: 0,
+        check_robots_allowed=lambda target_url: 0,
         fetch_feed=fetch_feed,
     )
 
@@ -126,7 +126,7 @@ def test_run_cycle_runs_embedding_and_matching_after_ingest(sample_feed_bytes):
         post_repo=post_repo,
         matching_repo=matching_repo,
         embedder=embedder,
-        check_robots_allowed=lambda base_url, target_url: 0,
+        check_robots_allowed=lambda target_url: 0,
         fetch_feed=lambda url: sample_feed_bytes,
     )
 
@@ -148,7 +148,7 @@ def test_run_cycle_prunes_stale_candidates_using_settings(sample_feed_bytes):
         post_repo=post_repo,
         matching_repo=matching_repo,
         embedder=embedder,
-        check_robots_allowed=lambda base_url, target_url: 0,
+        check_robots_allowed=lambda target_url: 0,
         fetch_feed=lambda url: sample_feed_bytes,
     )
 

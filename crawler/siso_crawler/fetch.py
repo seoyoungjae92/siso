@@ -19,10 +19,15 @@ class CrawlNotAllowed(Exception):
     """
 
 
-def check_robots_allowed(base_url: str, target_url: str) -> float:
+def check_robots_allowed(target_url: str) -> float:
     """target_url이 robots.txt상 허용되면 적용할 최소 요청 간격(초)을
-    반환하고, 허용되지 않으면 CrawlNotAllowed를 발생시킨다."""
-    robots_url = urljoin(base_url, "/robots.txt")
+    반환하고, 허용되지 않으면 CrawlNotAllowed를 발생시킨다.
+
+    robots.txt는 항상 실제로 fetch할 target_url 자신의 도메인 기준으로
+    확인해야 함 — feed_url이 소스의 base_url과 다른 도메인(예: RSS가
+    feeds.feedburner.com에 있는 경우)일 수 있어서, 별도 base_url을
+    받지 않고 target_url에서 직접 호스트를 뽑는다."""
+    robots_url = urljoin(target_url, "/robots.txt")
     try:
         response = httpx.get(
             robots_url, timeout=TIMEOUT_SECONDS, headers={"User-Agent": USER_AGENT}
