@@ -19,66 +19,109 @@ const TABS: Tab[] = ["left", "playground", "right"];
 
 export function MobileTabs({
   leftPosts,
+  leftHasMore,
   rightPosts,
+  rightHasMore,
   pairs,
+  pairsHasMore,
 }: {
   leftPosts: PostSummary[];
+  leftHasMore: boolean;
   rightPosts: PostSummary[];
+  rightHasMore: boolean;
   pairs: TopicPair[];
+  pairsHasMore: boolean;
 }) {
-  const [tab, setTab] = useState<Tab>("playground");
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const [index, setIndex] = useState(TABS.indexOf("playground"));
+  const [dragPx, setDragPx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const gesture = useRef<{ startX: number; startY: number; horizontal: boolean | null } | null>(
+    null,
+  );
 
   function handleTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
-    touchStart.current = { x: t.clientX, y: t.clientY };
+    gesture.current = { startX: t.clientX, startY: t.clientY, horizontal: null };
+    setDragging(true);
   }
 
-  function handleTouchEnd(e: React.TouchEvent) {
-    const start = touchStart.current;
-    touchStart.current = null;
-    if (!start) return;
+  function handleTouchMove(e: React.TouchEvent) {
+    const g = gesture.current;
+    if (!g) return;
+    const t = e.touches[0];
+    const dx = t.clientX - g.startX;
+    const dy = t.clientY - g.startY;
 
-    const t = e.changedTouches[0];
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
+    if (g.horizontal === null) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      g.horizontal = Math.abs(dx) > Math.abs(dy);
+    }
+    if (!g.horizontal) return;
 
-    const SWIPE_THRESHOLD = 60;
-    if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
+    // 맨 끝 탭에서 더 당기면 저항감(러버밴드)을 주고 그 이상은 안 넘어가게
+    let next = dx;
+    if (index === 0 && next > 0) next *= 0.35;
+    if (index === TABS.length - 1 && next < 0) next *= 0.35;
+    setDragPx(next);
+  }
 
-    const currentIndex = TABS.indexOf(tab);
-    const nextIndex = currentIndex + (dx < 0 ? 1 : -1);
-    const clamped = Math.max(0, Math.min(TABS.length - 1, nextIndex));
-    if (clamped !== currentIndex) setTab(TABS[clamped]);
+  function handleTouchEnd() {
+    const g = gesture.current;
+    gesture.current = null;
+    setDragging(false);
+
+    if (g?.horizontal) {
+      const width = containerRef.current?.getBoundingClientRect().width ?? 1;
+      const threshold = width * 0.18;
+      if (dragPx <= -threshold && index < TABS.length - 1) {
+        setIndex(index + 1);
+      } else if (dragPx >= threshold && index > 0) {
+        setIndex(index - 1);
+      }
+    }
+    setDragPx(0);
   }
 
   return (
     <div className="flex flex-1 flex-col">
       <div
-        className="flex-1 overflow-y-auto"
+        ref={containerRef}
+        className="relative flex-1 overflow-hidden"
+        style={{ touchAction: "pan-y" }}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* 스와이프: 좌 ↔ 플레이그라운드 ↔ 우 순서로 좌우로 밀어 이동.
-            세로 스크롤과 헷갈리지 않게 가로 이동량이 세로보다 클 때만 반응 */}
-        {tab === "left" && <FeedColumn side="left" posts={leftPosts} />}
-        {tab === "playground" && (
-          <div className="bg-pg-tint px-[14px] py-4">
-            <Playground pairs={pairs} />
+        <div
+          className="flex h-full"
+          style={{
+            width: "300%",
+            transform: `translateX(calc(${(-index * 100) / 3}% + ${dragPx}px))`,
+            transition: dragging ? "none" : "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
+        >
+          <div className="h-full w-1/3 shrink-0 overflow-y-auto">
+            <FeedColumn side="left" posts={leftPosts} hasMore={leftHasMore} />
           </div>
-        )}
-        {tab === "right" && <FeedColumn side="right" posts={rightPosts} />}
+          <div className="h-full w-1/3 shrink-0 overflow-y-auto bg-pg-tint px-[14px] py-4">
+            <Playground pairs={pairs} hasMore={pairsHasMore} />
+          </div>
+          <div className="h-full w-1/3 shrink-0 overflow-y-auto">
+            <FeedColumn side="right" posts={rightPosts} hasMore={rightHasMore} />
+          </div>
+        </div>
       </div>
 
       <div className="sticky bottom-0 grid grid-cols-3 border-t border-line bg-white">
-        {TABS.map((t) => {
+        {TABS.map((t, i) => {
           const config = TAB_CONFIG[t];
-          const active = t === tab;
+          const active = i === index;
           return (
             <button
               key={t}
               type="button"
-              onClick={() => setTab(t)}
+              onClick={() => setIndex(i)}
               className={`relative py-2.5 pb-3.5 text-[11px] font-extrabold ${active ? config.text : "text-[#A09D94]"}`}
             >
               {active && (

@@ -12,23 +12,29 @@ export type PostSummary = {
 
 type PostsPage = {
   content: PostSummary[];
+  last: boolean;
+};
+
+export type PostsResult = {
+  posts: PostSummary[];
+  hasMore: boolean;
 };
 
 export const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:8080";
 
-export async function fetchPosts(side: Side): Promise<PostSummary[]> {
+export async function fetchPosts(side: Side, page = 0): Promise<PostsResult> {
   try {
-    const res = await fetch(`${BACKEND_API_URL}/api/posts?side=${side}&size=20`, {
+    const res = await fetch(`${BACKEND_API_URL}/api/posts?side=${side}&page=${page}&size=20`, {
       cache: "no-store",
     });
 
     if (!res.ok) {
-      return [];
+      return { posts: [], hasMore: false };
     }
 
-    const page: PostsPage = await res.json();
-    return page.content;
+    const data: PostsPage = await res.json();
+    return { posts: data.content, hasMore: !data.last };
   } catch {
-    return [];
+    return { posts: [], hasMore: false };
   }
 }
