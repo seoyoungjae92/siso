@@ -36,3 +36,23 @@ export async function fetchPendingReports(): Promise<PendingReportGroup[]> {
   if (!res.ok) return [];
   return res.json();
 }
+
+export type Source = {
+  id: number;
+  name: string;
+  side: "left" | "right";
+  baseUrl: string;
+  feedUrl: string | null;
+  crawlType: "rss" | "html";
+  enabled: boolean;
+  createdAt: string;
+};
+
+export async function fetchSources(): Promise<Source[]> {
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/sources`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
