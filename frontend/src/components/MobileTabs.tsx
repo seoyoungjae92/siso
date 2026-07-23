@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { FeedColumn } from "@/components/FeedColumn";
 import { Playground } from "@/components/Playground";
@@ -35,10 +35,30 @@ export function MobileTabs({
   const [index, setIndex] = useState(TABS.indexOf("playground"));
   const [dragPx, setDragPx] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [offsetPx, setOffsetPx] = useState<number | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const gesture = useRef<{ startX: number; startY: number; horizontal: boolean | null } | null>(
     null,
   );
+
+  // 각 탭 패널의 overflow-y-auto가 실제로 스크롤을 가둬야(clip) 짧은
+  // 플레이그라운드 탭이 옆의 긴 좌/우 탭 길이만큼 스크롤되는 문제가
+  // 없어지는데, body가 min-h-full이라 조상 어디에도 고정 높이가 없으면
+  // 각 패널이 그냥 내용 그대로의 높이로 렌더링되어 overflow가 무의미해짐.
+  // 그래서 이 컴포넌트 루트에만(다른 페이지에는 영향 없도록) 뷰포트
+  // 기준 실측 높이를 부여한다 — 헤더 높이를 가정하지 않고 실제 렌더된
+  // 위치(top)를 재서 100dvh에서 빼는 방식.
+  useLayoutEffect(() => {
+    function measure() {
+      const el = rootRef.current;
+      if (!el) return;
+      setOffsetPx(el.getBoundingClientRect().top + window.scrollY);
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
   function handleTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -99,10 +119,14 @@ export function MobileTabs({
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div
+      ref={rootRef}
+      className="flex flex-col"
+      style={offsetPx != null ? { height: `calc(100dvh - ${offsetPx}px)` } : undefined}
+    >
       <div
         ref={containerRef}
-        className="relative flex-1 overflow-hidden"
+        className="relative min-h-0 flex-1 overflow-hidden"
         style={{ touchAction: "pan-y", overscrollBehaviorX: "none" }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
