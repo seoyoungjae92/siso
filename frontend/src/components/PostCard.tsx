@@ -12,7 +12,7 @@ export function PostCard({ post, side }: { post: PostSummary; side: Side }) {
       <div className={`mb-1 flex justify-between text-[11px] font-bold ${ACCENT[side]}`}>
         <span>{post.sourceName}</span>
         <time className="font-medium text-[#A09D94]">
-          {formatRelativeTime(post.collectedAt)}
+          {formatRelativeTime(post.publishedAt ?? post.collectedAt)}
         </time>
       </div>
       <h3 className="mb-1 line-clamp-2 text-sm font-bold tracking-tight">{post.title}</h3>

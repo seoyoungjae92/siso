@@ -21,7 +21,7 @@ def test_parse_todayhumor_bestofbest_extracts_title_link_and_date():
         "https://www.todayhumor.co.kr/board/view.php?table=bestofbest&no=483476&s_no=483476&page=1"
     )
     assert first.summary == ""
-    assert first.published_at == "2026-07-23T21:03:00"
+    assert first.published_at == "2026-07-23T21:03:00+09:00"
 
 
 def test_parse_dcinside_gallery_excludes_notice_rows():
@@ -37,7 +37,7 @@ def test_parse_dcinside_gallery_excludes_notice_rows():
     assert first.title == "트럼프 은퇴하면 뉴욕가서 5년 살다가"
     assert first.link == "https://gall.dcinside.com/mgallery/board/view/?id=bosu&no=124452&page=1"
     assert first.summary == ""
-    assert first.published_at == "2026-07-19 06:47:07"
+    assert first.published_at == "2026-07-19T06:47:07+09:00"
 
 
 def test_get_html_parser_dispatches_by_host():

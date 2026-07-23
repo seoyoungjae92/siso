@@ -26,7 +26,7 @@ public class PostService {
     public Page<PostSummaryDto> getFeed(Side side, Pageable pageable) {
         int displayWindowDays = crawlSettingsRepository.findById(SETTINGS_ID).orElseThrow().getDisplayWindowDays();
         OffsetDateTime since = OffsetDateTime.now().minusDays(displayWindowDays);
-        return postRepository.findBySource_SideAndSource_EnabledTrueAndCollectedAtAfter(side, since, pageable)
+        return postRepository.findFeed(side, since, pageable)
                 .map(PostSummaryDto::from);
     }
 }
