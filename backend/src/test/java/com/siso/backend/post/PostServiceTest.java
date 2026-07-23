@@ -1,5 +1,7 @@
 package com.siso.backend.post;
 
+import com.siso.backend.settings.CrawlSettings;
+import com.siso.backend.settings.CrawlSettingsRepository;
 import com.siso.backend.source.Side;
 import com.siso.backend.source.Source;
 import org.junit.jupiter.api.Test;
@@ -14,9 +16,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,22 +31,36 @@ class PostServiceTest {
     @Mock
     private PostRepository postRepository;
 
+    @Mock
+    private CrawlSettingsRepository crawlSettingsRepository;
+
+    private void stubDisplayWindowDays(int days) {
+        CrawlSettings settings = mock(CrawlSettings.class);
+        when(settings.getDisplayWindowDays()).thenReturn(days);
+        when(crawlSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
+    }
+
     @Test
-    void getFeed_queriesByRequestedSide() {
-        PostService postService = new PostService(postRepository);
+    void getFeed_queriesByRequestedSideWithinDisplayWindow() {
+        stubDisplayWindowDays(7);
+        PostService postService = new PostService(postRepository, crawlSettingsRepository);
         Pageable pageable = PageRequest.of(0, 20);
-        when(postRepository.findBySource_SideAndSource_EnabledTrue(eq(Side.LEFT), eq(pageable)))
+        when(postRepository.findBySource_SideAndSource_EnabledTrueAndCollectedAtAfter(
+                        eq(Side.LEFT), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of()));
 
         Page<PostSummaryDto> result = postService.getFeed(Side.LEFT, pageable);
 
-        verify(postRepository).findBySource_SideAndSource_EnabledTrue(Side.LEFT, pageable);
+        verify(postRepository)
+                .findBySource_SideAndSource_EnabledTrueAndCollectedAtAfter(
+                        eq(Side.LEFT), any(OffsetDateTime.class), eq(pageable));
         assertThat(result.getContent()).isEmpty();
     }
 
     @Test
     void getFeed_mapsPostEntityToSummaryDto() {
-        PostService postService = new PostService(postRepository);
+        stubDisplayWindowDays(7);
+        PostService postService = new PostService(postRepository, crawlSettingsRepository);
         Pageable pageable = PageRequest.of(0, 20);
 
         Source source = org.mockito.Mockito.mock(Source.class);
@@ -55,7 +74,8 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "originUrl", "https://example.test/1");
         ReflectionTestUtils.setField(post, "collectedAt", OffsetDateTime.parse("2026-07-21T00:00:00Z"));
 
-        when(postRepository.findBySource_SideAndSource_EnabledTrue(eq(Side.RIGHT), eq(pageable)))
+        when(postRepository.findBySource_SideAndSource_EnabledTrueAndCollectedAtAfter(
+                        eq(Side.RIGHT), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(post)));
 
         Page<PostSummaryDto> result = postService.getFeed(Side.RIGHT, pageable);

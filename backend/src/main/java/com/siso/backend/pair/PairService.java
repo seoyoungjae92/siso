@@ -1,6 +1,7 @@
 package com.siso.backend.pair;
 
 import com.siso.backend.ratelimit.RateLimiter;
+import com.siso.backend.settings.CrawlSettingsRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -19,21 +20,29 @@ public class PairService {
 
     private static final String ACTIVE_STATUS = "active";
     private static final Set<String> STANCES = Set.of("left", "right", "neutral");
+    private static final short SETTINGS_ID = 1;
 
     private final TopicPairRepository topicPairRepository;
     private final VoteRepository voteRepository;
     private final RateLimiter rateLimiter;
+    private final CrawlSettingsRepository crawlSettingsRepository;
 
     public PairService(
-            TopicPairRepository topicPairRepository, VoteRepository voteRepository, RateLimiter rateLimiter) {
+            TopicPairRepository topicPairRepository,
+            VoteRepository voteRepository,
+            RateLimiter rateLimiter,
+            CrawlSettingsRepository crawlSettingsRepository) {
         this.topicPairRepository = topicPairRepository;
         this.voteRepository = voteRepository;
         this.rateLimiter = rateLimiter;
+        this.crawlSettingsRepository = crawlSettingsRepository;
     }
 
     @Transactional(readOnly = true)
     public Page<TopicPairDto> getPairs(Pageable pageable) {
-        return topicPairRepository.findByStatus(ACTIVE_STATUS, pageable)
+        int displayWindowDays = crawlSettingsRepository.findById(SETTINGS_ID).orElseThrow().getDisplayWindowDays();
+        OffsetDateTime since = OffsetDateTime.now().minusDays(displayWindowDays);
+        return topicPairRepository.findByStatusAndCreatedAtAfter(ACTIVE_STATUS, since, pageable)
                 .map(TopicPairDto::from);
     }
 
