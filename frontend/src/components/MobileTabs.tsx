@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { FeedColumn } from "@/components/FeedColumn";
 import { Playground } from "@/components/Playground";
@@ -46,25 +46,40 @@ export function MobileTabs({
     setDragging(true);
   }
 
-  function handleTouchMove(e: React.TouchEvent) {
-    const g = gesture.current;
-    if (!g) return;
-    const t = e.touches[0];
-    const dx = t.clientX - g.startX;
-    const dy = t.clientY - g.startY;
+  // 대각선 스와이프 시 브라우저의 네이티브 세로 스크롤이 같이 끼어들지
+  // 않도록(터치가 수평으로 판정된 이후엔 preventDefault로 완전히 끊어야
+  // 함) React의 합성 이벤트가 아니라 네이티브 리스너를 passive:false로
+  // 직접 붙인다 — JSX onTouchMove는 기본 passive라 preventDefault가
+  // 동작하지 않는다.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
 
-    if (g.horizontal === null) {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      g.horizontal = Math.abs(dx) > Math.abs(dy);
+    function onTouchMove(e: TouchEvent) {
+      const g = gesture.current;
+      if (!g) return;
+      const t = e.touches[0];
+      const dx = t.clientX - g.startX;
+      const dy = t.clientY - g.startY;
+
+      if (g.horizontal === null) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        g.horizontal = Math.abs(dx) > Math.abs(dy);
+      }
+      if (!g.horizontal) return;
+
+      e.preventDefault();
+
+      // 맨 끝 탭에서 더 당기면 저항감(러버밴드)을 주고 그 이상은 안 넘어가게
+      let next = dx;
+      if (index === 0 && next > 0) next *= 0.35;
+      if (index === TABS.length - 1 && next < 0) next *= 0.35;
+      setDragPx(next);
     }
-    if (!g.horizontal) return;
 
-    // 맨 끝 탭에서 더 당기면 저항감(러버밴드)을 주고 그 이상은 안 넘어가게
-    let next = dx;
-    if (index === 0 && next > 0) next *= 0.35;
-    if (index === TABS.length - 1 && next < 0) next *= 0.35;
-    setDragPx(next);
-  }
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onTouchMove);
+  }, [index]);
 
   function handleTouchEnd() {
     const g = gesture.current;
@@ -88,9 +103,8 @@ export function MobileTabs({
       <div
         ref={containerRef}
         className="relative flex-1 overflow-hidden"
-        style={{ touchAction: "pan-y" }}
+        style={{ touchAction: "pan-y", overscrollBehaviorX: "none" }}
         onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         <div
