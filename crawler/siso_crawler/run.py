@@ -10,7 +10,7 @@ from .embedding import SentenceTransformerEmbeddingProvider
 from .fetch import CrawlNotAllowed
 from .fetch import check_robots_allowed as _check_robots_allowed
 from .fetch import fetch_feed as _fetch_feed
-from .matching import embed_pending_posts, match_pending_posts
+from .matching import embed_pending_posts, match_pending_posts, prune_stale_candidates
 from .matching_repository import PsycopgMatchingRepository
 from .models import Source
 from .pipeline import ingest_source
@@ -62,6 +62,14 @@ def run_cycle(
 
     matched = match_pending_posts(matching_repo, threshold=settings.match_similarity_threshold)
     logger.info("매칭: %d쌍 생성", matched)
+
+    pruned = prune_stale_candidates(
+        matching_repo,
+        grace_period_hours=settings.grace_period_hours,
+        min_cluster_size=settings.min_cluster_size,
+        prune_threshold=settings.prune_similarity_threshold,
+    )
+    logger.info("정리(prune): %d건 삭제", pruned)
 
 
 def main() -> None:

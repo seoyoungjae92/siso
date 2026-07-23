@@ -8,6 +8,11 @@ from .matching_repository import MatchingRepository
 # CMS 임계값 조정 기능으로 재튜닝할 것.
 MATCH_SIMILARITY_THRESHOLD = 0.5
 
+# 매칭용 임계값과 우연히 같은 값(0.5)으로 시작하지만, 관리자가 CMS에서
+# 매칭 민감도만 따로 튜닝해도 정리(prune) 로직이 영향받지 않도록 개념을
+# 분리한 별도 상수. 실제 운영값은 crawl_settings 테이블에서 읽어온다.
+PRUNE_SIMILARITY_THRESHOLD = 0.5
+
 
 def embed_pending_posts(
     repo: MatchingRepository, embedder: EmbeddingProvider, limit: int = 50
@@ -34,3 +39,18 @@ def match_pending_posts(
             matched += 1
 
     return matched
+
+
+def prune_stale_candidates(
+    repo: MatchingRepository,
+    grace_period_hours: int,
+    min_cluster_size: int,
+    prune_threshold: float = PRUNE_SIMILARITY_THRESHOLD,
+) -> int:
+    deleted = 0
+    for post_id in repo.find_prunable_posts(grace_period_hours):
+        cluster_size = repo.count_similar_posts(post_id, prune_threshold) + 1  # 자기 자신 포함
+        if cluster_size < min_cluster_size and repo.delete_post(post_id):
+            deleted += 1
+
+    return deleted
