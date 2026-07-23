@@ -1,4 +1,8 @@
 import type { Metadata } from "next";
+
+import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
+
 import "./globals.css";
 
 const appName = process.env.APP_NAME ?? "시소";
@@ -22,7 +26,11 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css"
         />
       </head>
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        <Header />
+        {children}
+        <Footer />
+      </body>
     </html>
   );
 }
