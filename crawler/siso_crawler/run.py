@@ -37,7 +37,7 @@ def run_cycle(
             continue
 
         try:
-            min_interval = check_robots_allowed(source.base_url, source.feed_url)
+            min_interval = check_robots_allowed(source.feed_url)
             raw_bytes = fetch_feed(source.feed_url)
         except CrawlNotAllowed as exc:
             logger.warning("소스 건너뜀(robots.txt 불허): %s — %s", source.name, exc)
