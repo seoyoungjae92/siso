@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
+  { href: "/admin/dashboard", label: "대시보드" },
   { href: "/admin/reports", label: "신고 관리" },
   { href: "/admin/sources", label: "소스 관리" },
 ];
