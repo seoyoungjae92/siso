@@ -56,3 +56,29 @@ export async function fetchSources(): Promise<Source[]> {
   if (!res.ok) return [];
   return res.json();
 }
+
+export type SourceStat = {
+  sourceName: string;
+  side: "left" | "right";
+  postCount: number;
+  lastCollectedAt: string | null;
+};
+
+export type DashboardData = {
+  totalComments: number;
+  totalVotes: number;
+  pendingReports: number;
+  totalReports: number;
+  newAnonUsersLast24h: number;
+  activeAnonUsersLast24h: number;
+  sourceStats: SourceStat[];
+};
+
+export async function fetchDashboard(): Promise<DashboardData | null> {
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/dashboard`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
