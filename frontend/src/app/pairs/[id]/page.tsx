@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CommentThread } from "@/components/CommentThread";
-import { Header } from "@/components/Header";
 import { PostCard } from "@/components/PostCard";
 import { VoteWidget } from "@/components/VoteWidget";
 import { fetchComments, fetchPairDetail } from "@/lib/comments";
@@ -21,7 +20,6 @@ export default async function PairDetailPage({
 
   return (
     <div className="flex flex-1 flex-col">
-      <Header />
       <div className="mx-auto w-full max-w-3xl px-4 py-6">
         <Link
           href="/"
