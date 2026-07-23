@@ -18,6 +18,8 @@ class MatchingRepository(Protocol):
 
     def delete_post(self, post_id: int) -> bool: ...
 
+    def find_link_check_candidates(self, display_window_days: int) -> list[tuple[int, str]]: ...
+
 
 class PsycopgMatchingRepository:
     def __init__(self, conn):
@@ -134,6 +136,29 @@ class PsycopgMatchingRepository:
                 (grace_period_hours,),
             )
             return [row[0] for row in cur.fetchall()]
+
+    def find_link_check_candidates(self, display_window_days: int) -> list[tuple[int, str]]:
+        """화면에 노출 중인(노출 기간 이내) 글만 데드링크 확인 대상으로
+        삼는다 — 이미 노출 안 되는 오래된 글까지 매 배치마다 원문 사이트에
+        요청을 보낼 필요는 없음. 삭제 안전 조건(참조 여부)은
+        find_prunable_posts와 동일하게 상태 무관 전체 참조를 배제한다."""
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT p.id, p.origin_url
+                FROM posts p
+                WHERE p.collected_at > now() - (%s || ' days')::interval
+                  AND NOT EXISTS (
+                      SELECT 1 FROM topic_pairs tp
+                      WHERE tp.left_post_id = p.id OR tp.right_post_id = p.id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM comments c WHERE c.post_id = p.id
+                  )
+                """,
+                (display_window_days,),
+            )
+            return [(row[0], row[1]) for row in cur.fetchall()]
 
     def delete_post(self, post_id: int) -> bool:
         """조회~삭제 사이에 댓글/매칭이 새로 생겼을 수 있으므로 DELETE

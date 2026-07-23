@@ -46,6 +46,7 @@ class FakeMatchingRepository:
         similar_counts: dict[int, int] | None = None,
         prunable_posts: list[int] | None = None,
         undeletable_posts: set[int] | None = None,
+        link_check_candidates: list[tuple[int, str]] | None = None,
     ):
         self.pending_embeddings = pending_embeddings or []
         self.unmatched_left = unmatched_left or []
@@ -56,6 +57,7 @@ class FakeMatchingRepository:
         self.prunable_posts = prunable_posts or []
         self.undeletable_posts = undeletable_posts or set()
         self.deleted_posts: list[int] = []
+        self.link_check_candidates = link_check_candidates or []
 
     def find_posts_missing_embedding(self, limit: int) -> list[tuple[int, str, str]]:
         return self.pending_embeddings[:limit]
@@ -83,3 +85,6 @@ class FakeMatchingRepository:
             return False
         self.deleted_posts.append(post_id)
         return True
+
+    def find_link_check_candidates(self, display_window_days: int) -> list[tuple[int, str]]:
+        return self.link_check_candidates
