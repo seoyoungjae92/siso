@@ -81,6 +81,15 @@ export function MobileTabs({
     return () => el.removeEventListener("touchmove", onTouchMove);
   }, [index]);
 
+  // 탭 전환 시 스크롤 위치를 위로 리셋 — 실제 스크롤은 각 패널이 아니라
+  // 문서 전체(body)에서 일어나서(레이아웃이 뷰포트 고정 높이가 아니라
+  // min-h-full이라 내용이 길면 문서 자체가 길어짐), 예를 들어 좌 탭을
+  // 깊이 스크롤한 채로 내용이 짧은 플레이그라운드로 넘어가면 그 스크롤
+  // 위치엔 아무 내용도 없어 화면이 비어 보이는 문제가 있었음.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [index]);
+
   function handleTouchEnd() {
     const g = gesture.current;
     gesture.current = null;
