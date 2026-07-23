@@ -2,6 +2,7 @@ const LABELS: Record<string, string> = {
   "feed-left": "AD · 좌 피드 슬롯",
   "feed-right": "AD · 우 피드 슬롯",
   playground: "AD · 플레이그라운드 슬롯",
+  discussion: "AD · 토론 페이지 슬롯",
 };
 
 export function AdSlot({ position }: { position: keyof typeof LABELS }) {

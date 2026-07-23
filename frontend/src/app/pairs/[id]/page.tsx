@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AdSlot } from "@/components/AdSlot";
 import { CommentThread } from "@/components/CommentThread";
 import { PostCard } from "@/components/PostCard";
 import { VoteWidget } from "@/components/VoteWidget";
@@ -35,6 +36,9 @@ export default async function PairDetailPage({
           유사도 {Math.round(pair.similarity * 100)}%
         </div>
         <VoteWidget pairId={id} pair={pair} />
+        <div className="mt-4">
+          <AdSlot position="discussion" />
+        </div>
         <CommentThread pairId={id} comments={comments} />
       </div>
     </div>
