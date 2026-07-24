@@ -17,7 +17,12 @@ TIMEOUT_SECONDS = 30.0
 # 유료 모델을 명시하면 됨.
 SYNTHESIS_MODEL = os.environ.get("OPENROUTER_SYNTHESIS_MODEL") or "openrouter/free"
 
-MAX_TOKENS = 1024
+# 무료 모델 중엔 최종 답변 전에 내부 추론(reasoning) 토큰을 상당히 쓰는
+# 모델도 있어서, 짧은 응답이어도 여유 있게 잡아야 잘림(finish_reason=
+# length)을 피할 수 있다. 무료 모델은 토큰 수와 무관하게 과금 안 되고
+# (실측: usage.cost == 0), 이 배치는 하루 몇 번 도는 정도라 속도도
+# 문제없어 — 넉넉하게 설정.
+MAX_TOKENS = 4096
 
 SYSTEM_PROMPT = """너는 한국 정치 커뮤니티 좌/우 게시글을 보고 중립적인 토론
 주제를 만드는 편집자야. 아래 좌/우 게시글 제목·요약을 참고해서 토론하기
@@ -108,6 +113,11 @@ class OpenRouterTopicSynthesizer:
                             "schema": RESPONSE_JSON_SCHEMA,
                         },
                     },
+                    # response_format을 실제로 지원 안 하는 프로바이더는
+                    # 기본적으로 파라미터를 조용히 무시하고 아무 형식으로나
+                    # 응답해버린다(OpenRouter 문서 확인) — require_parameters로
+                    # 그런 프로바이더 자체를 후보에서 빼서 스키마 불일치를 줄인다.
+                    "provider": {"require_parameters": True},
                 },
             )
             response.raise_for_status()
