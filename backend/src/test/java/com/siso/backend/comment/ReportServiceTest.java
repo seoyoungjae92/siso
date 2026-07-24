@@ -1,5 +1,7 @@
 package com.siso.backend.comment;
 
+import com.siso.backend.alert.AdminAlert;
+import com.siso.backend.alert.AdminAlertRepository;
 import com.siso.backend.pair.TopicPair;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,11 +12,14 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,8 +34,11 @@ class ReportServiceTest {
     @Mock
     private CommentRepository commentRepository;
 
+    @Mock
+    private AdminAlertRepository adminAlertRepository;
+
     private ReportService newService() {
-        return new ReportService(reportRepository, commentRepository);
+        return new ReportService(reportRepository, commentRepository, adminAlertRepository);
     }
 
     private Comment commentWithId(long id) {
@@ -70,5 +78,48 @@ class ReportServiceTest {
 
         assertThatThrownBy(() -> service.create(1L, ANON_A, "not-a-reason", null))
                 .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void create_reachesThreshold_autoBlindsAndLogsAlert() {
+        ReportService service = newService();
+        Comment comment = commentWithId(1L);
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        when(reportRepository.existsByComment_IdAndAnonId(1L, ANON_A)).thenReturn(false);
+        when(reportRepository.countByComment_Id(1L)).thenReturn(20L);
+        when(reportRepository.findByStatusAndComment_Id("pending", 1L)).thenReturn(List.of());
+
+        service.create(1L, ANON_A, "abuse", null);
+
+        assertThat(comment.getStatus()).isEqualTo("blinded");
+        verify(adminAlertRepository).save(any(AdminAlert.class));
+    }
+
+    @Test
+    void create_belowThreshold_doesNotAutoBlind() {
+        ReportService service = newService();
+        Comment comment = commentWithId(1L);
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        when(reportRepository.existsByComment_IdAndAnonId(1L, ANON_A)).thenReturn(false);
+        when(reportRepository.countByComment_Id(1L)).thenReturn(19L);
+
+        service.create(1L, ANON_A, "abuse", null);
+
+        assertThat(comment.getStatus()).isEqualTo("visible");
+        verify(adminAlertRepository, never()).save(any(AdminAlert.class));
+    }
+
+    @Test
+    void create_alreadyBlinded_doesNotLogDuplicateAlert() {
+        ReportService service = newService();
+        Comment comment = commentWithId(1L);
+        comment.blind();
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        when(reportRepository.existsByComment_IdAndAnonId(1L, ANON_A)).thenReturn(false);
+        when(reportRepository.countByComment_Id(1L)).thenReturn(21L);
+
+        service.create(1L, ANON_A, "abuse", null);
+
+        verify(adminAlertRepository, never()).save(any(AdminAlert.class));
     }
 }

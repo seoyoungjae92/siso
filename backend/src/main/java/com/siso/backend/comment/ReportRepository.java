@@ -14,4 +14,6 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     List<Report> findByStatusAndComment_Id(String status, Long commentId);
 
     long countByStatus(String status);
+
+    long countByComment_Id(Long commentId);
 }

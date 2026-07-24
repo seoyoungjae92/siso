@@ -37,6 +37,26 @@ export async function fetchPendingReports(): Promise<PendingReportGroup[]> {
   return res.json();
 }
 
+export type BlindHistoryEntry = {
+  alertId: number;
+  type: "comment_auto_blinded" | "comment_manually_blinded";
+  commentId: number | null;
+  commentBody: string | null;
+  nickname: string | null;
+  pairId: number | null;
+  reportCount: number | null;
+  createdAt: string;
+};
+
+export async function fetchBlindHistory(): Promise<BlindHistoryEntry[]> {
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/reports/history`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
 export type Source = {
   id: number;
   name: string;

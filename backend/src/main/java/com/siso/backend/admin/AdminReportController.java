@@ -28,4 +28,9 @@ public class AdminReportController {
     public void moderate(@PathVariable Long commentId, @RequestBody ModerationRequest request) {
         adminReportService.moderate(commentId, request.action());
     }
+
+    @GetMapping("/history")
+    public List<BlindHistoryDto> getHistory() {
+        return adminReportService.getBlindHistory();
+    }
 }
