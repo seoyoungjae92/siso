@@ -38,6 +38,14 @@ public class TopicPair {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
+    private String title;
+
+    @Column(name = "left_stance")
+    private String leftStance;
+
+    @Column(name = "right_stance")
+    private String rightStance;
+
     protected TopicPair() {
     }
 
@@ -63,5 +71,17 @@ public class TopicPair {
 
     public OffsetDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getLeftStance() {
+        return leftStance;
+    }
+
+    public String getRightStance() {
+        return rightStance;
     }
 }

@@ -1,10 +1,8 @@
 package com.siso.backend.pair;
 
-import com.siso.backend.post.Post;
 import com.siso.backend.ratelimit.RateLimiter;
 import com.siso.backend.settings.CrawlSettings;
 import com.siso.backend.settings.CrawlSettingsRepository;
-import com.siso.backend.source.Source;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -58,17 +56,18 @@ class PairServiceTest {
     }
 
     @Test
-    void getPairs_queriesActiveStatusWithinDisplayWindow() {
+    void getPairs_queriesActiveStatusWithSynthesizedTitleWithinDisplayWindow() {
         stubDisplayWindowDays(7);
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
-        when(topicPairRepository.findByStatusAndCreatedAtAfter(eq("active"), any(OffsetDateTime.class), eq(pageable)))
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+                        eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of()));
 
         Page<TopicPairDto> result = pairService.getPairs(pageable);
 
         verify(topicPairRepository)
-                .findByStatusAndCreatedAtAfter(eq("active"), any(OffsetDateTime.class), eq(pageable));
+                .findByStatusAndTitleIsNotNullAndCreatedAtAfter(eq("active"), any(OffsetDateTime.class), eq(pageable));
         assertThat(result.getContent()).isEmpty();
     }
 
@@ -78,32 +77,15 @@ class PairServiceTest {
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
 
-        Source leftSource = Mockito.mock(Source.class);
-        when(leftSource.getName()).thenReturn("루리웹");
-        Post leftPost = Mockito.mock(Post.class);
-        when(leftPost.getId()).thenReturn(1L);
-        when(leftPost.getTitle()).thenReturn("좌 제목");
-        when(leftPost.getSummary()).thenReturn("좌 요약");
-        when(leftPost.getOriginUrl()).thenReturn("https://example.test/left");
-        when(leftPost.getSource()).thenReturn(leftSource);
-
-        Source rightSource = Mockito.mock(Source.class);
-        when(rightSource.getName()).thenReturn("일베");
-        Post rightPost = Mockito.mock(Post.class);
-        when(rightPost.getId()).thenReturn(2L);
-        when(rightPost.getTitle()).thenReturn("우 제목");
-        when(rightPost.getSummary()).thenReturn("우 요약");
-        when(rightPost.getOriginUrl()).thenReturn("https://example.test/right");
-        when(rightPost.getSource()).thenReturn(rightSource);
-
         TopicPair pair = new TopicPair();
         ReflectionTestUtils.setField(pair, "id", 100L);
-        ReflectionTestUtils.setField(pair, "leftPost", leftPost);
-        ReflectionTestUtils.setField(pair, "rightPost", rightPost);
-        ReflectionTestUtils.setField(pair, "similarity", 0.62f);
+        ReflectionTestUtils.setField(pair, "title", "합성된 주제 제목");
+        ReflectionTestUtils.setField(pair, "leftStance", "좌 입장 요약");
+        ReflectionTestUtils.setField(pair, "rightStance", "우 입장 요약");
         ReflectionTestUtils.setField(pair, "createdAt", OffsetDateTime.parse("2026-07-22T00:00:00Z"));
 
-        when(topicPairRepository.findByStatusAndCreatedAtAfter(eq("active"), any(OffsetDateTime.class), eq(pageable)))
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+                        eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(pair)));
 
         Page<TopicPairDto> result = pairService.getPairs(pageable);
@@ -111,9 +93,18 @@ class PairServiceTest {
         assertThat(result.getContent()).hasSize(1);
         TopicPairDto dto = result.getContent().get(0);
         assertThat(dto.id()).isEqualTo(100L);
-        assertThat(dto.similarity()).isEqualTo(0.62f);
-        assertThat(dto.leftPost().sourceName()).isEqualTo("루리웹");
-        assertThat(dto.rightPost().sourceName()).isEqualTo("일베");
+        assertThat(dto.title()).isEqualTo("합성된 주제 제목");
+        assertThat(dto.leftStance()).isEqualTo("좌 입장 요약");
+        assertThat(dto.rightStance()).isEqualTo("우 입장 요약");
+    }
+
+    @Test
+    void getPair_pendingSynthesis_returnsNotFound() {
+        when(topicPairRepository.findByIdAndStatusAndTitleIsNotNull(1L, "active")).thenReturn(Optional.empty());
+        PairService pairService = newService();
+
+        assertThatThrownBy(() -> pairService.getPair(1L, null))
+                .isInstanceOf(ResponseStatusException.class);
     }
 
     @Test

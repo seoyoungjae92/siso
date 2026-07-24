@@ -42,13 +42,13 @@ public class PairService {
     public Page<TopicPairDto> getPairs(Pageable pageable) {
         int displayWindowDays = crawlSettingsRepository.findById(SETTINGS_ID).orElseThrow().getDisplayWindowDays();
         OffsetDateTime since = OffsetDateTime.now().minusDays(displayWindowDays);
-        return topicPairRepository.findByStatusAndCreatedAtAfter(ACTIVE_STATUS, since, pageable)
+        return topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(ACTIVE_STATUS, since, pageable)
                 .map(TopicPairDto::from);
     }
 
     @Transactional(readOnly = true)
     public TopicPairDto getPair(Long id, UUID viewerAnonId) {
-        TopicPair pair = topicPairRepository.findByIdAndStatus(id, ACTIVE_STATUS)
+        TopicPair pair = topicPairRepository.findByIdAndStatusAndTitleIsNotNull(id, ACTIVE_STATUS)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "pair not found"));
 
         Map<String, Long> tally = new HashMap<>();

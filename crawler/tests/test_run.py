@@ -1,9 +1,10 @@
 from siso_crawler.fetch import CrawlNotAllowed
+from siso_crawler.llm_client import SynthesizedTopic
 from siso_crawler.models import Source
 from siso_crawler.run import run_cycle
 from siso_crawler.settings_repository import CrawlSettings
 
-from .fakes import FakeEmbeddingProvider, FakeMatchingRepository, FakePostRepository
+from .fakes import FakeEmbeddingProvider, FakeMatchingRepository, FakePostRepository, FakeTopicSynthesizer
 
 SETTINGS = CrawlSettings(
     match_similarity_threshold=0.6,
@@ -153,3 +154,47 @@ def test_run_cycle_prunes_stale_candidates_using_settings(sample_feed_bytes):
     )
 
     assert matching_repo.deleted_posts == [99]
+
+
+def test_run_cycle_runs_synthesis_when_synthesizer_provided(sample_feed_bytes):
+    post_repo = FakePostRepository()
+    matching_repo = FakeMatchingRepository(
+        pairs_missing_synthesis=[(1, "좌", "좌요약", "우", "우요약")],
+    )
+    embedder = FakeEmbeddingProvider()
+    synthesizer = FakeTopicSynthesizer(
+        results={("좌", "우"): SynthesizedTopic("제목", "좌입장", "우입장")}
+    )
+
+    run_cycle(
+        sources=[],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        matching_repo=matching_repo,
+        embedder=embedder,
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=lambda url: sample_feed_bytes,
+        topic_synthesizer=synthesizer,
+    )
+
+    assert matching_repo.synthesized_pairs == [(1, "제목", "좌입장", "우입장")]
+
+
+def test_run_cycle_skips_synthesis_when_synthesizer_is_none(sample_feed_bytes):
+    post_repo = FakePostRepository()
+    matching_repo = FakeMatchingRepository(
+        pairs_missing_synthesis=[(1, "좌", "좌요약", "우", "우요약")],
+    )
+    embedder = FakeEmbeddingProvider()
+
+    run_cycle(
+        sources=[],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        matching_repo=matching_repo,
+        embedder=embedder,
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=lambda url: sample_feed_bytes,
+    )
+
+    assert matching_repo.synthesized_pairs == []

@@ -1,15 +1,13 @@
 package com.siso.backend.pair;
 
-import com.siso.backend.post.PostSummaryDto;
-
 import java.time.OffsetDateTime;
 
 public record TopicPairDto(
         Long id,
-        float similarity,
+        String title,
+        String leftStance,
+        String rightStance,
         OffsetDateTime createdAt,
-        PostSummaryDto leftPost,
-        PostSummaryDto rightPost,
         long leftVotes,
         long rightVotes,
         long neutralVotes,
@@ -23,10 +21,10 @@ public record TopicPairDto(
             TopicPair pair, long leftVotes, long rightVotes, long neutralVotes, String myStance) {
         return new TopicPairDto(
                 pair.getId(),
-                pair.getSimilarity(),
+                pair.getTitle(),
+                pair.getLeftStance(),
+                pair.getRightStance(),
                 pair.getCreatedAt(),
-                PostSummaryDto.from(pair.getLeftPost()),
-                PostSummaryDto.from(pair.getRightPost()),
                 leftVotes,
                 rightVotes,
                 neutralVotes,
