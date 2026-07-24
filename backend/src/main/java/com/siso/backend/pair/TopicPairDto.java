@@ -8,9 +8,9 @@ public record TopicPairDto(
         String leftStance,
         String rightStance,
         OffsetDateTime createdAt,
-        long leftVotes,
-        long rightVotes,
-        long neutralVotes,
+        double leftVotes,
+        double rightVotes,
+        double neutralVotes,
         String myStance) {
 
     public static TopicPairDto from(TopicPair pair) {
@@ -18,7 +18,7 @@ public record TopicPairDto(
     }
 
     public static TopicPairDto from(
-            TopicPair pair, long leftVotes, long rightVotes, long neutralVotes, String myStance) {
+            TopicPair pair, double leftVotes, double rightVotes, double neutralVotes, String myStance) {
         return new TopicPairDto(
                 pair.getId(),
                 pair.getTitle(),

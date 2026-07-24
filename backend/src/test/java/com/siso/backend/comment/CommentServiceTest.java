@@ -1,11 +1,16 @@
 package com.siso.backend.comment;
 
+import com.siso.backend.abuse.DuplicateCommentGuard;
+import com.siso.backend.abuse.SpikeDetector;
+import com.siso.backend.abuse.TrustScoreService;
 import com.siso.backend.anon.AnonUserRepository;
 import com.siso.backend.anon.IpHasher;
 import com.siso.backend.moderation.ProfanityFilter;
 import com.siso.backend.pair.TopicPair;
 import com.siso.backend.pair.TopicPairRepository;
 import com.siso.backend.ratelimit.RateLimiter;
+import com.siso.backend.settings.AbuseSettings;
+import com.siso.backend.settings.AbuseSettingsRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -24,8 +29,11 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -57,6 +65,18 @@ class CommentServiceTest {
     @Mock
     private RateLimiter rateLimiter;
 
+    @Mock
+    private AbuseSettingsRepository abuseSettingsRepository;
+
+    @Mock
+    private DuplicateCommentGuard duplicateCommentGuard;
+
+    @Mock
+    private TrustScoreService trustScoreService;
+
+    @Mock
+    private SpikeDetector spikeDetector;
+
     private CommentService newService() {
         return new CommentService(
                 commentRepository,
@@ -65,12 +85,33 @@ class CommentServiceTest {
                 anonUserRepository,
                 ipHasher,
                 profanityFilter,
-                rateLimiter);
+                rateLimiter,
+                abuseSettingsRepository,
+                duplicateCommentGuard,
+                trustScoreService,
+                spikeDetector);
+    }
+
+    private void stubAbuseSettings() {
+        // create()/react()는 이 값들 중 각자 다른 부분집합만 씀 — 테스트마다
+        // 어느 필드가 실제로 읽히는지 갈리므로 전부 lenient로 스텁한다.
+        AbuseSettings settings = mock(AbuseSettings.class);
+        Mockito.lenient().when(settings.getDuplicateLookbackMinutes()).thenReturn(1440);
+        Mockito.lenient().when(settings.getDuplicateLookbackCount()).thenReturn(10);
+        Mockito.lenient().when(settings.getDuplicateSimilarityThreshold()).thenReturn(0.85f);
+        Mockito.lenient().when(settings.getMultiAccountClusterSize()).thenReturn(4);
+        Mockito.lenient().when(settings.getMultiAccountTrustPenaltyMultiplier()).thenReturn(0.3f);
+        Mockito.lenient().when(settings.getTrustMaturityHours()).thenReturn(72);
+        Mockito.lenient().when(settings.getTrustMinWeight()).thenReturn(0.3f);
+        Mockito.lenient().when(settings.getSpikeReactionThreshold()).thenReturn(30);
+        Mockito.lenient().when(settings.getSpikeWindowMinutes()).thenReturn(10);
+        Mockito.lenient().when(abuseSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
     }
 
     @Test
     void create_topLevelComment_succeeds() {
         CommentService service = newService();
+        stubAbuseSettings();
         TopicPair pair = Mockito.mock(TopicPair.class);
         when(topicPairRepository.findById(1L)).thenReturn(Optional.of(pair));
         when(anonUserRepository.findById(ANON_A)).thenReturn(Optional.empty());
@@ -108,8 +149,23 @@ class CommentServiceTest {
     }
 
     @Test
+    void create_duplicateOfRecentComment_isRejected() {
+        CommentService service = newService();
+        stubAbuseSettings();
+        when(duplicateCommentGuard.isDuplicate(
+                eq(ANON_A), eq("반복 댓글"), any(OffsetDateTime.class), anyInt(), anyInt(), anyDouble()))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(1L, ANON_A, "127.0.0.1", null, "반복 댓글", null))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
     void create_replyToTopLevelComment_succeeds() {
         CommentService service = newService();
+        stubAbuseSettings();
         TopicPair pair = Mockito.mock(TopicPair.class);
         Comment topLevel = new Comment(pair, null, ANON_A, "닉네임", "부모", "hash", null, OffsetDateTime.now());
         ReflectionTestUtils.setField(topLevel, "id", 10L);
@@ -128,6 +184,7 @@ class CommentServiceTest {
     @Test
     void create_replyBySameAnonIdAsParent_marksSelfReply() {
         CommentService service = newService();
+        stubAbuseSettings();
         TopicPair pair = Mockito.mock(TopicPair.class);
         Comment topLevel = new Comment(pair, null, ANON_A, "닉네임", "부모", "hash", null, OffsetDateTime.now());
         ReflectionTestUtils.setField(topLevel, "id", 10L);
@@ -145,6 +202,7 @@ class CommentServiceTest {
     @Test
     void create_replyToAReply_isRejected() {
         CommentService service = newService();
+        stubAbuseSettings();
         TopicPair pair = Mockito.mock(TopicPair.class);
         Comment topLevel = new Comment(pair, null, ANON_A, "닉네임", "부모", "hash", null, OffsetDateTime.now());
         ReflectionTestUtils.setField(topLevel, "id", 10L);
@@ -207,12 +265,14 @@ class CommentServiceTest {
         Comment comment = commentWithId(1L, ANON_A);
         when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
         when(reactionRepository.findByComment_IdAndAnonId(1L, ANON_B)).thenReturn(Optional.empty());
+        stubAbuseSettings();
 
         service.react(1L, ANON_B, "up");
 
         assertThat(comment.getUpCount()).isEqualTo(1);
         assertThat(comment.getDownCount()).isEqualTo(0);
         verify(reactionRepository).save(any(Reaction.class));
+        verify(spikeDetector).recordReactionUpAndCheck(1L, 30, 10);
     }
 
     @Test

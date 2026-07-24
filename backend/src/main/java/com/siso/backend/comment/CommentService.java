@@ -1,5 +1,8 @@
 package com.siso.backend.comment;
 
+import com.siso.backend.abuse.DuplicateCommentGuard;
+import com.siso.backend.abuse.SpikeDetector;
+import com.siso.backend.abuse.TrustScoreService;
 import com.siso.backend.anon.AnonUser;
 import com.siso.backend.anon.AnonUserRepository;
 import com.siso.backend.anon.IpHasher;
@@ -8,6 +11,8 @@ import com.siso.backend.moderation.ProfanityFilter;
 import com.siso.backend.pair.TopicPair;
 import com.siso.backend.pair.TopicPairRepository;
 import com.siso.backend.ratelimit.RateLimiter;
+import com.siso.backend.settings.AbuseSettings;
+import com.siso.backend.settings.AbuseSettingsRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,6 +34,7 @@ public class CommentService {
     private static final String BLINDED_STATUS = "blinded";
     private static final String BLINDED_PLACEHOLDER = "신고 처리로 가려진 댓글입니다";
     private static final Set<String> REACTION_TYPES = Set.of("up", "down");
+    private static final short SETTINGS_ID = 1;
 
     private final CommentRepository commentRepository;
     private final ReactionRepository reactionRepository;
@@ -37,6 +43,10 @@ public class CommentService {
     private final IpHasher ipHasher;
     private final ProfanityFilter profanityFilter;
     private final RateLimiter rateLimiter;
+    private final AbuseSettingsRepository abuseSettingsRepository;
+    private final DuplicateCommentGuard duplicateCommentGuard;
+    private final TrustScoreService trustScoreService;
+    private final SpikeDetector spikeDetector;
 
     public CommentService(
             CommentRepository commentRepository,
@@ -45,7 +55,11 @@ public class CommentService {
             AnonUserRepository anonUserRepository,
             IpHasher ipHasher,
             ProfanityFilter profanityFilter,
-            RateLimiter rateLimiter) {
+            RateLimiter rateLimiter,
+            AbuseSettingsRepository abuseSettingsRepository,
+            DuplicateCommentGuard duplicateCommentGuard,
+            TrustScoreService trustScoreService,
+            SpikeDetector spikeDetector) {
         this.commentRepository = commentRepository;
         this.reactionRepository = reactionRepository;
         this.topicPairRepository = topicPairRepository;
@@ -53,6 +67,10 @@ public class CommentService {
         this.ipHasher = ipHasher;
         this.profanityFilter = profanityFilter;
         this.rateLimiter = rateLimiter;
+        this.abuseSettingsRepository = abuseSettingsRepository;
+        this.duplicateCommentGuard = duplicateCommentGuard;
+        this.trustScoreService = trustScoreService;
+        this.spikeDetector = spikeDetector;
     }
 
     @Transactional(readOnly = true)
@@ -111,6 +129,20 @@ public class CommentService {
                     HttpStatus.BAD_REQUEST, "부적절한 표현이 포함되어 있어 작성할 수 없습니다");
         }
 
+        OffsetDateTime now = OffsetDateTime.now();
+        AbuseSettings abuseSettings = abuseSettingsRepository.findById(SETTINGS_ID).orElseThrow();
+
+        if (duplicateCommentGuard.isDuplicate(
+                anonId,
+                body,
+                now,
+                abuseSettings.getDuplicateLookbackMinutes(),
+                abuseSettings.getDuplicateLookbackCount(),
+                abuseSettings.getDuplicateSimilarityThreshold())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "동일하거나 유사한 내용의 댓글을 반복해서 작성할 수 없습니다");
+        }
+
         TopicPair pair = topicPairRepository.findById(pairId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "pair not found"));
 
@@ -123,7 +155,6 @@ public class CommentService {
             }
         }
 
-        OffsetDateTime now = OffsetDateTime.now();
         String ipHash = ipHasher.hash(remoteAddr);
         String nickname = NicknameGenerator.generate(anonId.toString());
 
@@ -131,6 +162,14 @@ public class CommentService {
                 .orElseGet(() -> new AnonUser(anonId, now, ipHash));
         anonUser.recordComment(now, ipHash);
         anonUserRepository.save(anonUser);
+
+        trustScoreService.recalculateForIpCluster(
+                ipHash,
+                now,
+                abuseSettings.getMultiAccountClusterSize(),
+                abuseSettings.getMultiAccountTrustPenaltyMultiplier(),
+                abuseSettings.getTrustMaturityHours(),
+                abuseSettings.getTrustMinWeight());
 
         Comment comment = new Comment(pair, parent, anonId, nickname, body, ipHash, stance, now);
         commentRepository.save(comment);
@@ -154,6 +193,9 @@ public class CommentService {
         if (existing.isEmpty()) {
             reactionRepository.save(new Reaction(comment, anonId, type));
             adjustCount(comment, type, 1);
+            if ("up".equals(type)) {
+                checkReactionSpike(commentId);
+            }
             return;
         }
 
@@ -168,6 +210,15 @@ public class CommentService {
         adjustCount(comment, type, 1);
         reaction.setType(type);
         reactionRepository.save(reaction);
+        if ("up".equals(type)) {
+            checkReactionSpike(commentId);
+        }
+    }
+
+    private void checkReactionSpike(Long commentId) {
+        AbuseSettings abuseSettings = abuseSettingsRepository.findById(SETTINGS_ID).orElseThrow();
+        spikeDetector.recordReactionUpAndCheck(
+                commentId, abuseSettings.getSpikeReactionThreshold(), abuseSettings.getSpikeWindowMinutes());
     }
 
     private void adjustCount(Comment comment, String type, int delta) {

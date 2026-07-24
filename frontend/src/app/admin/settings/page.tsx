@@ -1,12 +1,19 @@
+import { AbuseSettingsForm } from "@/components/admin/AbuseSettingsForm";
 import { CrawlSettingsForm } from "@/components/admin/CrawlSettingsForm";
 import { ModerationSettingsForm } from "@/components/admin/ModerationSettingsForm";
-import { fetchCrawlSettings, fetchModerationSettings, requireAdmin } from "@/lib/admin";
+import {
+  fetchAbuseSettings,
+  fetchCrawlSettings,
+  fetchModerationSettings,
+  requireAdmin,
+} from "@/lib/admin";
 
 export default async function AdminSettingsPage() {
   await requireAdmin();
-  const [crawlSettings, moderationSettings] = await Promise.all([
+  const [crawlSettings, moderationSettings, abuseSettings] = await Promise.all([
     fetchCrawlSettings(),
     fetchModerationSettings(),
+    fetchAbuseSettings(),
   ]);
 
   return (
@@ -23,6 +30,14 @@ export default async function AdminSettingsPage() {
 
       {moderationSettings ? (
         <ModerationSettingsForm initial={moderationSettings} />
+      ) : (
+        <p className="text-sm text-[#8A877E]">설정을 불러오지 못했습니다.</p>
+      )}
+
+      <h2 className="mb-4 mt-10 text-lg font-extrabold tracking-tight">어뷰징 방지 설정</h2>
+
+      {abuseSettings ? (
+        <AbuseSettingsForm initial={abuseSettings} />
       ) : (
         <p className="text-sm text-[#8A877E]">설정을 불러오지 못했습니다.</p>
       )}

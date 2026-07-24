@@ -7,4 +7,6 @@ import java.util.List;
 public interface AdminAlertRepository extends JpaRepository<AdminAlert, Long> {
 
     List<AdminAlert> findAllByOrderByCreatedAtDesc();
+
+    List<AdminAlert> findByResolvedOrderByCreatedAtDesc(boolean resolved);
 }

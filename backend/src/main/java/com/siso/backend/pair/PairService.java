@@ -1,9 +1,13 @@
 package com.siso.backend.pair;
 
+import com.siso.backend.abuse.SpikeDetector;
+import com.siso.backend.abuse.TrustScoreService;
 import com.siso.backend.anon.AnonUser;
 import com.siso.backend.anon.AnonUserRepository;
 import com.siso.backend.anon.IpHasher;
 import com.siso.backend.ratelimit.RateLimiter;
+import com.siso.backend.settings.AbuseSettings;
+import com.siso.backend.settings.AbuseSettingsRepository;
 import com.siso.backend.settings.CrawlSettingsRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +35,9 @@ public class PairService {
     private final CrawlSettingsRepository crawlSettingsRepository;
     private final AnonUserRepository anonUserRepository;
     private final IpHasher ipHasher;
+    private final AbuseSettingsRepository abuseSettingsRepository;
+    private final TrustScoreService trustScoreService;
+    private final SpikeDetector spikeDetector;
 
     public PairService(
             TopicPairRepository topicPairRepository,
@@ -38,13 +45,19 @@ public class PairService {
             RateLimiter rateLimiter,
             CrawlSettingsRepository crawlSettingsRepository,
             AnonUserRepository anonUserRepository,
-            IpHasher ipHasher) {
+            IpHasher ipHasher,
+            AbuseSettingsRepository abuseSettingsRepository,
+            TrustScoreService trustScoreService,
+            SpikeDetector spikeDetector) {
         this.topicPairRepository = topicPairRepository;
         this.voteRepository = voteRepository;
         this.rateLimiter = rateLimiter;
         this.crawlSettingsRepository = crawlSettingsRepository;
         this.anonUserRepository = anonUserRepository;
         this.ipHasher = ipHasher;
+        this.abuseSettingsRepository = abuseSettingsRepository;
+        this.trustScoreService = trustScoreService;
+        this.spikeDetector = spikeDetector;
     }
 
     @Transactional(readOnly = true)
@@ -60,8 +73,8 @@ public class PairService {
         TopicPair pair = topicPairRepository.findByIdAndStatusAndTitleIsNotNull(id, ACTIVE_STATUS)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "pair not found"));
 
-        Map<String, Long> tally = new HashMap<>();
-        for (VoteRepository.StanceCount row : voteRepository.countByPairIdGroupByStance(id)) {
+        Map<String, Double> tally = new HashMap<>();
+        for (VoteRepository.WeightedStanceCount row : voteRepository.sumWeightedByPairIdGroupByStance(id)) {
             tally.put(row.getStance(), row.getTotal());
         }
 
@@ -71,9 +84,9 @@ public class PairService {
 
         return TopicPairDto.from(
                 pair,
-                tally.getOrDefault("left", 0L),
-                tally.getOrDefault("right", 0L),
-                tally.getOrDefault("neutral", 0L),
+                tally.getOrDefault("left", 0.0),
+                tally.getOrDefault("right", 0.0),
+                tally.getOrDefault("neutral", 0.0),
                 myStance);
     }
 
@@ -88,6 +101,10 @@ public class PairService {
         if (!topicPairRepository.existsById(pairId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "pair not found");
         }
+
+        AbuseSettings abuseSettings = abuseSettingsRepository.findById(SETTINGS_ID).orElseThrow();
+        spikeDetector.recordVoteAndCheck(
+                pairId, abuseSettings.getSpikeVoteThreshold(), abuseSettings.getSpikeWindowMinutes());
 
         OffsetDateTime now = OffsetDateTime.now();
         String ipHash = ipHasher.hash(remoteAddr);
@@ -107,6 +124,14 @@ public class PairService {
                                     .orElseGet(() -> new AnonUser(anonId, now, ipHash));
                             anonUser.recordVote(now, ipHash);
                             anonUserRepository.save(anonUser);
+
+                            trustScoreService.recalculateForIpCluster(
+                                    ipHash,
+                                    now,
+                                    abuseSettings.getMultiAccountClusterSize(),
+                                    abuseSettings.getMultiAccountTrustPenaltyMultiplier(),
+                                    abuseSettings.getTrustMaturityHours(),
+                                    abuseSettings.getTrustMinWeight());
                         });
     }
 }

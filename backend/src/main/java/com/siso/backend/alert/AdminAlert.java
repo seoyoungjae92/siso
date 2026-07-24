@@ -61,4 +61,8 @@ public class AdminAlert {
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
+
+    public void resolve() {
+        this.resolved = true;
+    }
 }
