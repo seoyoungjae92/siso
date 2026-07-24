@@ -32,6 +32,8 @@ public class AdminCrawlSettingsService {
                 request.minClusterSize(),
                 request.gracePeriodHours(),
                 request.displayWindowDays(),
+                request.synthesisLimit(),
+                request.synthesisModel(),
                 OffsetDateTime.now());
         return toDto(settings);
     }
@@ -47,6 +49,8 @@ public class AdminCrawlSettingsService {
                 settings.getMinClusterSize(),
                 settings.getGracePeriodHours(),
                 settings.getDisplayWindowDays(),
+                settings.getSynthesisLimit(),
+                settings.getSynthesisModel(),
                 settings.getUpdatedAt());
     }
 }

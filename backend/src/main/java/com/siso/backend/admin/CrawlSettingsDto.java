@@ -8,5 +8,7 @@ public record CrawlSettingsDto(
         int minClusterSize,
         int gracePeriodHours,
         int displayWindowDays,
+        int synthesisLimit,
+        String synthesisModel,
         OffsetDateTime updatedAt) {
 }

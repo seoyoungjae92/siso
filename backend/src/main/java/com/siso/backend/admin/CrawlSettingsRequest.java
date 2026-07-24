@@ -5,5 +5,7 @@ public record CrawlSettingsRequest(
         float pruneSimilarityThreshold,
         int minClusterSize,
         int gracePeriodHours,
-        int displayWindowDays) {
+        int displayWindowDays,
+        int synthesisLimit,
+        String synthesisModel) {
 }

@@ -18,7 +18,7 @@ from .pipeline import ingest_source
 from .repository import PsycopgPostRepository
 from .settings_repository import CrawlSettings, PsycopgSettingsRepository
 from .sources_repository import PsycopgSourceRepository
-from .topic_synthesis import DEFAULT_SYNTHESIS_LIMIT, synthesize_pending_topics
+from .topic_synthesis import synthesize_pending_topics
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -33,7 +33,6 @@ def run_cycle(
     check_robots_allowed=_check_robots_allowed,
     fetch_feed=_fetch_feed,
     topic_synthesizer=None,
-    synthesis_limit=DEFAULT_SYNTHESIS_LIMIT,
 ) -> None:
     for source in sources:
         if not source.feed_url:
@@ -76,7 +75,9 @@ def run_cycle(
     logger.info("정리(prune): %d건 삭제", pruned)
 
     if topic_synthesizer is not None:
-        synthesized = synthesize_pending_topics(matching_repo, topic_synthesizer, limit=synthesis_limit)
+        synthesized = synthesize_pending_topics(
+            matching_repo, topic_synthesizer, limit=settings.synthesis_limit
+        )
         logger.info("주제 합성: %d건", synthesized)
     else:
         logger.info("주제 합성 건너뜀 (OPENROUTER_API_KEY 미설정)")
@@ -90,7 +91,9 @@ def main() -> None:
         post_repo = PsycopgPostRepository(conn)
         matching_repo = PsycopgMatchingRepository(conn)
         embedder = SentenceTransformerEmbeddingProvider()
-        topic_synthesizer = build_topic_synthesizer(os.environ.get("OPENROUTER_API_KEY"))
+        topic_synthesizer = build_topic_synthesizer(
+            os.environ.get("OPENROUTER_API_KEY"), model=settings.synthesis_model
+        )
         run_cycle(sources, settings, post_repo, matching_repo, embedder, topic_synthesizer=topic_synthesizer)
 
 

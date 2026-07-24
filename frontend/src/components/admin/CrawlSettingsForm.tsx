@@ -5,8 +5,8 @@ import { useState, useTransition } from "react";
 import { postUpdateCrawlSettings, type CrawlSettingsInput } from "@/app/admin/settings/actions";
 import type { CrawlSettings } from "@/lib/admin";
 
-const FIELDS: {
-  key: keyof CrawlSettingsInput;
+const NUMBER_FIELDS: {
+  key: Exclude<keyof CrawlSettingsInput, "synthesisModel">;
   label: string;
   step: string;
   hint: string;
@@ -41,6 +41,12 @@ const FIELDS: {
     step: "1",
     hint: "피드·플레이그라운드에 보여줄 최근 기간",
   },
+  {
+    key: "synthesisLimit",
+    label: "주제 합성 사이클당 처리 개수",
+    step: "1",
+    hint: "크롤 사이클 1회당 AI로 합성할 플레이그라운드 주제 최대 개수",
+  },
 ];
 
 export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
@@ -50,6 +56,8 @@ export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
     minClusterSize: initial.minClusterSize,
     gracePeriodHours: initial.gracePeriodHours,
     displayWindowDays: initial.displayWindowDays,
+    synthesisLimit: initial.synthesisLimit,
+    synthesisModel: initial.synthesisModel,
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +82,7 @@ export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
       onSubmit={handleSubmit}
       className="flex flex-col gap-4 rounded-xl border border-line bg-white p-4"
     >
-      {FIELDS.map((field) => (
+      {NUMBER_FIELDS.map((field) => (
         <label key={field.key} className="flex flex-col gap-1">
           <span className="text-sm font-bold">{field.label}</span>
           <input
@@ -90,6 +98,19 @@ export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
           <span className="text-xs text-[#8A877E]">{field.hint}</span>
         </label>
       ))}
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-bold">주제 합성 모델</span>
+        <input
+          type="text"
+          value={values.synthesisModel}
+          onChange={(e) => setValues((prev) => ({ ...prev, synthesisModel: e.target.value }))}
+          required
+          className="rounded border border-line px-2 py-1.5 text-sm"
+        />
+        <span className="text-xs text-[#8A877E]">
+          OpenRouter 모델 슬러그(예: openrouter/free, anthropic/claude-haiku-4.5)
+        </span>
+      </label>
       <div className="flex items-center gap-2">
         <button
           type="submit"

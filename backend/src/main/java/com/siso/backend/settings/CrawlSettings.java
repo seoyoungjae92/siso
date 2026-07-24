@@ -29,6 +29,12 @@ public class CrawlSettings {
     @Column(name = "display_window_days", nullable = false)
     private int displayWindowDays;
 
+    @Column(name = "synthesis_limit", nullable = false)
+    private int synthesisLimit;
+
+    @Column(name = "synthesis_model", nullable = false)
+    private String synthesisModel;
+
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
@@ -59,6 +65,14 @@ public class CrawlSettings {
         return displayWindowDays;
     }
 
+    public int getSynthesisLimit() {
+        return synthesisLimit;
+    }
+
+    public String getSynthesisModel() {
+        return synthesisModel;
+    }
+
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -69,12 +83,16 @@ public class CrawlSettings {
             int minClusterSize,
             int gracePeriodHours,
             int displayWindowDays,
+            int synthesisLimit,
+            String synthesisModel,
             OffsetDateTime updatedAt) {
         this.matchSimilarityThreshold = matchSimilarityThreshold;
         this.pruneSimilarityThreshold = pruneSimilarityThreshold;
         this.minClusterSize = minClusterSize;
         this.gracePeriodHours = gracePeriodHours;
         this.displayWindowDays = displayWindowDays;
+        this.synthesisLimit = synthesisLimit;
+        this.synthesisModel = synthesisModel;
         this.updatedAt = updatedAt;
     }
 }
