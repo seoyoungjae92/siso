@@ -23,6 +23,8 @@ export type CrawlSettingsInput = {
   minClusterSize: number;
   gracePeriodHours: number;
   displayWindowDays: number;
+  synthesisLimit: number;
+  synthesisModel: string;
 };
 
 export async function postUpdateCrawlSettings(input: CrawlSettingsInput) {

@@ -109,6 +109,8 @@ export type CrawlSettings = {
   minClusterSize: number;
   gracePeriodHours: number;
   displayWindowDays: number;
+  synthesisLimit: number;
+  synthesisModel: string;
   updatedAt: string;
 };
 

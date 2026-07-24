@@ -9,6 +9,8 @@ class CrawlSettings:
     min_cluster_size: int
     grace_period_hours: int
     display_window_days: int
+    synthesis_limit: int = 10
+    synthesis_model: str = "openrouter/free"
 
 
 class SettingsRepository(Protocol):
@@ -24,7 +26,8 @@ class PsycopgSettingsRepository:
             cur.execute(
                 """
                 SELECT match_similarity_threshold, prune_similarity_threshold,
-                       min_cluster_size, grace_period_hours, display_window_days
+                       min_cluster_size, grace_period_hours, display_window_days,
+                       synthesis_limit, synthesis_model
                 FROM crawl_settings WHERE id = 1
                 """
             )

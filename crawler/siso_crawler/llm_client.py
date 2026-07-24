@@ -10,11 +10,11 @@ import pydantic
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 TIMEOUT_SECONDS = 30.0
 
-# 비용 최소화 우선(CLAUDE.md §1.4) — openrouter/free는 요청에 필요한 기능
-# (여기선 구조화 출력)을 지원하는 무료 모델 중에서 자동으로 골라준다.
-# 특정 모델을 고정하지 않아 무료 모델 목록이 바뀌어도 코드 변경이
-# 필요 없음. 품질이 아쉬우면 운영자가 OPENROUTER_SYNTHESIS_MODEL로
-# 유료 모델을 명시하면 됨.
+# 실제 운영값은 crawl_settings.synthesis_model(어드민에서 조작 가능)에서
+# 읽어온다 — 이건 그 값을 못 읽을 때(예: build_topic_synthesizer를 단독
+# 호출하는 스크립트/테스트)를 위한 폴백 기본값일 뿐. 비용 최소화 우선
+# (CLAUDE.md §1.4) — openrouter/free는 요청에 필요한 기능(여기선 구조화
+# 출력)을 지원하는 무료 모델 중에서 자동으로 골라준다.
 SYNTHESIS_MODEL = os.environ.get("OPENROUTER_SYNTHESIS_MODEL") or "openrouter/free"
 
 # 무료 모델 중엔 최종 답변 전에 내부 추론(reasoning) 토큰을 상당히 쓰는
@@ -53,6 +53,26 @@ class SynthesizedTopicSchema(pydantic.BaseModel):
     title: str
     left_stance: str
     right_stance: str
+
+
+# 무료 라우터가 매번 다른 모델을 고르다 보니, 가끔 한글 요청에 러시아어/
+# 중국어/아랍어 등이 뒤섞인 응답을 내는 모델이 걸린 적이 실제로 있었음
+# (2026-07-24 실측). 문자(숫자·기호 제외) 중 한글 비율이 낮으면 깨진
+# 응답으로 보고 버린다 — 영문 고유명사·숫자·기호가 섞이는 정상적인 경우는
+# 통과하도록 기준을 낮게(70%) 잡음.
+MIN_KOREAN_RATIO = 0.7
+
+
+def _is_hangul(ch: str) -> bool:
+    code = ord(ch)
+    return (0xAC00 <= code <= 0xD7A3) or (0x1100 <= code <= 0x11FF) or (0x3130 <= code <= 0x318F)
+
+
+def _korean_ratio(text: str) -> float:
+    letters = [ch for ch in text if ch.isalpha()]
+    if not letters:
+        return 1.0
+    return sum(1 for ch in letters if _is_hangul(ch)) / len(letters)
 
 
 @dataclass(frozen=True)
@@ -143,6 +163,10 @@ class OpenRouterTopicSynthesizer:
         if not (parsed.title.strip() and parsed.left_stance.strip() and parsed.right_stance.strip()):
             raise SynthesisFailed("응답에 빈 필드가 있음")
 
+        combined = f"{parsed.title} {parsed.left_stance} {parsed.right_stance}"
+        if _korean_ratio(combined) < MIN_KOREAN_RATIO:
+            raise SynthesisFailed("응답의 한글 비율이 너무 낮음(다른 언어가 뒤섞인 응답으로 판단)")
+
         return SynthesizedTopic(
             title=parsed.title.strip(),
             left_stance=parsed.left_stance.strip(),
@@ -150,7 +174,7 @@ class OpenRouterTopicSynthesizer:
         )
 
 
-def build_topic_synthesizer(api_key: str | None) -> TopicSynthesizer | None:
+def build_topic_synthesizer(api_key: str | None, model: str | None = None) -> TopicSynthesizer | None:
     if not api_key:
         return None
-    return OpenRouterTopicSynthesizer(api_key)
+    return OpenRouterTopicSynthesizer(api_key, model=model or SYNTHESIS_MODEL)
