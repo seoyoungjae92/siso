@@ -1,11 +1,15 @@
 package com.siso.backend.admin;
 
+import com.siso.backend.alert.AdminAlert;
+import com.siso.backend.alert.AdminAlertRepository;
 import com.siso.backend.comment.Comment;
+import com.siso.backend.comment.CommentRepository;
 import com.siso.backend.comment.Report;
 import com.siso.backend.comment.ReportRepository;
 import com.siso.backend.pair.TopicPair;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,10 +19,15 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,8 +40,14 @@ class AdminReportServiceTest {
     @Mock
     private ReportRepository reportRepository;
 
+    @Mock
+    private CommentRepository commentRepository;
+
+    @Mock
+    private AdminAlertRepository adminAlertRepository;
+
     private AdminReportService newService() {
-        return new AdminReportService(reportRepository);
+        return new AdminReportService(reportRepository, commentRepository, adminAlertRepository);
     }
 
     private Comment commentWithId(long id) {
@@ -73,6 +88,11 @@ class AdminReportServiceTest {
         assertThat(comment.getStatus()).isEqualTo("blinded");
         assertThat(r1.getStatus()).isEqualTo("accepted");
         assertThat(r2.getStatus()).isEqualTo("accepted");
+
+        ArgumentCaptor<AdminAlert> captor = ArgumentCaptor.forClass(AdminAlert.class);
+        verify(adminAlertRepository).save(captor.capture());
+        assertThat(captor.getValue().getType()).isEqualTo("comment_manually_blinded");
+        assertThat(captor.getValue().getPayload()).containsEntry("commentId", 1L).containsEntry("reportCount", 2);
     }
 
     @Test
@@ -85,6 +105,7 @@ class AdminReportServiceTest {
 
         assertThat(comment.getStatus()).isEqualTo("visible");
         assertThat(r1.getStatus()).isEqualTo("rejected");
+        verify(adminAlertRepository, never()).save(any(AdminAlert.class));
     }
 
     @Test
@@ -107,5 +128,25 @@ class AdminReportServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void getBlindHistory_joinsCommentDetailsAndOrdersByNewestFirst() {
+        Comment comment = commentWithId(1L);
+        when(comment.getPair().getId()).thenReturn(5L);
+        Map<String, Object> payload = Map.of("commentId", 1L, "pairId", 5L, "reportCount", 20);
+        AdminAlert alert = new AdminAlert("comment_auto_blinded", payload, OffsetDateTime.now());
+        when(adminAlertRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(alert));
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+
+        List<BlindHistoryDto> history = newService().getBlindHistory();
+
+        assertThat(history).hasSize(1);
+        BlindHistoryDto entry = history.get(0);
+        assertThat(entry.type()).isEqualTo("comment_auto_blinded");
+        assertThat(entry.commentId()).isEqualTo(1L);
+        assertThat(entry.commentBody()).isEqualTo("신고당한 댓글");
+        assertThat(entry.pairId()).isEqualTo(5L);
+        assertThat(entry.reportCount()).isEqualTo(20);
     }
 }
