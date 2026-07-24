@@ -79,7 +79,7 @@ def run_cycle(
         synthesized = synthesize_pending_topics(matching_repo, topic_synthesizer, limit=synthesis_limit)
         logger.info("주제 합성: %d건", synthesized)
     else:
-        logger.info("주제 합성 건너뜀 (ANTHROPIC_API_KEY 미설정)")
+        logger.info("주제 합성 건너뜀 (OPENROUTER_API_KEY 미설정)")
 
 
 def main() -> None:
@@ -90,7 +90,7 @@ def main() -> None:
         post_repo = PsycopgPostRepository(conn)
         matching_repo = PsycopgMatchingRepository(conn)
         embedder = SentenceTransformerEmbeddingProvider()
-        topic_synthesizer = build_topic_synthesizer(os.environ.get("ANTHROPIC_API_KEY"))
+        topic_synthesizer = build_topic_synthesizer(os.environ.get("OPENROUTER_API_KEY"))
         run_cycle(sources, settings, post_repo, matching_repo, embedder, topic_synthesizer=topic_synthesizer)
 
 
