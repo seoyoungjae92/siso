@@ -120,3 +120,17 @@ export async function fetchCrawlSettings(): Promise<CrawlSettings | null> {
   if (!res.ok) return null;
   return res.json();
 }
+
+export type ModerationSettings = {
+  autoBlindReportThreshold: number;
+  updatedAt: string;
+};
+
+export async function fetchModerationSettings(): Promise<ModerationSettings | null> {
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/moderation-settings`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}

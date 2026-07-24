@@ -2,6 +2,7 @@ package com.siso.backend.comment;
 
 import com.siso.backend.alert.AdminAlert;
 import com.siso.backend.alert.AdminAlertRepository;
+import com.siso.backend.settings.ModerationSettingsRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,22 +20,22 @@ public class ReportService {
     private static final Set<String> REASONS = Set.of("abuse", "hate", "spam", "etc");
     private static final String PENDING = "pending";
     private static final String BLINDED = "blinded";
-
-    // 일단 20건으로 고정(사용자 확정) — 나중에 운영하면서 튜닝 필요해지면
-    // crawl_settings처럼 어드민 설정으로 옮길 수 있음.
-    private static final long AUTO_BLIND_THRESHOLD = 20;
+    private static final short SETTINGS_ID = 1;
 
     private final ReportRepository reportRepository;
     private final CommentRepository commentRepository;
     private final AdminAlertRepository adminAlertRepository;
+    private final ModerationSettingsRepository moderationSettingsRepository;
 
     public ReportService(
             ReportRepository reportRepository,
             CommentRepository commentRepository,
-            AdminAlertRepository adminAlertRepository) {
+            AdminAlertRepository adminAlertRepository,
+            ModerationSettingsRepository moderationSettingsRepository) {
         this.reportRepository = reportRepository;
         this.commentRepository = commentRepository;
         this.adminAlertRepository = adminAlertRepository;
+        this.moderationSettingsRepository = moderationSettingsRepository;
     }
 
     @Transactional
@@ -52,8 +53,9 @@ public class ReportService {
 
         reportRepository.save(new Report(comment, anonId, reason, detail, OffsetDateTime.now()));
 
+        int threshold = moderationSettingsRepository.findById(SETTINGS_ID).orElseThrow().getAutoBlindReportThreshold();
         long totalReports = reportRepository.countByComment_Id(commentId);
-        if (totalReports >= AUTO_BLIND_THRESHOLD && !BLINDED.equals(comment.getStatus())) {
+        if (totalReports >= threshold && !BLINDED.equals(comment.getStatus())) {
             comment.blind();
             reportRepository.findByStatusAndComment_Id(PENDING, commentId).forEach(Report::accept);
 

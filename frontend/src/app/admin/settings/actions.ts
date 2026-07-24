@@ -44,3 +44,27 @@ export async function postUpdateCrawlSettings(input: CrawlSettingsInput) {
   revalidatePath("/admin/settings");
   return { ok: true };
 }
+
+export type ModerationSettingsInput = {
+  autoBlindReportThreshold: number;
+};
+
+export async function postUpdateModerationSettings(input: ModerationSettingsInput) {
+  await requireAdmin();
+
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/moderation-settings`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: adminAuthHeader(),
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    return { ok: false, error: await extractErrorMessage(res, "처리에 실패했습니다.") };
+  }
+
+  revalidatePath("/admin/settings");
+  return { ok: true };
+}

@@ -3,6 +3,8 @@ package com.siso.backend.comment;
 import com.siso.backend.alert.AdminAlert;
 import com.siso.backend.alert.AdminAlertRepository;
 import com.siso.backend.pair.TopicPair;
+import com.siso.backend.settings.ModerationSettings;
+import com.siso.backend.settings.ModerationSettingsRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -37,8 +39,11 @@ class ReportServiceTest {
     @Mock
     private AdminAlertRepository adminAlertRepository;
 
+    @Mock
+    private ModerationSettingsRepository moderationSettingsRepository;
+
     private ReportService newService() {
-        return new ReportService(reportRepository, commentRepository, adminAlertRepository);
+        return new ReportService(reportRepository, commentRepository, adminAlertRepository, moderationSettingsRepository);
     }
 
     private Comment commentWithId(long id) {
@@ -48,12 +53,19 @@ class ReportServiceTest {
         return comment;
     }
 
+    private void stubAutoBlindThreshold(int threshold) {
+        ModerationSettings settings = Mockito.mock(ModerationSettings.class);
+        when(settings.getAutoBlindReportThreshold()).thenReturn(threshold);
+        when(moderationSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
+    }
+
     @Test
     void create_savesReport() {
         ReportService service = newService();
         Comment comment = commentWithId(1L);
         when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
         when(reportRepository.existsByComment_IdAndAnonId(1L, ANON_A)).thenReturn(false);
+        stubAutoBlindThreshold(20);
 
         service.create(1L, ANON_A, "abuse", "인신공격성 표현입니다");
 
@@ -88,6 +100,7 @@ class ReportServiceTest {
         when(reportRepository.existsByComment_IdAndAnonId(1L, ANON_A)).thenReturn(false);
         when(reportRepository.countByComment_Id(1L)).thenReturn(20L);
         when(reportRepository.findByStatusAndComment_Id("pending", 1L)).thenReturn(List.of());
+        stubAutoBlindThreshold(20);
 
         service.create(1L, ANON_A, "abuse", null);
 
@@ -102,6 +115,7 @@ class ReportServiceTest {
         when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
         when(reportRepository.existsByComment_IdAndAnonId(1L, ANON_A)).thenReturn(false);
         when(reportRepository.countByComment_Id(1L)).thenReturn(19L);
+        stubAutoBlindThreshold(20);
 
         service.create(1L, ANON_A, "abuse", null);
 
@@ -117,9 +131,25 @@ class ReportServiceTest {
         when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
         when(reportRepository.existsByComment_IdAndAnonId(1L, ANON_A)).thenReturn(false);
         when(reportRepository.countByComment_Id(1L)).thenReturn(21L);
+        stubAutoBlindThreshold(20);
 
         service.create(1L, ANON_A, "abuse", null);
 
         verify(adminAlertRepository, never()).save(any(AdminAlert.class));
+    }
+
+    @Test
+    void create_respectsAdminConfiguredThreshold() {
+        ReportService service = newService();
+        Comment comment = commentWithId(1L);
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        when(reportRepository.existsByComment_IdAndAnonId(1L, ANON_A)).thenReturn(false);
+        when(reportRepository.countByComment_Id(1L)).thenReturn(5L);
+        when(reportRepository.findByStatusAndComment_Id("pending", 1L)).thenReturn(List.of());
+        stubAutoBlindThreshold(5);
+
+        service.create(1L, ANON_A, "abuse", null);
+
+        assertThat(comment.getStatus()).isEqualTo("blinded");
     }
 }
