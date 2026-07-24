@@ -2,7 +2,11 @@ import anthropic
 import pydantic
 import pytest
 
-from siso_crawler.llm_client import AnthropicTopicSynthesizer, SynthesisFailed, SynthesizedTopicSchema
+from siso_crawler.llm_client import (
+    AnthropicTopicSynthesizer,
+    SynthesisFailed,
+    SynthesizedTopicSchema,
+)
 
 
 class _FakeMessages:

@@ -4,7 +4,12 @@ from siso_crawler.models import Source
 from siso_crawler.run import run_cycle
 from siso_crawler.settings_repository import CrawlSettings
 
-from .fakes import FakeEmbeddingProvider, FakeMatchingRepository, FakePostRepository, FakeTopicSynthesizer
+from .fakes import (
+    FakeEmbeddingProvider,
+    FakeMatchingRepository,
+    FakePostRepository,
+    FakeTopicSynthesizer,
+)
 
 SETTINGS = CrawlSettings(
     match_similarity_threshold=0.6,
