@@ -1,6 +1,7 @@
 package com.siso.backend.pair;
 
 import com.siso.backend.anon.AnonIdHeader;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -41,7 +42,9 @@ public class PairController {
     public void vote(
             @PathVariable Long pairId,
             @RequestHeader(value = "X-Anon-Id", required = false) String anonId,
-            @RequestBody VoteCreateRequest request) {
-        pairService.vote(pairId, AnonIdHeader.parse(anonId, true), request.stance());
+            @RequestBody VoteCreateRequest request,
+            HttpServletRequest servletRequest) {
+        pairService.vote(
+                pairId, AnonIdHeader.parse(anonId, true), servletRequest.getRemoteAddr(), request.stance());
     }
 }

@@ -1,10 +1,14 @@
 package com.siso.backend.pair;
 
+import com.siso.backend.anon.AnonUser;
+import com.siso.backend.anon.AnonUserRepository;
+import com.siso.backend.anon.IpHasher;
 import com.siso.backend.ratelimit.RateLimiter;
 import com.siso.backend.settings.CrawlSettings;
 import com.siso.backend.settings.CrawlSettingsRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -45,8 +49,15 @@ class PairServiceTest {
     @Mock
     private CrawlSettingsRepository crawlSettingsRepository;
 
+    @Mock
+    private AnonUserRepository anonUserRepository;
+
+    @Mock
+    private IpHasher ipHasher;
+
     private PairService newService() {
-        return new PairService(topicPairRepository, voteRepository, rateLimiter, crawlSettingsRepository);
+        return new PairService(
+                topicPairRepository, voteRepository, rateLimiter, crawlSettingsRepository, anonUserRepository, ipHasher);
     }
 
     private void stubDisplayWindowDays(int days) {
@@ -108,36 +119,44 @@ class PairServiceTest {
     }
 
     @Test
-    void vote_withNoExistingVote_createsOne() {
+    void vote_withNoExistingVote_createsOneAndRecordsAnonUserVote() {
         PairService pairService = newService();
         when(topicPairRepository.existsById(1L)).thenReturn(true);
         when(voteRepository.findByPair_IdAndAnonId(1L, ANON_A)).thenReturn(Optional.empty());
         when(topicPairRepository.getReferenceById(1L)).thenReturn(Mockito.mock(TopicPair.class));
+        when(ipHasher.hash("127.0.0.1")).thenReturn("hashed-ip");
+        when(anonUserRepository.findById(ANON_A)).thenReturn(Optional.empty());
 
-        pairService.vote(1L, ANON_A, "left");
+        pairService.vote(1L, ANON_A, "127.0.0.1", "left");
 
-        verify(voteRepository).save(org.mockito.ArgumentMatchers.any(Vote.class));
+        verify(voteRepository).save(any(Vote.class));
+
+        ArgumentCaptor<AnonUser> captor = ArgumentCaptor.forClass(AnonUser.class);
+        verify(anonUserRepository).save(captor.capture());
+        assertThat(captor.getValue().getVoteCount()).isEqualTo(1);
     }
 
     @Test
-    void vote_withExistingVote_updatesStanceInPlace() {
+    void vote_withExistingVote_updatesStanceInPlaceWithoutDoubleCountingVote() {
         PairService pairService = newService();
         TopicPair pair = Mockito.mock(TopicPair.class);
         Vote existing = new Vote(pair, ANON_A, "left", OffsetDateTime.now());
         when(topicPairRepository.existsById(1L)).thenReturn(true);
         when(voteRepository.findByPair_IdAndAnonId(1L, ANON_A)).thenReturn(Optional.of(existing));
+        when(ipHasher.hash("127.0.0.1")).thenReturn("hashed-ip");
 
-        pairService.vote(1L, ANON_A, "right");
+        pairService.vote(1L, ANON_A, "127.0.0.1", "right");
 
         assertThat(existing.getStance()).isEqualTo("right");
-        verify(voteRepository, Mockito.never()).save(org.mockito.ArgumentMatchers.any(Vote.class));
+        verify(voteRepository, Mockito.never()).save(any(Vote.class));
+        verify(anonUserRepository, Mockito.never()).save(any(AnonUser.class));
     }
 
     @Test
     void vote_invalidStance_isRejected() {
         PairService pairService = newService();
 
-        assertThatThrownBy(() -> pairService.vote(1L, ANON_A, "up"))
+        assertThatThrownBy(() -> pairService.vote(1L, ANON_A, "127.0.0.1", "up"))
                 .isInstanceOf(ResponseStatusException.class);
     }
 }
