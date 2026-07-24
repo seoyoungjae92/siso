@@ -70,3 +70,36 @@ export async function postUpdateModerationSettings(input: ModerationSettingsInpu
   revalidatePath("/admin/settings");
   return { ok: true };
 }
+
+export type AbuseSettingsInput = {
+  multiAccountClusterSize: number;
+  multiAccountTrustPenaltyMultiplier: number;
+  trustMaturityHours: number;
+  trustMinWeight: number;
+  duplicateSimilarityThreshold: number;
+  duplicateLookbackCount: number;
+  duplicateLookbackMinutes: number;
+  spikeWindowMinutes: number;
+  spikeVoteThreshold: number;
+  spikeReactionThreshold: number;
+};
+
+export async function postUpdateAbuseSettings(input: AbuseSettingsInput) {
+  await requireAdmin();
+
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/abuse-settings`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: adminAuthHeader(),
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    return { ok: false, error: await extractErrorMessage(res, "처리에 실패했습니다.") };
+  }
+
+  revalidatePath("/admin/settings");
+  return { ok: true };
+}

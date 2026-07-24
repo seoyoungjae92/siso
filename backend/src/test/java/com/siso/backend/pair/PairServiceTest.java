@@ -1,9 +1,13 @@
 package com.siso.backend.pair;
 
+import com.siso.backend.abuse.SpikeDetector;
+import com.siso.backend.abuse.TrustScoreService;
 import com.siso.backend.anon.AnonUser;
 import com.siso.backend.anon.AnonUserRepository;
 import com.siso.backend.anon.IpHasher;
 import com.siso.backend.ratelimit.RateLimiter;
+import com.siso.backend.settings.AbuseSettings;
+import com.siso.backend.settings.AbuseSettingsRepository;
 import com.siso.backend.settings.CrawlSettings;
 import com.siso.backend.settings.CrawlSettingsRepository;
 import org.junit.jupiter.api.Test;
@@ -55,15 +59,43 @@ class PairServiceTest {
     @Mock
     private IpHasher ipHasher;
 
+    @Mock
+    private AbuseSettingsRepository abuseSettingsRepository;
+
+    @Mock
+    private TrustScoreService trustScoreService;
+
+    @Mock
+    private SpikeDetector spikeDetector;
+
     private PairService newService() {
         return new PairService(
-                topicPairRepository, voteRepository, rateLimiter, crawlSettingsRepository, anonUserRepository, ipHasher);
+                topicPairRepository,
+                voteRepository,
+                rateLimiter,
+                crawlSettingsRepository,
+                anonUserRepository,
+                ipHasher,
+                abuseSettingsRepository,
+                trustScoreService,
+                spikeDetector);
     }
 
     private void stubDisplayWindowDays(int days) {
         CrawlSettings settings = mock(CrawlSettings.class);
         when(settings.getDisplayWindowDays()).thenReturn(days);
         when(crawlSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
+    }
+
+    private void stubAbuseSettings() {
+        AbuseSettings settings = mock(AbuseSettings.class);
+        Mockito.lenient().when(settings.getSpikeVoteThreshold()).thenReturn(30);
+        Mockito.lenient().when(settings.getSpikeWindowMinutes()).thenReturn(10);
+        Mockito.lenient().when(settings.getMultiAccountClusterSize()).thenReturn(4);
+        Mockito.lenient().when(settings.getMultiAccountTrustPenaltyMultiplier()).thenReturn(0.3f);
+        Mockito.lenient().when(settings.getTrustMaturityHours()).thenReturn(72);
+        Mockito.lenient().when(settings.getTrustMinWeight()).thenReturn(0.3f);
+        Mockito.lenient().when(abuseSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
     }
 
     @Test
@@ -119,9 +151,27 @@ class PairServiceTest {
     }
 
     @Test
+    void getPair_returnsTrustWeightedVoteTally() {
+        TopicPair pair = mock(TopicPair.class);
+        when(topicPairRepository.findByIdAndStatusAndTitleIsNotNull(1L, "active")).thenReturn(Optional.of(pair));
+
+        VoteRepository.WeightedStanceCount leftCount = mock(VoteRepository.WeightedStanceCount.class);
+        when(leftCount.getStance()).thenReturn("left");
+        when(leftCount.getTotal()).thenReturn(1.8);
+        when(voteRepository.sumWeightedByPairIdGroupByStance(1L)).thenReturn(List.of(leftCount));
+        when(voteRepository.findByPair_IdAndAnonId(1L, ANON_A)).thenReturn(Optional.empty());
+
+        TopicPairDto dto = newService().getPair(1L, ANON_A);
+
+        assertThat(dto.leftVotes()).isEqualTo(1.8);
+        assertThat(dto.rightVotes()).isEqualTo(0.0);
+    }
+
+    @Test
     void vote_withNoExistingVote_createsOneAndRecordsAnonUserVote() {
         PairService pairService = newService();
         when(topicPairRepository.existsById(1L)).thenReturn(true);
+        stubAbuseSettings();
         when(voteRepository.findByPair_IdAndAnonId(1L, ANON_A)).thenReturn(Optional.empty());
         when(topicPairRepository.getReferenceById(1L)).thenReturn(Mockito.mock(TopicPair.class));
         when(ipHasher.hash("127.0.0.1")).thenReturn("hashed-ip");
@@ -134,6 +184,10 @@ class PairServiceTest {
         ArgumentCaptor<AnonUser> captor = ArgumentCaptor.forClass(AnonUser.class);
         verify(anonUserRepository).save(captor.capture());
         assertThat(captor.getValue().getVoteCount()).isEqualTo(1);
+
+        verify(spikeDetector).recordVoteAndCheck(1L, 30, 10);
+        verify(trustScoreService)
+                .recalculateForIpCluster(eq("hashed-ip"), any(OffsetDateTime.class), eq(4), eq(0.3f), eq(72), eq(0.3f));
     }
 
     @Test
@@ -142,6 +196,7 @@ class PairServiceTest {
         TopicPair pair = Mockito.mock(TopicPair.class);
         Vote existing = new Vote(pair, ANON_A, "left", OffsetDateTime.now());
         when(topicPairRepository.existsById(1L)).thenReturn(true);
+        stubAbuseSettings();
         when(voteRepository.findByPair_IdAndAnonId(1L, ANON_A)).thenReturn(Optional.of(existing));
         when(ipHasher.hash("127.0.0.1")).thenReturn("hashed-ip");
 
@@ -150,6 +205,10 @@ class PairServiceTest {
         assertThat(existing.getStance()).isEqualTo("right");
         verify(voteRepository, Mockito.never()).save(any(Vote.class));
         verify(anonUserRepository, Mockito.never()).save(any(AnonUser.class));
+        verify(trustScoreService, Mockito.never()).recalculateForIpCluster(
+                Mockito.anyString(), any(), Mockito.anyInt(), Mockito.anyFloat(), Mockito.anyInt(), Mockito.anyFloat());
+        // 급증 탐지는 재투표(입장 변경)여도 여전히 호출됨 — 전체 투표 활동량을 본다
+        verify(spikeDetector).recordVoteAndCheck(1L, 30, 10);
     }
 
     @Test

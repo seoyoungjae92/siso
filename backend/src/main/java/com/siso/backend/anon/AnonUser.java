@@ -73,4 +73,20 @@ public class AnonUser {
     public Integer getVoteCount() {
         return voteCount;
     }
+
+    public Float getTrustScore() {
+        return trustScore;
+    }
+
+    public String getIpHashRecent() {
+        return ipHashRecent;
+    }
+
+    public OffsetDateTime getFirstSeen() {
+        return firstSeen;
+    }
+
+    public void setTrustScore(float trustScore) {
+        this.trustScore = trustScore;
+    }
 }

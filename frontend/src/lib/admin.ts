@@ -136,3 +136,58 @@ export async function fetchModerationSettings(): Promise<ModerationSettings | nu
   if (!res.ok) return null;
   return res.json();
 }
+
+export type AbuseAlert = {
+  id: number;
+  type: "multi_account_same_ip" | "activity_spike";
+  payload: Record<string, unknown>;
+  resolved: boolean;
+  createdAt: string;
+};
+
+export async function fetchAbuseAlerts(resolved?: boolean): Promise<AbuseAlert[]> {
+  const query = resolved === undefined ? "" : `?resolved=${resolved}`;
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/abuse-alerts${query}`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export type IpCluster = {
+  ipHash: string;
+  anonUserCount: number;
+};
+
+export async function fetchIpClusters(): Promise<IpCluster[]> {
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/abuse-alerts/ip-clusters`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export type AbuseSettings = {
+  multiAccountClusterSize: number;
+  multiAccountTrustPenaltyMultiplier: number;
+  trustMaturityHours: number;
+  trustMinWeight: number;
+  duplicateSimilarityThreshold: number;
+  duplicateLookbackCount: number;
+  duplicateLookbackMinutes: number;
+  spikeWindowMinutes: number;
+  spikeVoteThreshold: number;
+  spikeReactionThreshold: number;
+  updatedAt: string;
+};
+
+export async function fetchAbuseSettings(): Promise<AbuseSettings | null> {
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/abuse-settings`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
