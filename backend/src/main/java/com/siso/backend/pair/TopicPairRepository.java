@@ -9,7 +9,8 @@ import java.util.Optional;
 
 public interface TopicPairRepository extends JpaRepository<TopicPair, Long> {
 
-    Page<TopicPair> findByStatusAndCreatedAtAfter(String status, OffsetDateTime since, Pageable pageable);
+    Page<TopicPair> findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+            String status, OffsetDateTime since, Pageable pageable);
 
-    Optional<TopicPair> findByIdAndStatus(Long id, String status);
+    Optional<TopicPair> findByIdAndStatusAndTitleIsNotNull(Long id, String status);
 }

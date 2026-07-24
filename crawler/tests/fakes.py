@@ -47,6 +47,7 @@ class FakeMatchingRepository:
         prunable_posts: list[int] | None = None,
         undeletable_posts: set[int] | None = None,
         link_check_candidates: list[tuple[int, str]] | None = None,
+        pairs_missing_synthesis: list[tuple[int, str, str, str, str]] | None = None,
     ):
         self.pending_embeddings = pending_embeddings or []
         self.unmatched_left = unmatched_left or []
@@ -58,6 +59,8 @@ class FakeMatchingRepository:
         self.undeletable_posts = undeletable_posts or set()
         self.deleted_posts: list[int] = []
         self.link_check_candidates = link_check_candidates or []
+        self.pairs_missing_synthesis = pairs_missing_synthesis or []
+        self.synthesized_pairs: list[tuple[int, str, str, str]] = []
 
     def find_posts_missing_embedding(self, limit: int) -> list[tuple[int, str, str]]:
         return self.pending_embeddings[:limit]
@@ -88,3 +91,26 @@ class FakeMatchingRepository:
 
     def find_link_check_candidates(self, display_window_days: int) -> list[tuple[int, str]]:
         return self.link_check_candidates
+
+    def find_pairs_missing_synthesis(self, limit: int) -> list[tuple[int, str, str, str, str]]:
+        return self.pairs_missing_synthesis[:limit]
+
+    def update_pair_synthesis(self, pair_id: int, title: str, left_stance: str, right_stance: str) -> None:
+        self.synthesized_pairs.append((pair_id, title, left_stance, right_stance))
+
+
+class FakeTopicSynthesizer:
+    """(left_title, right_title) 키로 미리 정해둔 결과를 반환. fail_keys에
+    있는 키는 SynthesisFailed를 던져서 실패-격리 경로를 테스트한다."""
+
+    def __init__(self, results: dict, fail_keys: set | None = None):
+        self.results = results
+        self.fail_keys = fail_keys or set()
+
+    def synthesize(self, left_title, left_summary, right_title, right_summary):
+        from siso_crawler.llm_client import SynthesisFailed
+
+        key = (left_title, right_title)
+        if key in self.fail_keys or key not in self.results:
+            raise SynthesisFailed(f"no fixture for {key}")
+        return self.results[key]

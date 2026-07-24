@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { AdSlot } from "@/components/AdSlot";
 import { CommentThread } from "@/components/CommentThread";
-import { PostCard } from "@/components/PostCard";
+import { StanceCard } from "@/components/StanceCard";
 import { VoteWidget } from "@/components/VoteWidget";
 import { fetchComments, fetchPairDetail } from "@/lib/comments";
 
@@ -28,12 +28,10 @@ export default async function PairDetailPage({
         >
           ← 목록으로
         </Link>
+        <h1 className="mb-4 text-lg font-extrabold tracking-tight">{pair.title}</h1>
         <div className="mb-4 grid grid-cols-2 gap-3">
-          <PostCard post={pair.leftPost} side="left" />
-          <PostCard post={pair.rightPost} side="right" />
-        </div>
-        <div className="mb-4 text-xs text-[#8A877E]">
-          유사도 {Math.round(pair.similarity * 100)}%
+          <StanceCard side="left" text={pair.leftStance} />
+          <StanceCard side="right" text={pair.rightStance} />
         </div>
         <VoteWidget pairId={id} pair={pair} />
         <div className="mt-4">

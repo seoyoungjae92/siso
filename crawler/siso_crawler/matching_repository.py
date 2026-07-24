@@ -20,6 +20,10 @@ class MatchingRepository(Protocol):
 
     def find_link_check_candidates(self, display_window_days: int) -> list[tuple[int, str]]: ...
 
+    def find_pairs_missing_synthesis(self, limit: int) -> list[tuple[int, str, str, str, str]]: ...
+
+    def update_pair_synthesis(self, pair_id: int, title: str, left_stance: str, right_stance: str) -> None: ...
+
 
 class PsycopgMatchingRepository:
     def __init__(self, conn):
@@ -182,3 +186,34 @@ class PsycopgMatchingRepository:
             deleted = cur.rowcount > 0
         self._conn.commit()
         return deleted
+
+    def find_pairs_missing_synthesis(self, limit: int) -> list[tuple[int, str, str, str, str]]:
+        """아직 AI 합성이 안 된(title이 NULL인) 쌍만 대상. 최근 매칭된
+        것부터 처리해 한정된 limit 예산이 오래된(반복 실패했을 수 있는)
+        쌍보다 새로 노출될 쌍에 먼저 쓰이게 한다."""
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT tp.id, p1.title, p1.summary, p2.title, p2.summary
+                FROM topic_pairs tp
+                JOIN posts p1 ON p1.id = tp.left_post_id
+                JOIN posts p2 ON p2.id = tp.right_post_id
+                WHERE tp.status = 'active' AND tp.title IS NULL
+                ORDER BY tp.created_at DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            return [(row[0], row[1], row[2], row[3], row[4]) for row in cur.fetchall()]
+
+    def update_pair_synthesis(self, pair_id: int, title: str, left_stance: str, right_stance: str) -> None:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE topic_pairs
+                SET title = %s, left_stance = %s, right_stance = %s
+                WHERE id = %s
+                """,
+                (title, left_stance, right_stance, pair_id),
+            )
+        self._conn.commit()

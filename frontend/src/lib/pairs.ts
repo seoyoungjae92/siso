@@ -1,11 +1,11 @@
-import { BACKEND_API_URL, type PostSummary } from "@/lib/posts";
+import { BACKEND_API_URL } from "@/lib/posts";
 
 export type TopicPair = {
   id: number;
-  similarity: number;
+  title: string;
+  leftStance: string;
+  rightStance: string;
   createdAt: string;
-  leftPost: PostSummary;
-  rightPost: PostSummary;
 };
 
 type PairsPage = {

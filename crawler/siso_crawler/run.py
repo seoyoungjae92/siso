@@ -10,6 +10,7 @@ from .embedding import SentenceTransformerEmbeddingProvider
 from .fetch import CrawlNotAllowed
 from .fetch import check_robots_allowed as _check_robots_allowed
 from .fetch import fetch_feed as _fetch_feed
+from .llm_client import build_topic_synthesizer
 from .matching import embed_pending_posts, match_pending_posts, prune_stale_candidates
 from .matching_repository import PsycopgMatchingRepository
 from .models import Source
@@ -17,6 +18,7 @@ from .pipeline import ingest_source
 from .repository import PsycopgPostRepository
 from .settings_repository import CrawlSettings, PsycopgSettingsRepository
 from .sources_repository import PsycopgSourceRepository
+from .topic_synthesis import DEFAULT_SYNTHESIS_LIMIT, synthesize_pending_topics
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -30,6 +32,8 @@ def run_cycle(
     embedder,
     check_robots_allowed=_check_robots_allowed,
     fetch_feed=_fetch_feed,
+    topic_synthesizer=None,
+    synthesis_limit=DEFAULT_SYNTHESIS_LIMIT,
 ) -> None:
     for source in sources:
         if not source.feed_url:
@@ -71,6 +75,12 @@ def run_cycle(
     )
     logger.info("정리(prune): %d건 삭제", pruned)
 
+    if topic_synthesizer is not None:
+        synthesized = synthesize_pending_topics(matching_repo, topic_synthesizer, limit=synthesis_limit)
+        logger.info("주제 합성: %d건", synthesized)
+    else:
+        logger.info("주제 합성 건너뜀 (OPENROUTER_API_KEY 미설정)")
+
 
 def main() -> None:
     database_url = os.environ["CRAWLER_DATABASE_URL"]
@@ -80,7 +90,8 @@ def main() -> None:
         post_repo = PsycopgPostRepository(conn)
         matching_repo = PsycopgMatchingRepository(conn)
         embedder = SentenceTransformerEmbeddingProvider()
-        run_cycle(sources, settings, post_repo, matching_repo, embedder)
+        topic_synthesizer = build_topic_synthesizer(os.environ.get("OPENROUTER_API_KEY"))
+        run_cycle(sources, settings, post_repo, matching_repo, embedder, topic_synthesizer=topic_synthesizer)
 
 
 if __name__ == "__main__":

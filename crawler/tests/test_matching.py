@@ -1,4 +1,8 @@
-from siso_crawler.matching import embed_pending_posts, match_pending_posts, prune_stale_candidates
+from siso_crawler.matching import (
+    embed_pending_posts,
+    match_pending_posts,
+    prune_stale_candidates,
+)
 
 from .fakes import FakeEmbeddingProvider, FakeMatchingRepository
 
