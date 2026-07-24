@@ -1,5 +1,8 @@
 package com.siso.backend.pair;
 
+import com.siso.backend.anon.AnonUser;
+import com.siso.backend.anon.AnonUserRepository;
+import com.siso.backend.anon.IpHasher;
 import com.siso.backend.ratelimit.RateLimiter;
 import com.siso.backend.settings.CrawlSettingsRepository;
 import org.springframework.data.domain.Page;
@@ -26,16 +29,22 @@ public class PairService {
     private final VoteRepository voteRepository;
     private final RateLimiter rateLimiter;
     private final CrawlSettingsRepository crawlSettingsRepository;
+    private final AnonUserRepository anonUserRepository;
+    private final IpHasher ipHasher;
 
     public PairService(
             TopicPairRepository topicPairRepository,
             VoteRepository voteRepository,
             RateLimiter rateLimiter,
-            CrawlSettingsRepository crawlSettingsRepository) {
+            CrawlSettingsRepository crawlSettingsRepository,
+            AnonUserRepository anonUserRepository,
+            IpHasher ipHasher) {
         this.topicPairRepository = topicPairRepository;
         this.voteRepository = voteRepository;
         this.rateLimiter = rateLimiter;
         this.crawlSettingsRepository = crawlSettingsRepository;
+        this.anonUserRepository = anonUserRepository;
+        this.ipHasher = ipHasher;
     }
 
     @Transactional(readOnly = true)
@@ -69,7 +78,7 @@ public class PairService {
     }
 
     @Transactional
-    public void vote(Long pairId, UUID anonId, String stance) {
+    public void vote(Long pairId, UUID anonId, String remoteAddr, String stance) {
         if (!STANCES.contains(stance)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "stance must be left, right, or neutral");
         }
@@ -81,10 +90,23 @@ public class PairService {
         }
 
         OffsetDateTime now = OffsetDateTime.now();
+        String ipHash = ipHasher.hash(remoteAddr);
+
         voteRepository.findByPair_IdAndAnonId(pairId, anonId)
                 .ifPresentOrElse(
                         vote -> vote.update(stance, now),
-                        () -> voteRepository.save(
-                                new Vote(topicPairRepository.getReferenceById(pairId), anonId, stance, now)));
+                        () -> {
+                            voteRepository.save(
+                                    new Vote(topicPairRepository.getReferenceById(pairId), anonId, stance, now));
+
+                            // 기존 투표를 입장만 바꾸는 건 새 투표가 아니므로(위 update
+                            // 분기) 여기(진짜 신규 투표일 때만) vote_count를 올린다 —
+                            // 안 그러면 입장을 왔다갔다 바꿔서 카운트를 무한정 farming
+                            // 할 수 있음.
+                            AnonUser anonUser = anonUserRepository.findById(anonId)
+                                    .orElseGet(() -> new AnonUser(anonId, now, ipHash));
+                            anonUser.recordVote(now, ipHash);
+                            anonUserRepository.save(anonUser);
+                        });
     }
 }

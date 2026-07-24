@@ -56,11 +56,21 @@ public class AnonUser {
         this.commentCount += 1;
     }
 
+    public void recordVote(OffsetDateTime now, String ipHash) {
+        this.lastSeen = now;
+        this.ipHashRecent = ipHash;
+        this.voteCount += 1;
+    }
+
     public UUID getAnonId() {
         return anonId;
     }
 
     public Integer getCommentCount() {
         return commentCount;
+    }
+
+    public Integer getVoteCount() {
+        return voteCount;
     }
 }
