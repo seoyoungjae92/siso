@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -64,8 +65,28 @@ public class PairService {
     public Page<TopicPairDto> getPairs(Pageable pageable) {
         int displayWindowDays = crawlSettingsRepository.findById(SETTINGS_ID).orElseThrow().getDisplayWindowDays();
         OffsetDateTime since = OffsetDateTime.now().minusDays(displayWindowDays);
-        return topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(ACTIVE_STATUS, since, pageable)
-                .map(TopicPairDto::from);
+        Page<TopicPair> pairs = topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+                ACTIVE_STATUS, since, pageable);
+
+        List<Long> pairIds = pairs.getContent().stream().map(TopicPair::getId).toList();
+        Map<Long, Map<String, Double>> talliesByPairId = new HashMap<>();
+        if (!pairIds.isEmpty()) {
+            for (VoteRepository.WeightedStanceCountByPair row : voteRepository.sumWeightedByPairIdsGroupByStance(pairIds)) {
+                talliesByPairId
+                        .computeIfAbsent(row.getPairId(), key -> new HashMap<>())
+                        .put(row.getStance(), row.getTotal());
+            }
+        }
+
+        return pairs.map(pair -> {
+            Map<String, Double> tally = talliesByPairId.getOrDefault(pair.getId(), Map.of());
+            return TopicPairDto.from(
+                    pair,
+                    tally.getOrDefault("left", 0.0),
+                    tally.getOrDefault("right", 0.0),
+                    tally.getOrDefault("neutral", 0.0),
+                    null);
+        });
     }
 
     @Transactional(readOnly = true)

@@ -13,10 +13,6 @@ public record TopicPairDto(
         double neutralVotes,
         String myStance) {
 
-    public static TopicPairDto from(TopicPair pair) {
-        return from(pair, 0, 0, 0, null);
-    }
-
     public static TopicPairDto from(
             TopicPair pair, double leftVotes, double rightVotes, double neutralVotes, String myStance) {
         return new TopicPairDto(
