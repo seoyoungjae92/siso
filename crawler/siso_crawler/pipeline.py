@@ -6,6 +6,7 @@ from .llm_client import PostSummarizer
 from .models import Source
 from .parser import RawEntry, parse_feed
 from .repository import PostRepository
+from .rss_fixups import get_rss_fixup
 from .summarize import summarize
 
 
@@ -18,7 +19,11 @@ class IngestResult:
 
 def parse_entries(source: Source, raw_bytes: bytes) -> list[RawEntry]:
     if source.crawl_type == "rss":
-        return parse_feed(raw_bytes)
+        entries = parse_feed(raw_bytes)
+        fixup = get_rss_fixup(source.feed_url)
+        if fixup is not None:
+            entries = [fixup(entry) for entry in entries]
+        return entries
 
     if source.crawl_type == "html":
         parser = get_html_parser(source.feed_url)

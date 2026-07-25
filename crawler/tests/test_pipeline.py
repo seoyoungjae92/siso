@@ -78,6 +78,26 @@ def test_ingest_source_passes_title_and_summarizer_through_to_summarize(sample_f
     assert all(p["summary"].startswith("재작성: ") for p in repo.inserted)
 
 
+def test_ingest_source_applies_rss_fixup_for_registered_feed_url(sample_feed_bytes):
+    clien_source = Source(
+        id=4,
+        name="클리앙 인기글",
+        side="left",
+        base_url="https://www.clien.net",
+        feed_url="https://feeds.feedburner.com/clien_hot10_rss",
+        crawl_type="rss",
+        enabled=True,
+    )
+    repo = FakePostRepository()
+
+    result = ingest_source(clien_source, sample_feed_bytes, repo)
+
+    assert result.inserted == 2
+    # fixture의 "Tue, 21 Jul 2026 09:00:00 GMT"는 실제로는 KST라 UTC로는
+    # 9시간 이전(00:00:00)이어야 한다 — GMT 라벨을 그대로 믿으면 안 됨.
+    assert repo.inserted[0]["published_at"] == "2026-07-21T00:00:00+00:00"
+
+
 def test_ingest_source_raises_on_unknown_crawl_type():
     bad_source = Source(
         id=3,
