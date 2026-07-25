@@ -7,7 +7,7 @@ from siso_crawler.models import Source
 from siso_crawler.pipeline import ingest_source
 from siso_crawler.summarize import SUMMARY_MAX_LEN
 
-from .fakes import FakePostRepository, FakePostSummarizer
+from .fakes import FakePostPoliticalClassifier, FakePostRepository, FakePostSummarizer
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -76,6 +76,30 @@ def test_ingest_source_passes_title_and_summarizer_through_to_summarize(sample_f
     assert result.inserted == 2
     assert len(summarizer.calls) == 2
     assert all(p["summary"].startswith("재작성: ") for p in repo.inserted)
+
+
+def test_ingest_source_skips_posts_classified_as_non_political(sample_feed_bytes):
+    repo = FakePostRepository()
+    classifier = FakePostPoliticalClassifier(non_political={"첫 번째 테스트 게시글 제목입니다"})
+
+    result = ingest_source(SOURCE, sample_feed_bytes, repo, political_classifier=classifier)
+
+    assert result.fetched == 2
+    assert result.inserted == 1
+    assert result.skipped_non_political == 1
+    assert len(repo.inserted) == 1
+    assert repo.inserted[0]["title"] == "두 번째 테스트 게시글"
+
+
+def test_ingest_source_keeps_post_when_classifier_fails(sample_feed_bytes):
+    repo = FakePostRepository()
+    classifier = FakePostPoliticalClassifier(fail_on={"첫 번째 테스트 게시글 제목입니다"})
+
+    result = ingest_source(SOURCE, sample_feed_bytes, repo, political_classifier=classifier)
+
+    assert result.inserted == 2
+    assert result.skipped_non_political == 0
+    assert len(classifier.calls) == 2
 
 
 def test_ingest_source_applies_rss_fixup_for_registered_feed_url(sample_feed_bytes):

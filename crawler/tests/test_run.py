@@ -7,6 +7,7 @@ from siso_crawler.settings_repository import CrawlSettings
 from .fakes import (
     FakeEmbeddingProvider,
     FakeMatchingRepository,
+    FakePostPoliticalClassifier,
     FakePostRepository,
     FakePostSummarizer,
     FakeTopicSynthesizer,
@@ -267,3 +268,24 @@ def test_run_cycle_passes_summarizer_to_ingestion(sample_feed_bytes):
 
     assert len(summarizer.calls) == 2
     assert all(p["summary"].startswith("재작성: ") for p in post_repo.inserted)
+
+
+def test_run_cycle_passes_political_classifier_to_ingestion(sample_feed_bytes):
+    post_repo = FakePostRepository()
+    matching_repo = FakeMatchingRepository()
+    embedder = FakeEmbeddingProvider()
+    classifier = FakePostPoliticalClassifier(non_political={"첫 번째 테스트 게시글 제목입니다"})
+
+    run_cycle(
+        sources=[source(1)],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        matching_repo=matching_repo,
+        embedder=embedder,
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=lambda url: sample_feed_bytes,
+        political_classifier=classifier,
+    )
+
+    assert len(post_repo.inserted) == 1
+    assert post_repo.inserted[0]["title"] == "두 번째 테스트 게시글"

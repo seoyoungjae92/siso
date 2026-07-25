@@ -286,3 +286,109 @@ def build_post_summarizer(api_key: str | None, model: str | None = None) -> Post
     if not api_key:
         return None
     return OpenRouterPostSummarizer(api_key, model=model or SYNTHESIS_MODEL)
+
+
+POLITICAL_CLASSIFY_SYSTEM_PROMPT = """너는 한국 커뮤니티 게시글이 정치·시사 관련
+내용인지 판별하는 분류기야. 아래 제목과 요약을 보고 정치인, 정당, 선거, 정부
+정책, 시사 이슈에 대한 의견이나 논쟁을 다루는 글인지 판단해줘.
+
+규칙:
+1. 요리, 여행, IT 제품 후기, 스포츠, 연예인 잡담 등 정치와 무관한 일상 글은
+   정치 아님으로 분류해라.
+2. 정치인·정당·정부·선거·시사 이슈를 언급하거나 논쟁하는 글은 정치로
+   분류해라.
+3. 애매하면(예: 정치인이 언급됐지만 핵심은 다른 주제) 정치로 분류해라 —
+   걸러내는 쪽보다 남겨두는 쪽이 안전하다.
+4. 반드시 요청된 스키마의 JSON 형식으로만 답해라. 다른 텍스트를 덧붙이지
+   마라."""
+
+POLITICAL_CLASSIFY_RESPONSE_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {"is_political": {"type": "boolean"}},
+    "required": ["is_political"],
+    "additionalProperties": False,
+}
+
+
+class PoliticalClassificationSchema(pydantic.BaseModel):
+    is_political: bool
+
+
+class PoliticalClassificationFailed(Exception):
+    """API 에러, 비정상 종료, 잘림, JSON/스키마 불일치 등 모든 실패를 이
+    예외 하나로 감싼다 — 호출부는 판단 실패로 보고 안전하게(글을 남겨두는
+    쪽으로) 폴백한다."""
+
+
+class PostPoliticalClassifier(Protocol):
+    def is_political(self, title: str, summary: str) -> bool: ...
+
+
+class OpenRouterPostPoliticalClassifier:
+    def __init__(self, api_key: str, model: str = SYNTHESIS_MODEL):
+        self._api_key = api_key
+        self._model = model
+
+    def is_political(self, title: str, summary: str) -> bool:
+        user_prompt = f"제목: {title}\n요약: {summary}"
+        app_name = os.environ.get("APP_NAME", "siso")
+
+        try:
+            response = httpx.post(
+                OPENROUTER_URL,
+                timeout=TIMEOUT_SECONDS,
+                headers={
+                    "Authorization": f"Bearer {self._api_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://github.com/seoyoungjae92/siso",
+                    "X-Title": app_name,
+                },
+                json={
+                    "model": self._model,
+                    "max_tokens": MAX_TOKENS,
+                    "messages": [
+                        {"role": "system", "content": POLITICAL_CLASSIFY_SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "political_classification",
+                            "strict": True,
+                            "schema": POLITICAL_CLASSIFY_RESPONSE_JSON_SCHEMA,
+                        },
+                    },
+                    "provider": {"require_parameters": True},
+                },
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise PoliticalClassificationFailed(f"OpenRouter 호출 실패: {exc}") from exc
+
+        try:
+            data = response.json()
+            choice = data["choices"][0]
+            content = choice["message"]["content"]
+            finish_reason = choice["finish_reason"]
+        except (KeyError, IndexError, ValueError) as exc:
+            raise PoliticalClassificationFailed(f"OpenRouter 응답 형식 이상: {exc}") from exc
+
+        if finish_reason != "stop":
+            raise PoliticalClassificationFailed(
+                f"OpenRouter 응답 비정상 종료: finish_reason={finish_reason}"
+            )
+
+        try:
+            parsed = PoliticalClassificationSchema.model_validate_json(content)
+        except pydantic.ValidationError as exc:
+            raise PoliticalClassificationFailed(f"응답 JSON 파싱/스키마 검증 실패: {exc}") from exc
+
+        return parsed.is_political
+
+
+def build_post_political_classifier(
+    api_key: str | None, model: str | None = None
+) -> PostPoliticalClassifier | None:
+    if not api_key:
+        return None
+    return OpenRouterPostPoliticalClassifier(api_key, model=model or SYNTHESIS_MODEL)
