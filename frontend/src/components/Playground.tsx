@@ -22,9 +22,29 @@ export function Playground({
 }) {
   const [pairs, setPairs] = useState(initialPairs);
   const [hasMore, setHasMore] = useState(initialHasMore);
+  const [newIds, setNewIds] = useState<Set<number>>(new Set());
   const [, startTransition] = useTransition();
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const pairsRef = useRef(pairs);
   const cursor = useRef({ nextPage: 1, fetching: false });
+
+  useEffect(() => {
+    pairsRef.current = pairs;
+  }, [pairs]);
+
+  // 주기적 자동 새로고침(AutoRefresh)으로 서버에서 새 initialPairs가
+  // 내려오면, 이미 로딩된 목록 맨 위에 진짜 새 주제만 얹는다 — 통째로
+  // 교체하면 무한스크롤로 불러온 게 날아감.
+  useEffect(() => {
+    const existingIds = new Set(pairsRef.current.map((p) => p.id));
+    const fresh = initialPairs.filter((p) => !existingIds.has(p.id));
+    if (fresh.length === 0) return;
+
+    setPairs((prev) => [...fresh, ...prev]);
+    setNewIds(new Set(fresh.map((p) => p.id)));
+    const timer = setTimeout(() => setNewIds(new Set()), 500);
+    return () => clearTimeout(timer);
+  }, [initialPairs]);
 
   useEffect(() => {
     if (!hasMore) return;
@@ -78,9 +98,11 @@ export function Playground({
           <span className="h-2 w-2 rounded-full bg-right-red" />우
         </span>
       </div>
-      <PairCard pair={today} large />
+      <div className={newIds.has(today.id) ? "animate-new-item" : ""}>
+        <PairCard pair={today} large />
+      </div>
       {rest.map((pair, index) => (
-        <div key={pair.id}>
+        <div key={pair.id} className={newIds.has(pair.id) ? "animate-new-item" : ""}>
           <PairCard pair={pair} />
           {(index + 1) % AD_EVERY === 0 && <AdSlot position="playground" />}
         </div>

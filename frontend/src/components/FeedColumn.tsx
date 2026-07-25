@@ -26,12 +26,32 @@ export function FeedColumn({
   const { bg, heading, title } = COLUMN[side];
   const [posts, setPosts] = useState(initialPosts);
   const [hasMore, setHasMore] = useState(initialHasMore);
+  const [newIds, setNewIds] = useState<Set<number>>(new Set());
   const [, startTransition] = useTransition();
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const postsRef = useRef(posts);
   // 페이지 커서를 ref로 관리 — IntersectionObserver 콜백이 리렌더 전에
   // 연달아 여러 번 발화해도(React state는 비동기 반영) 같은 페이지를
   // 중복 요청하지 않도록 동기적으로 증가시킴
   const cursor = useRef({ nextPage: 1, fetching: false });
+
+  useEffect(() => {
+    postsRef.current = posts;
+  }, [posts]);
+
+  // 주기적 자동 새로고침(AutoRefresh)으로 서버에서 새 initialPosts가
+  // 내려오면, 이미 로딩된 목록(무한스크롤로 쌓인 것 포함) 맨 위에 진짜
+  // 새 글만 얹는다 — 통째로 교체하면 무한스크롤로 불러온 게 날아감.
+  useEffect(() => {
+    const existingIds = new Set(postsRef.current.map((p) => p.id));
+    const fresh = initialPosts.filter((p) => !existingIds.has(p.id));
+    if (fresh.length === 0) return;
+
+    setPosts((prev) => [...fresh, ...prev]);
+    setNewIds(new Set(fresh.map((p) => p.id)));
+    const timer = setTimeout(() => setNewIds(new Set()), 500);
+    return () => clearTimeout(timer);
+  }, [initialPosts]);
 
   useEffect(() => {
     if (!hasMore) return;
@@ -68,7 +88,7 @@ export function FeedColumn({
       </div>
 
       {posts.map((post, index) => (
-        <div key={post.id}>
+        <div key={post.id} className={newIds.has(post.id) ? "animate-new-item" : ""}>
           <PostCard post={post} side={side} />
           {(index + 1) % AD_EVERY === 0 && <AdSlot position={`feed-${side}`} />}
         </div>
