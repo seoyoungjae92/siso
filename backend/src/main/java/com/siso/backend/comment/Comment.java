@@ -61,6 +61,17 @@ public class Comment {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
+    // D11: 신고 대기중인 댓글의 1차 분류 힌트(obvious_violation/ambiguous) —
+    // 자동 조치는 없고 어드민 신고 큐에 참고용으로만 노출된다.
+    @Column(name = "llm_verdict")
+    private String llmVerdict;
+
+    @Column(name = "llm_reason")
+    private String llmReason;
+
+    @Column(name = "llm_classified_at")
+    private OffsetDateTime llmClassifiedAt;
+
     protected Comment() {
     }
 
@@ -128,6 +139,24 @@ public class Comment {
 
     public void blind() {
         this.status = "blinded";
+    }
+
+    public String getLlmVerdict() {
+        return llmVerdict;
+    }
+
+    public String getLlmReason() {
+        return llmReason;
+    }
+
+    public OffsetDateTime getLlmClassifiedAt() {
+        return llmClassifiedAt;
+    }
+
+    public void applyLlmClassification(String llmVerdict, String llmReason, OffsetDateTime llmClassifiedAt) {
+        this.llmVerdict = llmVerdict;
+        this.llmReason = llmReason;
+        this.llmClassifiedAt = llmClassifiedAt;
     }
 
     public void adjustUpCount(int delta) {

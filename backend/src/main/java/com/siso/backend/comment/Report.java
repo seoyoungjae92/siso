@@ -63,6 +63,10 @@ public class Report {
         return reason;
     }
 
+    public String getDetail() {
+        return detail;
+    }
+
     public String getStatus() {
         return status;
     }

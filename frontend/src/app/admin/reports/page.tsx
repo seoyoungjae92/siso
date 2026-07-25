@@ -10,6 +10,16 @@ const REASON_LABELS: Record<string, string> = {
   etc: "기타",
 };
 
+const LLM_VERDICT_LABELS: Record<string, string> = {
+  obvious_violation: "🤖 AI 검토: 명백한 위반으로 보임",
+  ambiguous: "🤖 AI 검토: 애매함, 직접 확인 필요",
+};
+
+const LLM_VERDICT_STYLES: Record<string, string> = {
+  obvious_violation: "border-right-red/30 bg-red-tint text-right-red",
+  ambiguous: "border-line bg-[#F5F4F0] text-[#6B6960]",
+};
+
 const HISTORY_TYPE_LABELS: Record<string, string> = {
   comment_auto_blinded: "자동 블라인드 (신고 누적)",
   comment_manually_blinded: "수동 블라인드 (관리자)",
@@ -48,6 +58,14 @@ export default async function AdminReportsPage() {
               ))}
               <span>최초 신고: {new Date(group.oldestReportAt).toLocaleString("ko-KR")}</span>
             </div>
+            {group.llmVerdict != null && (
+              <div
+                className={`mb-3 rounded-lg border px-3 py-2 text-xs ${LLM_VERDICT_STYLES[group.llmVerdict]}`}
+              >
+                <p className="font-semibold">{LLM_VERDICT_LABELS[group.llmVerdict]}</p>
+                {group.llmReason != null && <p className="mt-0.5">{group.llmReason}</p>}
+              </div>
+            )}
             <ModerateButtons commentId={group.commentId} />
           </div>
         ))}

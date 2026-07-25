@@ -26,6 +26,8 @@ export type PendingReportGroup = {
   reasonCounts: Record<string, number>;
   totalReports: number;
   oldestReportAt: string;
+  llmVerdict: "obvious_violation" | "ambiguous" | null;
+  llmReason: string | null;
 };
 
 export async function fetchPendingReports(): Promise<PendingReportGroup[]> {

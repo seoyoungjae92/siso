@@ -77,6 +77,19 @@ class AdminReportServiceTest {
     }
 
     @Test
+    void getPendingGroupedByComment_llmClassified_exposesVerdictAndReason() {
+        Comment comment = commentWithId(1L);
+        comment.applyLlmClassification("ambiguous", "정치적 의견 차이로 보임", OffsetDateTime.now());
+        Report r1 = new Report(comment, ANON_A, "abuse", null, OffsetDateTime.now());
+        when(reportRepository.findByStatusOrderByCreatedAtAsc("pending")).thenReturn(List.of(r1));
+
+        PendingReportGroupDto group = newService().getPendingGroupedByComment().get(0);
+
+        assertThat(group.llmVerdict()).isEqualTo("ambiguous");
+        assertThat(group.llmReason()).isEqualTo("정치적 의견 차이로 보임");
+    }
+
+    @Test
     void moderate_blind_blindsCommentAndAcceptsAllPendingReports() {
         Comment comment = commentWithId(1L);
         Report r1 = new Report(comment, ANON_A, "abuse", null, OffsetDateTime.now());
