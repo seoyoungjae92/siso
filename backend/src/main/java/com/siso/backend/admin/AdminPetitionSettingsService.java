@@ -26,12 +26,7 @@ public class AdminPetitionSettingsService {
     @Transactional
     public PetitionSettingsDto update(PetitionSettingsRequest request) {
         PetitionSettings settings = findSingleton();
-        settings.update(
-                request.eraco(),
-                request.topN(),
-                request.windowDays(),
-                request.cacheTtlMinutes(),
-                OffsetDateTime.now());
+        settings.update(request.eraco(), request.topN(), request.windowDays(), OffsetDateTime.now());
         return toDto(settings);
     }
 
@@ -41,10 +36,6 @@ public class AdminPetitionSettingsService {
 
     private PetitionSettingsDto toDto(PetitionSettings settings) {
         return new PetitionSettingsDto(
-                settings.getEraco(),
-                settings.getTopN(),
-                settings.getWindowDays(),
-                settings.getCacheTtlMinutes(),
-                settings.getUpdatedAt());
+                settings.getEraco(), settings.getTopN(), settings.getWindowDays(), settings.getUpdatedAt());
     }
 }

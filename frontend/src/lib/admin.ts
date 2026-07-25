@@ -196,7 +196,6 @@ export type PetitionSettings = {
   eraco: string;
   topN: number;
   windowDays: number;
-  cacheTtlMinutes: number;
   updatedAt: string;
 };
 
@@ -206,5 +205,29 @@ export async function fetchPetitionSettings(): Promise<PetitionSettings | null> 
     headers: { Authorization: adminAuthHeader() },
   });
   if (!res.ok) return null;
+  return res.json();
+}
+
+export type AdminPetition = {
+  pttId: string;
+  title: string;
+  agreeCount: number;
+  receivedAt: string;
+  linkUrl: string;
+  status: "collecting" | "closed";
+  outcome: "established" | "not_established" | null;
+  committeeName: string | null;
+  committeeReferredAt: string | null;
+  achvRatio: number | null;
+  lastSyncedAt: string;
+  closedAt: string | null;
+};
+
+export async function fetchAdminPetitions(): Promise<AdminPetition[]> {
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/petitions`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return [];
   return res.json();
 }

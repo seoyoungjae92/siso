@@ -23,9 +23,6 @@ public class PetitionSettings {
     @Column(name = "window_days", nullable = false)
     private int windowDays;
 
-    @Column(name = "cache_ttl_minutes", nullable = false)
-    private int cacheTtlMinutes;
-
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
@@ -48,19 +45,14 @@ public class PetitionSettings {
         return windowDays;
     }
 
-    public int getCacheTtlMinutes() {
-        return cacheTtlMinutes;
-    }
-
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void update(String eraco, int topN, int windowDays, int cacheTtlMinutes, OffsetDateTime updatedAt) {
+    public void update(String eraco, int topN, int windowDays, OffsetDateTime updatedAt) {
         this.eraco = eraco;
         this.topN = topN;
         this.windowDays = windowDays;
-        this.cacheTtlMinutes = cacheTtlMinutes;
         this.updatedAt = updatedAt;
     }
 }
