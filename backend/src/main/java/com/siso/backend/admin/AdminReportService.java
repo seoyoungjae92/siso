@@ -64,7 +64,9 @@ public class AdminReportService {
                 comment.getPair() == null ? null : comment.getPair().getId(),
                 reasonCounts,
                 reports.size(),
-                oldest);
+                oldest,
+                comment.getLlmVerdict(),
+                comment.getLlmReason());
     }
 
     @Transactional

@@ -10,5 +10,7 @@ public record PendingReportGroupDto(
         Long pairId,
         Map<String, Long> reasonCounts,
         long totalReports,
-        OffsetDateTime oldestReportAt) {
+        OffsetDateTime oldestReportAt,
+        String llmVerdict,
+        String llmReason) {
 }
