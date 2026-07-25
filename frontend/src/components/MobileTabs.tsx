@@ -11,7 +11,7 @@ type Tab = "left" | "playground" | "right";
 
 const TAB_CONFIG: Record<Tab, { label: string; text: string; bar: string }> = {
   left: { label: "좌", text: "text-left-blue", bar: "bg-left-blue" },
-  playground: { label: "플레이그라운드", text: "text-playground", bar: "bg-playground" },
+  playground: { label: "놀이터", text: "text-playground", bar: "bg-playground" },
   right: { label: "우", text: "text-right-red", bar: "bg-right-red" },
 };
 

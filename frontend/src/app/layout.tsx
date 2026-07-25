@@ -10,7 +10,7 @@ const appName = process.env.APP_NAME ?? "시소";
 
 export const metadata: Metadata = {
   title: appName,
-  description: "좌·우 커뮤니티 모아보기 + 익명 토론 플레이그라운드",
+  description: "좌·우 커뮤니티 모아보기 + 익명 토론 놀이터",
 };
 
 export default function RootLayout({
