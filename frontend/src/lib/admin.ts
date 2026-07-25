@@ -231,3 +231,26 @@ export async function fetchAdminPetitions(): Promise<AdminPetition[]> {
   if (!res.ok) return [];
   return res.json();
 }
+
+export type AdminFeedback = {
+  id: number;
+  category: "suggestion" | "report" | "bug" | "etc";
+  body: string;
+  contact: string | null;
+  status: "new" | "resolved";
+  createdAt: string;
+};
+
+export async function fetchAdminFeedback(category?: string, status?: string): Promise<AdminFeedback[]> {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  if (status) params.set("status", status);
+  const query = params.toString() ? `?${params.toString()}` : "";
+
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/feedback${query}`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return [];
+  return res.json();
+}

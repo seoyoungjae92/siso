@@ -12,6 +12,9 @@ export function Footer() {
         <Link href="/privacy" className="font-semibold text-[#6B6960] hover:underline">
           개인정보처리방침
         </Link>
+        <Link href="/feedback" className="font-semibold text-[#6B6960] hover:underline">
+          제보·건의하기
+        </Link>
       </nav>
       <p>
         {appName}는 공개된 커뮤니티 게시물의 제목·요약·출처 링크만 수집해 병렬 비교합니다. 원문
