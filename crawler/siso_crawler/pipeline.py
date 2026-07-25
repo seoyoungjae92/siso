@@ -1,13 +1,20 @@
+import logging
 from dataclasses import dataclass
 
 from .dedupe import hash_url
 from .html_parsers import get_html_parser
-from .llm_client import PostSummarizer
+from .llm_client import (
+    PoliticalClassificationFailed,
+    PostPoliticalClassifier,
+    PostSummarizer,
+)
 from .models import Source
 from .parser import RawEntry, parse_feed
 from .repository import PostRepository
 from .rss_fixups import get_rss_fixup
 from .summarize import summarize
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -15,6 +22,7 @@ class IngestResult:
     fetched: int = 0
     inserted: int = 0
     skipped_duplicate: int = 0
+    skipped_non_political: int = 0
 
 
 def parse_entries(source: Source, raw_bytes: bytes) -> list[RawEntry]:
@@ -35,7 +43,11 @@ def parse_entries(source: Source, raw_bytes: bytes) -> list[RawEntry]:
 
 
 def ingest_source(
-    source: Source, raw_bytes: bytes, repo: PostRepository, summarizer: PostSummarizer | None = None
+    source: Source,
+    raw_bytes: bytes,
+    repo: PostRepository,
+    summarizer: PostSummarizer | None = None,
+    political_classifier: PostPoliticalClassifier | None = None,
 ) -> IngestResult:
     result = IngestResult()
     for entry in parse_entries(source, raw_bytes):
@@ -48,10 +60,20 @@ def ingest_source(
             result.skipped_duplicate += 1
             continue
 
+        summary_text = summarize(entry.summary, title=entry.title, summarizer=summarizer)
+
+        if political_classifier is not None:
+            try:
+                if not political_classifier.is_political(entry.title, summary_text):
+                    result.skipped_non_political += 1
+                    continue
+            except PoliticalClassificationFailed as exc:
+                logger.warning("정치성 판단 실패, 안전하게 저장: %s", exc)
+
         repo.insert_post(
             source_id=source.id,
             title=entry.title,
-            summary=summarize(entry.summary, title=entry.title, summarizer=summarizer),
+            summary=summary_text,
             origin_url=entry.link,
             origin_url_hash=url_hash,
             published_at=entry.published_at,
