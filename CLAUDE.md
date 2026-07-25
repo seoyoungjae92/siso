@@ -529,7 +529,9 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
 - Vercel Pro 전환 예산을 언제(애드센스 승인 시점?) 반영할지
 - Supabase 백업 정책 확인 후 10절에 반영
 - 신고 접수 알림 채널(이메일? Slack?) M4 CMS 설계 시 결정
-- ⚠️ **`crawler/siso_crawler/summarize.py`(M1-1에서 이미 구현·머지됨)가 현재
-  원문을 그대로 잘라내는 "발췌" 방식** — 19.3 저작권 리스크 재조사 결과
-  "재작성"이 더 안전하다는 결론과 배치됨. M2에서 소스를 늘리기 전에
-  요약 로직을 자체 재서술 방식(필요시 LLM 활용)으로 바꿀지 결정할 것.
+- ~~`crawler/siso_crawler/summarize.py`가 발췌 방식이라 19.3 저작권 리스크
+  재조사 결론(재작성이 더 안전)과 배치되는 문제~~ — 해결됨. LLM
+  (`llm_client.OpenRouterPostSummarizer`, `synthesis_model` 설정 재사용)로
+  자체 재서술하도록 전환, API 실패 시에만 발췌로 폴백. `run.py`에서
+  `build_post_summarizer`로 배선, `test_summarize.py`/`test_llm_client.py`
+  커버.
