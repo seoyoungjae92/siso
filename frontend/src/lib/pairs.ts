@@ -9,6 +9,7 @@ export type TopicPair = {
   leftVotes: number;
   rightVotes: number;
   neutralVotes: number;
+  commentCount: number;
 };
 
 export function calculateVotePercentages(votes: {

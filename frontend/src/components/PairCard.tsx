@@ -18,6 +18,22 @@ function MiniVoteBar({ pair }: { pair: TopicPair }) {
   );
 }
 
+function CardMeta({ pair }: { pair: TopicPair }) {
+  const { total } = calculateVotePercentages(pair);
+  const voteCount = Math.round(total);
+
+  if (voteCount === 0 && pair.commentCount === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-3 text-[11px] text-[#8A877E]">
+      {voteCount > 0 && <span>🗳 {voteCount}명 투표</span>}
+      {pair.commentCount > 0 && <span>💬 {pair.commentCount}</span>}
+    </div>
+  );
+}
+
 export function PairCard({ pair, large = false }: { pair: TopicPair; large?: boolean }) {
   return (
     <Link
@@ -32,6 +48,7 @@ export function PairCard({ pair, large = false }: { pair: TopicPair; large?: boo
       <div className="p-4">
         <h4 className="mb-3 line-clamp-3 text-[15px] font-bold leading-snug text-ink">{pair.title}</h4>
         <MiniVoteBar pair={pair} />
+        <CardMeta pair={pair} />
       </div>
     </Link>
   );
