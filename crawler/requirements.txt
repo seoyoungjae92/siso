@@ -1,4 +1,4 @@
-httpx>=0.27
+httpx>=0.28.1
 feedparser>=6.0
 beautifulsoup4>=4.12
 psycopg[binary]>=3.1
