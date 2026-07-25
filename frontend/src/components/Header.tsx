@@ -29,18 +29,24 @@ export function Header() {
   const appName = process.env.APP_NAME ?? "시소";
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between border-b border-line bg-white px-7 py-3.5">
-      <Link href="/" className="flex items-center gap-2.5 text-xl font-extrabold tracking-tight">
+    <header className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-line bg-white px-4 py-3.5 sm:px-7">
+      <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight sm:gap-2.5 sm:text-xl">
         <SeesawLogo />
         {appName}
-        <small className="text-[11px] font-medium text-[#8A877E]">같은 주제, 다른 시선</small>
+        <small className="hidden text-[11px] font-medium text-[#8A877E] sm:inline">같은 주제, 다른 시선</small>
       </Link>
-      <nav className="flex items-center gap-3 text-[11px] font-semibold text-[#8A877E]">
+      <nav className="flex items-center gap-2 text-[11px] font-semibold whitespace-nowrap text-[#8A877E] sm:gap-3">
+        <Link href="/feedback" className="hover:text-[#6B6960] hover:underline">
+          <span className="sm:hidden">제보</span>
+          <span className="hidden sm:inline">제보·건의하기</span>
+        </Link>
         <Link href="/terms" className="hover:text-[#6B6960] hover:underline">
-          이용약관
+          <span className="sm:hidden">약관</span>
+          <span className="hidden sm:inline">이용약관</span>
         </Link>
         <Link href="/privacy" className="hover:text-[#6B6960] hover:underline">
-          개인정보처리방침
+          <span className="sm:hidden">개인정보</span>
+          <span className="hidden sm:inline">개인정보처리방침</span>
         </Link>
       </nav>
     </header>
