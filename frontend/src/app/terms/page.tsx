@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { BackLink } from "@/components/BackLink";
+
 const appName = process.env.APP_NAME ?? "시소";
 const CONTACT_EMAIL = "[문의 이메일을 입력하세요]";
 const EFFECTIVE_DATE = "[시행일을 입력하세요 (예: 2026-08-01)]";
@@ -11,6 +13,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-10">
+      <BackLink />
       <h1 className="mb-2 text-2xl font-extrabold tracking-tight">이용약관</h1>
       <p className="mb-8 text-sm text-[#8A877E]">시행일: {EFFECTIVE_DATE}</p>
 

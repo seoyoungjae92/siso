@@ -30,11 +30,11 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between border-b border-line bg-white px-7 py-3.5">
-      <div className="flex items-center gap-2.5 text-xl font-extrabold tracking-tight">
+      <Link href="/" className="flex items-center gap-2.5 text-xl font-extrabold tracking-tight">
         <SeesawLogo />
         {appName}
         <small className="text-[11px] font-medium text-[#8A877E]">같은 주제, 다른 시선</small>
-      </div>
+      </Link>
       <nav className="flex items-center gap-3 text-[11px] font-semibold text-[#8A877E]">
         <Link href="/terms" className="hover:text-[#6B6960] hover:underline">
           이용약관
