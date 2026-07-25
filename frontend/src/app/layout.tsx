@@ -1,6 +1,7 @@
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 
+import { BackToTopButton } from "@/components/BackToTopButton";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 
@@ -31,6 +32,7 @@ export default function RootLayout({
         <Header />
         {children}
         <Footer />
+        <BackToTopButton />
         <Analytics />
       </body>
     </html>
