@@ -8,6 +8,7 @@ from .fakes import (
     FakeEmbeddingProvider,
     FakeMatchingRepository,
     FakePostRepository,
+    FakePostSummarizer,
     FakeTopicSynthesizer,
 )
 
@@ -203,3 +204,66 @@ def test_run_cycle_skips_synthesis_when_synthesizer_is_none(sample_feed_bytes):
     )
 
     assert matching_repo.synthesized_pairs == []
+
+
+def test_run_cycle_deletes_confirmed_dead_links_using_display_window(sample_feed_bytes):
+    post_repo = FakePostRepository()
+    matching_repo = FakeMatchingRepository(
+        link_check_candidates=[(1, "https://example-community.test/dead")],
+    )
+    embedder = FakeEmbeddingProvider()
+
+    run_cycle(
+        sources=[],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        matching_repo=matching_repo,
+        embedder=embedder,
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=lambda url: sample_feed_bytes,
+        check_dead_link=lambda url: True,
+    )
+
+    assert matching_repo.deleted_posts == [1]
+
+
+def test_run_cycle_keeps_post_when_link_still_alive(sample_feed_bytes):
+    post_repo = FakePostRepository()
+    matching_repo = FakeMatchingRepository(
+        link_check_candidates=[(1, "https://example-community.test/alive")],
+    )
+    embedder = FakeEmbeddingProvider()
+
+    run_cycle(
+        sources=[],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        matching_repo=matching_repo,
+        embedder=embedder,
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=lambda url: sample_feed_bytes,
+        check_dead_link=lambda url: False,
+    )
+
+    assert matching_repo.deleted_posts == []
+
+
+def test_run_cycle_passes_summarizer_to_ingestion(sample_feed_bytes):
+    post_repo = FakePostRepository()
+    matching_repo = FakeMatchingRepository()
+    embedder = FakeEmbeddingProvider()
+    summarizer = FakePostSummarizer()
+
+    run_cycle(
+        sources=[source(1)],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        matching_repo=matching_repo,
+        embedder=embedder,
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=lambda url: sample_feed_bytes,
+        summarizer=summarizer,
+    )
+
+    assert len(summarizer.calls) == 2
+    assert all(p["summary"].startswith("재작성: ") for p in post_repo.inserted)

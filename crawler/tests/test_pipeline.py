@@ -7,7 +7,7 @@ from siso_crawler.models import Source
 from siso_crawler.pipeline import ingest_source
 from siso_crawler.summarize import SUMMARY_MAX_LEN
 
-from .fakes import FakePostRepository
+from .fakes import FakePostRepository, FakePostSummarizer
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -65,6 +65,17 @@ def test_ingest_source_dispatches_to_html_parser_by_crawl_type():
     assert result.fetched == 4
     assert result.inserted == 4
     assert all(p["source_id"] == html_source.id for p in repo.inserted)
+
+
+def test_ingest_source_passes_title_and_summarizer_through_to_summarize(sample_feed_bytes):
+    repo = FakePostRepository()
+    summarizer = FakePostSummarizer()
+
+    result = ingest_source(SOURCE, sample_feed_bytes, repo, summarizer=summarizer)
+
+    assert result.inserted == 2
+    assert len(summarizer.calls) == 2
+    assert all(p["summary"].startswith("재작성: ") for p in repo.inserted)
 
 
 def test_ingest_source_raises_on_unknown_crawl_type():
