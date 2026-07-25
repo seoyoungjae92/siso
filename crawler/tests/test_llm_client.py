@@ -2,8 +2,10 @@ import httpx
 import pytest
 
 from siso_crawler.llm_client import (
+    OpenRouterPostPoliticalClassifier,
     OpenRouterPostSummarizer,
     OpenRouterTopicSynthesizer,
+    PoliticalClassificationFailed,
     SummarizationFailed,
     SynthesisFailed,
 )
@@ -187,3 +189,64 @@ def test_summarize_fails_on_mostly_non_korean_response(monkeypatch):
 
     with pytest.raises(SummarizationFailed):
         _summarizer().summarize("제목", "원문 요약")
+
+
+def _classifier() -> OpenRouterPostPoliticalClassifier:
+    return OpenRouterPostPoliticalClassifier(api_key="test-key")
+
+
+def test_classify_returns_true_for_political_post(monkeypatch):
+    content = '{"is_political": true}'
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
+
+    assert _classifier().is_political("정치인 발언 논란", "요약") is True
+
+
+def test_classify_returns_false_for_non_political_post(monkeypatch):
+    content = '{"is_political": false}'
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
+
+    assert _classifier().is_political("오늘 점심 뭐 먹지", "요약") is False
+
+
+def test_classify_fails_on_non_stop_finish_reason(monkeypatch):
+    content = '{"is_political": true}'
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content, finish_reason="length"))
+
+    with pytest.raises(PoliticalClassificationFailed):
+        _classifier().is_political("제목", "요약")
+
+
+def test_classify_fails_on_malformed_json(monkeypatch):
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response("이건 JSON이 아님"))
+
+    with pytest.raises(PoliticalClassificationFailed):
+        _classifier().is_political("제목", "요약")
+
+
+def test_classify_fails_on_network_error(monkeypatch):
+    def raise_error(*args, **kwargs):
+        raise httpx.ConnectError("connection failed")
+
+    monkeypatch.setattr(httpx, "post", raise_error)
+
+    with pytest.raises(PoliticalClassificationFailed):
+        _classifier().is_political("제목", "요약")
+
+
+def test_classify_fails_on_http_error_status(monkeypatch):
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response("", status_code=429))
+
+    with pytest.raises(PoliticalClassificationFailed):
+        _classifier().is_political("제목", "요약")
+
+
+def test_classify_fails_when_response_missing_choices(monkeypatch):
+    def fake_post(*args, **kwargs):
+        request = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+        return httpx.Response(200, json={"choices": []}, request=request)
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    with pytest.raises(PoliticalClassificationFailed):
+        _classifier().is_political("제목", "요약")
