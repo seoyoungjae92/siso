@@ -5,6 +5,7 @@ import com.siso.backend.abuse.TrustScoreService;
 import com.siso.backend.anon.AnonUser;
 import com.siso.backend.anon.AnonUserRepository;
 import com.siso.backend.anon.IpHasher;
+import com.siso.backend.comment.CommentRepository;
 import com.siso.backend.ratelimit.RateLimiter;
 import com.siso.backend.settings.AbuseSettings;
 import com.siso.backend.settings.AbuseSettingsRepository;
@@ -32,6 +33,7 @@ public class PairService {
 
     private final TopicPairRepository topicPairRepository;
     private final VoteRepository voteRepository;
+    private final CommentRepository commentRepository;
     private final RateLimiter rateLimiter;
     private final CrawlSettingsRepository crawlSettingsRepository;
     private final AnonUserRepository anonUserRepository;
@@ -43,6 +45,7 @@ public class PairService {
     public PairService(
             TopicPairRepository topicPairRepository,
             VoteRepository voteRepository,
+            CommentRepository commentRepository,
             RateLimiter rateLimiter,
             CrawlSettingsRepository crawlSettingsRepository,
             AnonUserRepository anonUserRepository,
@@ -52,6 +55,7 @@ public class PairService {
             SpikeDetector spikeDetector) {
         this.topicPairRepository = topicPairRepository;
         this.voteRepository = voteRepository;
+        this.commentRepository = commentRepository;
         this.rateLimiter = rateLimiter;
         this.crawlSettingsRepository = crawlSettingsRepository;
         this.anonUserRepository = anonUserRepository;
@@ -70,11 +74,15 @@ public class PairService {
 
         List<Long> pairIds = pairs.getContent().stream().map(TopicPair::getId).toList();
         Map<Long, Map<String, Double>> talliesByPairId = new HashMap<>();
+        Map<Long, Long> commentCountsByPairId = new HashMap<>();
         if (!pairIds.isEmpty()) {
             for (VoteRepository.WeightedStanceCountByPair row : voteRepository.sumWeightedByPairIdsGroupByStance(pairIds)) {
                 talliesByPairId
                         .computeIfAbsent(row.getPairId(), key -> new HashMap<>())
                         .put(row.getStance(), row.getTotal());
+            }
+            for (CommentRepository.CommentCountByPair row : commentRepository.countVisibleByPairIds(pairIds)) {
+                commentCountsByPairId.put(row.getPairId(), row.getTotal());
             }
         }
 
@@ -85,6 +93,7 @@ public class PairService {
                     tally.getOrDefault("left", 0.0),
                     tally.getOrDefault("right", 0.0),
                     tally.getOrDefault("neutral", 0.0),
+                    commentCountsByPairId.getOrDefault(pair.getId(), 0L),
                     null);
         });
     }
@@ -103,11 +112,17 @@ public class PairService {
                 ? null
                 : voteRepository.findByPair_IdAndAnonId(id, viewerAnonId).map(Vote::getStance).orElse(null);
 
+        long commentCount = commentRepository.countVisibleByPairIds(List.of(id)).stream()
+                .findFirst()
+                .map(CommentRepository.CommentCountByPair::getTotal)
+                .orElse(0L);
+
         return TopicPairDto.from(
                 pair,
                 tally.getOrDefault("left", 0.0),
                 tally.getOrDefault("right", 0.0),
                 tally.getOrDefault("neutral", 0.0),
+                commentCount,
                 myStance);
     }
 

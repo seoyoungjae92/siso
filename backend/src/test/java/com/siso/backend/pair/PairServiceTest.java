@@ -5,6 +5,7 @@ import com.siso.backend.abuse.TrustScoreService;
 import com.siso.backend.anon.AnonUser;
 import com.siso.backend.anon.AnonUserRepository;
 import com.siso.backend.anon.IpHasher;
+import com.siso.backend.comment.CommentRepository;
 import com.siso.backend.ratelimit.RateLimiter;
 import com.siso.backend.settings.AbuseSettings;
 import com.siso.backend.settings.AbuseSettingsRepository;
@@ -48,6 +49,9 @@ class PairServiceTest {
     private VoteRepository voteRepository;
 
     @Mock
+    private CommentRepository commentRepository;
+
+    @Mock
     private RateLimiter rateLimiter;
 
     @Mock
@@ -72,6 +76,7 @@ class PairServiceTest {
         return new PairService(
                 topicPairRepository,
                 voteRepository,
+                commentRepository,
                 rateLimiter,
                 crawlSettingsRepository,
                 anonUserRepository,
@@ -185,6 +190,33 @@ class PairServiceTest {
     }
 
     @Test
+    void getPairs_includesVisibleCommentCountPerPair() {
+        stubDisplayWindowDays(7);
+        PairService pairService = newService();
+        Pageable pageable = PageRequest.of(0, 20);
+
+        TopicPair pairA = mock(TopicPair.class);
+        when(pairA.getId()).thenReturn(100L);
+        TopicPair pairB = mock(TopicPair.class);
+        when(pairB.getId()).thenReturn(200L);
+
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+                        eq("active"), any(OffsetDateTime.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(pairA, pairB)));
+        when(voteRepository.sumWeightedByPairIdsGroupByStance(List.of(100L, 200L))).thenReturn(List.of());
+
+        CommentRepository.CommentCountByPair countA = mock(CommentRepository.CommentCountByPair.class);
+        when(countA.getPairId()).thenReturn(100L);
+        when(countA.getTotal()).thenReturn(3L);
+        when(commentRepository.countVisibleByPairIds(List.of(100L, 200L))).thenReturn(List.of(countA));
+
+        Page<TopicPairDto> result = pairService.getPairs(pageable);
+
+        assertThat(result.getContent().get(0).commentCount()).isEqualTo(3L);
+        assertThat(result.getContent().get(1).commentCount()).isEqualTo(0L);
+    }
+
+    @Test
     void getPair_pendingSynthesis_returnsNotFound() {
         when(topicPairRepository.findByIdAndStatusAndTitleIsNotNull(1L, "active")).thenReturn(Optional.empty());
         PairService pairService = newService();
@@ -204,10 +236,15 @@ class PairServiceTest {
         when(voteRepository.sumWeightedByPairIdGroupByStance(1L)).thenReturn(List.of(leftCount));
         when(voteRepository.findByPair_IdAndAnonId(1L, ANON_A)).thenReturn(Optional.empty());
 
+        CommentRepository.CommentCountByPair count = mock(CommentRepository.CommentCountByPair.class);
+        when(count.getTotal()).thenReturn(5L);
+        when(commentRepository.countVisibleByPairIds(List.of(1L))).thenReturn(List.of(count));
+
         TopicPairDto dto = newService().getPair(1L, ANON_A);
 
         assertThat(dto.leftVotes()).isEqualTo(1.8);
         assertThat(dto.rightVotes()).isEqualTo(0.0);
+        assertThat(dto.commentCount()).isEqualTo(5L);
     }
 
     @Test

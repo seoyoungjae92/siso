@@ -11,10 +11,16 @@ public record TopicPairDto(
         double leftVotes,
         double rightVotes,
         double neutralVotes,
+        long commentCount,
         String myStance) {
 
     public static TopicPairDto from(
-            TopicPair pair, double leftVotes, double rightVotes, double neutralVotes, String myStance) {
+            TopicPair pair,
+            double leftVotes,
+            double rightVotes,
+            double neutralVotes,
+            long commentCount,
+            String myStance) {
         return new TopicPairDto(
                 pair.getId(),
                 pair.getTitle(),
@@ -24,6 +30,7 @@ public record TopicPairDto(
                 leftVotes,
                 rightVotes,
                 neutralVotes,
+                commentCount,
                 myStance);
     }
 }
