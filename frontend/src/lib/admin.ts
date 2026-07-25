@@ -191,3 +191,20 @@ export async function fetchAbuseSettings(): Promise<AbuseSettings | null> {
   if (!res.ok) return null;
   return res.json();
 }
+
+export type PetitionSettings = {
+  eraco: string;
+  topN: number;
+  windowDays: number;
+  cacheTtlMinutes: number;
+  updatedAt: string;
+};
+
+export async function fetchPetitionSettings(): Promise<PetitionSettings | null> {
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/petition-settings`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
