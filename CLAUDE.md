@@ -318,9 +318,13 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
   크롤러 cron(D6) 주기를 정할 때 "최소 주 1회 이상 실행"을 하한선으로 둔다.
 - **D17**: `npm audit`이 잡는 postcss/sharp 취약점은 Next.js 내부 번들 이슈이며,
   현재 코드가 `next/image`를 쓰지 않아 실제로는 비활성 상태(런타임 미노출).
-  당장 조치는 불필요하되, 의존성 취약점을 놓치지 않도록 CI에 Dependabot(또는
-  `npm audit`/`./gradlew dependencyCheckAnalyze` 주기 실행)을 추가할 것 — 아직
-  미구현, 백로그.
+  당장 조치는 불필요. 의존성 취약점을 놓치지 않기 위한 장치는 GitHub
+  Dependabot으로 구현(`.github/dependabot.yml` — npm/gradle/pip/
+  github-actions 주 1회 버전 업데이트 PR, 저장소 vulnerability-alerts
+  활성화) — PR마다 도는 CI 게이트로 만들지 않은 이유는, 코드 변경 없이도
+  새 CVE가 뜰 수 있는 특성상 무관한 PR을 계속 빨갛게 만들기 때문
+  (`npm audit`을 CI 필수 스텝으로 넣으면 이미 알려진 위 postcss/sharp
+  건도 매번 실패로 뜸).
 - **D18**: 플레이그라운드는 매칭된 좌/우 원문을 그대로 노출하지 않는다.
   임베딩 매칭은 탐지 단계일 뿐이고, 실제 노출되는 제목/좌/우 입장 요약은
   그 매칭 결과를 시드로 LLM이 합성한 결과다(4.3절) — 원문의 비속어·
@@ -439,7 +443,7 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
     2FA가 없어 자격증명 유출에 취약 — 트래픽/운영자 늘어나면 재검토 대상.
 - **Claude Haiku 신고 분류(D11/D14)**: 댓글 본문이 외부(Anthropic) API로
   전송되는 새로운 데이터 흐름이 생김 — 법적 부분(19.3)과 직결.
-- CI에 의존성 취약점 자동 스캔(Dependabot 등)이 아직 없음 — D17 참고, 백로그.
+- 의존성 취약점 자동 스캔 — D17 참고, Dependabot으로 구현 완료.
 
 ### 19.3 법적 (Legal) — 웹서치 기반, 🔴 표시는 특히 변호사 확인 권장
 
@@ -514,8 +518,9 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
 - **모더레이션 용량**: D11(LLM 1차 분류)로 확장성은 확보했지만 최종 판단은
   여전히 1인 — "신고 처리 지연 N건 이상 누적 시 신규 댓글 임시 중단" 같은
   안전판 규칙이 아직 없음. M3 설계 시 추가 검토.
-- **의존성/보안 패치 프로세스**: 19.2의 Dependabot 미도입과 동일 이슈 —
-  1인 운영이라 수동으로 챙기기 어려우니 자동화가 특히 중요.
+- **의존성/보안 패치 프로세스**: Dependabot 도입(19.2)으로 취약점 탐지·
+  버전업 PR 생성은 자동화됨. 다만 그 PR을 실제로 리뷰·머지하는 건 여전히
+  1인 운영자 몫 — 방치되지 않도록 주기적으로 확인할 것.
 - **문서화 부재**: 공동 운영자가 생기거나 사고 발생 시 인수인계할 런북이
   없음 — 지금은 1인 사이드 프로젝트라 우선순위 낮음, 트래픽/운영자가 늘면
   재검토.
