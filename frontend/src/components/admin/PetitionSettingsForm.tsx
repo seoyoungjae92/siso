@@ -21,13 +21,7 @@ const NUMBER_FIELDS: {
     key: "windowDays",
     label: "집계 기간(일)",
     step: "1",
-    hint: "접수일 기준 이 기간 이내 청원만 집계(국민동의청원 동의 수집 기간과 동일하게 30일 권장)",
-  },
-  {
-    key: "cacheTtlMinutes",
-    label: "캐시 유지 시간(분)",
-    step: "1",
-    hint: "국회 Open API 응답을 이 시간만큼 캐싱",
+    hint: "접수일 기준 이 기간 이내 청원만 집계(국민동의청원 동의 수집 기간과 동일하게 30일 권장). 이 기간이 지나면 자동으로 마감 처리됨",
   },
 ];
 
@@ -36,7 +30,6 @@ export function PetitionSettingsForm({ initial }: { initial: PetitionSettings })
     eraco: initial.eraco,
     topN: initial.topN,
     windowDays: initial.windowDays,
-    cacheTtlMinutes: initial.cacheTtlMinutes,
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

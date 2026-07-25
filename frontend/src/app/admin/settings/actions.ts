@@ -108,7 +108,6 @@ export type PetitionSettingsInput = {
   eraco: string;
   topN: number;
   windowDays: number;
-  cacheTtlMinutes: number;
 };
 
 export async function postUpdatePetitionSettings(input: PetitionSettingsInput) {

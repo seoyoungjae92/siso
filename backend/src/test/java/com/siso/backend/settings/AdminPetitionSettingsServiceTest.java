@@ -31,7 +31,6 @@ class AdminPetitionSettingsServiceTest {
         ReflectionTestUtils.setField(settings, "eraco", "제22대");
         ReflectionTestUtils.setField(settings, "topN", 10);
         ReflectionTestUtils.setField(settings, "windowDays", 30);
-        ReflectionTestUtils.setField(settings, "cacheTtlMinutes", 30);
         ReflectionTestUtils.setField(settings, "updatedAt", OffsetDateTime.now());
         return settings;
     }
@@ -51,12 +50,11 @@ class AdminPetitionSettingsServiceTest {
         PetitionSettings settings = defaults();
         when(petitionSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
 
-        PetitionSettingsRequest request = new PetitionSettingsRequest("제23대", 15, 45, 60);
+        PetitionSettingsRequest request = new PetitionSettingsRequest("제23대", 15, 45);
         PetitionSettingsDto dto = newService().update(request);
 
         assertThat(dto.eraco()).isEqualTo("제23대");
         assertThat(dto.topN()).isEqualTo(15);
         assertThat(dto.windowDays()).isEqualTo(45);
-        assertThat(dto.cacheTtlMinutes()).isEqualTo(60);
     }
 }
