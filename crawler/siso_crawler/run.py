@@ -12,7 +12,11 @@ from .fetch import check_dead_link as _check_dead_link
 from .fetch import check_robots_allowed as _check_robots_allowed
 from .fetch import fetch_feed as _fetch_feed
 from .linkcheck import scan_dead_links
-from .llm_client import build_post_summarizer, build_topic_synthesizer
+from .llm_client import (
+    build_post_political_classifier,
+    build_post_summarizer,
+    build_topic_synthesizer,
+)
 from .matching import embed_pending_posts, match_pending_posts, prune_stale_candidates
 from .matching_repository import PsycopgMatchingRepository
 from .models import Source
@@ -37,6 +41,7 @@ def run_cycle(
     check_dead_link=_check_dead_link,
     topic_synthesizer=None,
     summarizer=None,
+    political_classifier=None,
 ) -> None:
     for source in sources:
         if not source.feed_url:
@@ -53,13 +58,16 @@ def run_cycle(
             logger.warning("소스 건너뜀(수집 실패): %s — %s", source.name, exc)
             continue
 
-        result = ingest_source(source, raw_bytes, post_repo, summarizer=summarizer)
+        result = ingest_source(
+            source, raw_bytes, post_repo, summarizer=summarizer, political_classifier=political_classifier
+        )
         logger.info(
-            "%s: fetched=%d inserted=%d skipped=%d",
+            "%s: fetched=%d inserted=%d skipped_duplicate=%d skipped_non_political=%d",
             source.name,
             result.fetched,
             result.inserted,
             result.skipped_duplicate,
+            result.skipped_non_political,
         )
 
         time.sleep(min_interval)
@@ -106,6 +114,7 @@ def main() -> None:
         api_key = os.environ.get("OPENROUTER_API_KEY")
         topic_synthesizer = build_topic_synthesizer(api_key, model=settings.synthesis_model)
         summarizer = build_post_summarizer(api_key, model=settings.synthesis_model)
+        political_classifier = build_post_political_classifier(api_key, model=settings.synthesis_model)
         run_cycle(
             sources,
             settings,
@@ -114,6 +123,7 @@ def main() -> None:
             embedder,
             topic_synthesizer=topic_synthesizer,
             summarizer=summarizer,
+            political_classifier=political_classifier,
         )
 
 

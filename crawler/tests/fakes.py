@@ -133,3 +133,23 @@ class FakePostSummarizer:
         if raw_summary in self.fail_on:
             raise SummarizationFailed("fixture failure")
         return f"{self.prefix}{raw_summary}"
+
+
+class FakePostPoliticalClassifier:
+    """title 기준으로 정치 여부를 미리 정해둔 결과로 반환. fail_on에 있는
+    title은 PoliticalClassificationFailed를 던져서 fail-open 폴백 경로를
+    테스트한다. 기본값은 True(정치) — 명시적으로 non_political에 등록된
+    것만 걸러진다."""
+
+    def __init__(self, non_political: set | None = None, fail_on: set | None = None):
+        self.non_political = non_political or set()
+        self.fail_on = fail_on or set()
+        self.calls: list[tuple[str, str]] = []
+
+    def is_political(self, title: str, summary: str) -> bool:
+        from siso_crawler.llm_client import PoliticalClassificationFailed
+
+        self.calls.append((title, summary))
+        if title in self.fail_on:
+            raise PoliticalClassificationFailed("fixture failure")
+        return title not in self.non_political
