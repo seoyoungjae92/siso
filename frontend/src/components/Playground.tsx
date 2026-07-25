@@ -57,6 +57,17 @@ export function Playground({
 
   return (
     <>
+      <div className="mb-2.5 flex items-center justify-end gap-3 text-[11px] text-[#8A877E]">
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-left-blue" />좌
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-playground" />중립
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-right-red" />우
+        </span>
+      </div>
       <PairCard pair={today} large />
       {rest.map((pair, index) => (
         <div key={pair.id}>
