@@ -16,11 +16,8 @@ export default async function Home() {
       <div className="hidden flex-1 grid-cols-[1fr_1.35fr_1fr] lg:grid">
         <FeedColumn side="left" posts={leftPosts.posts} hasMore={leftPosts.hasMore} />
         <section className="bg-pg-tint px-[18px] py-5">
-          <div className="mb-3.5 flex items-baseline gap-2">
-            <h2 className="text-[15px] font-extrabold tracking-tight text-playground">
-              플레이그라운드
-            </h2>
-            <span className="text-xs text-[#8A877E]">같은 주제, 좌우 병렬 비교</span>
+          <div className="mb-3.5">
+            <h2 className="text-[15px] font-extrabold tracking-tight text-playground">놀이터</h2>
           </div>
           <Playground pairs={pairs.pairs} hasMore={pairs.hasMore} />
         </section>

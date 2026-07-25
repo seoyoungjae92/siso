@@ -28,7 +28,7 @@ export default function TermsPage() {
           <p>서비스는 다음과 같은 기능을 제공합니다.</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>좌·우 성향 커뮤니티에 게시된 글의 제목, 요약, 출처를 병렬로 모아 보여주는 피드</li>
-            <li>같은 주제로 매칭된 좌·우 글을 비교해 볼 수 있는 &ldquo;플레이그라운드&rdquo;</li>
+            <li>같은 주제에 대한 좌·우 입장을 나란히 비교해 볼 수 있는 &ldquo;놀이터&rdquo;</li>
             <li>회원가입 없이 익명으로 참여할 수 있는 댓글, 추천, 입장 투표</li>
           </ul>
         </section>
