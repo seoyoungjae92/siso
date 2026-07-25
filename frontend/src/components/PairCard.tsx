@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { VoteStampIcon } from "@/components/VoteStampIcon";
 import { calculateVotePercentages, type TopicPair } from "@/lib/pairs";
 
 function MiniVoteBar({ pair }: { pair: TopicPair }) {
@@ -28,7 +29,12 @@ function CardMeta({ pair }: { pair: TopicPair }) {
 
   return (
     <div className="mt-2 flex items-center gap-3 text-[11px] text-[#8A877E]">
-      {voteCount > 0 && <span>🗳 {voteCount}명 투표</span>}
+      {voteCount > 0 && (
+        <span className="flex items-center gap-1">
+          <VoteStampIcon />
+          {voteCount}명 투표
+        </span>
+      )}
       {pair.commentCount > 0 && <span>💬 {pair.commentCount}</span>}
     </div>
   );
