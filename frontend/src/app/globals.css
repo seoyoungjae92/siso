@@ -30,3 +30,21 @@ body {
   background: var(--paper);
   color: var(--ink);
 }
+
+/* 자동 새로고침으로 새 글이 목록 맨 위에 붙을 때 살짝 슬라이드+페이드로
+   나타나게 하는 애니메이션 — 아래 기존 카드들은 자연스러운 DOM 리플로우로
+   밀려 내려간다 */
+@keyframes new-item-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-new-item {
+  animation: new-item-appear 0.4s ease-out;
+}
