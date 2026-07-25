@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { postVote } from "@/app/pairs/[id]/actions";
 import type { TopicPairDetail } from "@/lib/comments";
+import { calculateVotePercentages } from "@/lib/pairs";
 
 type Stance = "left" | "right" | "neutral";
 
@@ -16,11 +17,7 @@ const STANCE_CONFIG: { value: Stance; label: string }[] = [
 export function VoteWidget({ pairId, pair }: { pairId: string; pair: TopicPairDetail }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const total = pair.leftVotes + pair.rightVotes + pair.neutralVotes;
-
-  const leftPct = total === 0 ? 0 : Math.round((pair.leftVotes / total) * 100);
-  const neutralPct = total === 0 ? 0 : Math.round((pair.neutralVotes / total) * 100);
-  const rightPct = total === 0 ? 0 : 100 - leftPct - neutralPct;
+  const { leftPct, neutralPct, rightPct } = calculateVotePercentages(pair);
 
   function handleVote(stance: Stance) {
     setError(null);

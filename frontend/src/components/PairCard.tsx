@@ -1,14 +1,19 @@
 import Link from "next/link";
 
-import { ACCENT } from "@/components/PostCard";
-import type { TopicPair } from "@/lib/pairs";
-import type { Side } from "@/lib/posts";
+import { calculateVotePercentages, type TopicPair } from "@/lib/pairs";
 
-function StanceHalf({ side, text }: { side: Side; text: string }) {
+function MiniVoteBar({ pair }: { pair: TopicPair }) {
+  const { leftPct, neutralPct, rightPct, total } = calculateVotePercentages(pair);
+
+  if (total === 0) {
+    return <div className="h-1.5 w-full rounded-full bg-line" />;
+  }
+
   return (
-    <div className="p-3">
-      <p className={`mb-1 text-[11px] font-bold ${ACCENT[side]}`}>{side === "left" ? "좌 시각" : "우 시각"}</p>
-      <p className="line-clamp-3 text-[12.5px] text-[#6B6960]">{text}</p>
+    <div className="flex h-1.5 w-full overflow-hidden rounded-full">
+      <span className="block h-full bg-left-blue" style={{ width: `${leftPct}%` }} />
+      <span className="block h-full bg-playground" style={{ width: `${neutralPct}%` }} />
+      <span className="block h-full bg-right-red" style={{ width: `${rightPct}%` }} />
     </div>
   );
 }
@@ -24,10 +29,9 @@ export function PairCard({ pair, large = false }: { pair: TopicPair; large?: boo
           <b className="text-[13px] tracking-wide">🔥 오늘의 링</b>
         </div>
       )}
-      <h4 className="line-clamp-2 px-3.5 pt-3 text-[13px] font-bold text-ink">{pair.title}</h4>
-      <div className="grid grid-cols-2 divide-x divide-line">
-        <StanceHalf side="left" text={pair.leftStance} />
-        <StanceHalf side="right" text={pair.rightStance} />
+      <div className="p-4">
+        <h4 className="mb-3 line-clamp-3 text-[15px] font-bold leading-snug text-ink">{pair.title}</h4>
+        <MiniVoteBar pair={pair} />
       </div>
     </Link>
   );

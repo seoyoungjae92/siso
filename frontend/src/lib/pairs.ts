@@ -6,7 +6,25 @@ export type TopicPair = {
   leftStance: string;
   rightStance: string;
   createdAt: string;
+  leftVotes: number;
+  rightVotes: number;
+  neutralVotes: number;
 };
+
+export function calculateVotePercentages(votes: {
+  leftVotes: number;
+  rightVotes: number;
+  neutralVotes: number;
+}): { leftPct: number; neutralPct: number; rightPct: number; total: number } {
+  const total = votes.leftVotes + votes.rightVotes + votes.neutralVotes;
+  if (total === 0) {
+    return { leftPct: 0, neutralPct: 0, rightPct: 0, total: 0 };
+  }
+  const leftPct = Math.round((votes.leftVotes / total) * 100);
+  const neutralPct = Math.round((votes.neutralVotes / total) * 100);
+  const rightPct = 100 - leftPct - neutralPct;
+  return { leftPct, neutralPct, rightPct, total };
+}
 
 type PairsPage = {
   content: TopicPair[];

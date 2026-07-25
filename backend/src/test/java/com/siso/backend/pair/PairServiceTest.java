@@ -131,6 +131,8 @@ class PairServiceTest {
                         eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(pair)));
 
+        when(voteRepository.sumWeightedByPairIdsGroupByStance(List.of(100L))).thenReturn(List.of());
+
         Page<TopicPairDto> result = pairService.getPairs(pageable);
 
         assertThat(result.getContent()).hasSize(1);
@@ -139,6 +141,47 @@ class PairServiceTest {
         assertThat(dto.title()).isEqualTo("합성된 주제 제목");
         assertThat(dto.leftStance()).isEqualTo("좌 입장 요약");
         assertThat(dto.rightStance()).isEqualTo("우 입장 요약");
+        assertThat(dto.leftVotes()).isEqualTo(0.0);
+        assertThat(dto.rightVotes()).isEqualTo(0.0);
+        assertThat(dto.neutralVotes()).isEqualTo(0.0);
+    }
+
+    @Test
+    void getPairs_includesTrustWeightedVoteTallyPerPair() {
+        stubDisplayWindowDays(7);
+        PairService pairService = newService();
+        Pageable pageable = PageRequest.of(0, 20);
+
+        TopicPair pairA = mock(TopicPair.class);
+        when(pairA.getId()).thenReturn(100L);
+        TopicPair pairB = mock(TopicPair.class);
+        when(pairB.getId()).thenReturn(200L);
+
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+                        eq("active"), any(OffsetDateTime.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(pairA, pairB)));
+
+        VoteRepository.WeightedStanceCountByPair rowA = mock(VoteRepository.WeightedStanceCountByPair.class);
+        when(rowA.getPairId()).thenReturn(100L);
+        when(rowA.getStance()).thenReturn("left");
+        when(rowA.getTotal()).thenReturn(2.5);
+
+        VoteRepository.WeightedStanceCountByPair rowB = mock(VoteRepository.WeightedStanceCountByPair.class);
+        when(rowB.getPairId()).thenReturn(200L);
+        when(rowB.getStance()).thenReturn("right");
+        when(rowB.getTotal()).thenReturn(1.2);
+
+        when(voteRepository.sumWeightedByPairIdsGroupByStance(List.of(100L, 200L))).thenReturn(List.of(rowA, rowB));
+
+        Page<TopicPairDto> result = pairService.getPairs(pageable);
+
+        TopicPairDto dtoA = result.getContent().get(0);
+        assertThat(dtoA.leftVotes()).isEqualTo(2.5);
+        assertThat(dtoA.rightVotes()).isEqualTo(0.0);
+
+        TopicPairDto dtoB = result.getContent().get(1);
+        assertThat(dtoB.rightVotes()).isEqualTo(1.2);
+        assertThat(dtoB.leftVotes()).isEqualTo(0.0);
     }
 
     @Test
