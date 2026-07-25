@@ -41,8 +41,10 @@ public class Comment {
     @Column(nullable = false)
     private String body;
 
+    // 7절: IP 해시는 수집일로부터 90일 후 파기 대상이라 null 허용 —
+    // RetentionPurgeService가 오래된 값을 null로 지운다.
     @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "ip_hash", nullable = false, length = 64)
+    @Column(name = "ip_hash", length = 64)
     private String ipHash;
 
     private String stance;

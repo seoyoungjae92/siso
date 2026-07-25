@@ -1,0 +1,1 @@
+ALTER TABLE comments ALTER COLUMN ip_hash DROP NOT NULL;

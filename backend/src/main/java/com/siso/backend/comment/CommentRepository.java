@@ -3,6 +3,7 @@ package com.siso.backend.comment;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -30,4 +31,11 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
         long getTotal();
     }
+
+    // 7절: IP 해시는 수집일(작성일)로부터 90일 후 파기 — 댓글 본문/작성자
+    // 정보는 그대로 두고 ip_hash만 지운다(현재 코드베이스에서 이 값을
+    // 읽는 곳이 없음 — 어뷰징 탐지는 anon_users.ip_hash_recent를 씀).
+    @Modifying
+    @Query("UPDATE Comment c SET c.ipHash = NULL WHERE c.createdAt < :cutoff AND c.ipHash IS NOT NULL")
+    int purgeIpHashOlderThan(@Param("cutoff") OffsetDateTime cutoff);
 }
