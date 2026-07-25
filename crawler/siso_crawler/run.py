@@ -8,9 +8,11 @@ import psycopg
 
 from .embedding import SentenceTransformerEmbeddingProvider
 from .fetch import CrawlNotAllowed
+from .fetch import check_dead_link as _check_dead_link
 from .fetch import check_robots_allowed as _check_robots_allowed
 from .fetch import fetch_feed as _fetch_feed
-from .llm_client import build_topic_synthesizer
+from .linkcheck import scan_dead_links
+from .llm_client import build_post_summarizer, build_topic_synthesizer
 from .matching import embed_pending_posts, match_pending_posts, prune_stale_candidates
 from .matching_repository import PsycopgMatchingRepository
 from .models import Source
@@ -32,7 +34,9 @@ def run_cycle(
     embedder,
     check_robots_allowed=_check_robots_allowed,
     fetch_feed=_fetch_feed,
+    check_dead_link=_check_dead_link,
     topic_synthesizer=None,
+    summarizer=None,
 ) -> None:
     for source in sources:
         if not source.feed_url:
@@ -49,7 +53,7 @@ def run_cycle(
             logger.warning("소스 건너뜀(수집 실패): %s — %s", source.name, exc)
             continue
 
-        result = ingest_source(source, raw_bytes, post_repo)
+        result = ingest_source(source, raw_bytes, post_repo, summarizer=summarizer)
         logger.info(
             "%s: fetched=%d inserted=%d skipped=%d",
             source.name,
@@ -74,6 +78,14 @@ def run_cycle(
     )
     logger.info("정리(prune): %d건 삭제", pruned)
 
+    deleted = scan_dead_links(
+        matching_repo,
+        display_window_days=settings.display_window_days,
+        check_robots_allowed=check_robots_allowed,
+        check_dead_link=check_dead_link,
+    )
+    logger.info("데드링크 정리: %d건 삭제", deleted)
+
     if topic_synthesizer is not None:
         synthesized = synthesize_pending_topics(
             matching_repo, topic_synthesizer, limit=settings.synthesis_limit
@@ -91,10 +103,18 @@ def main() -> None:
         post_repo = PsycopgPostRepository(conn)
         matching_repo = PsycopgMatchingRepository(conn)
         embedder = SentenceTransformerEmbeddingProvider()
-        topic_synthesizer = build_topic_synthesizer(
-            os.environ.get("OPENROUTER_API_KEY"), model=settings.synthesis_model
+        api_key = os.environ.get("OPENROUTER_API_KEY")
+        topic_synthesizer = build_topic_synthesizer(api_key, model=settings.synthesis_model)
+        summarizer = build_post_summarizer(api_key, model=settings.synthesis_model)
+        run_cycle(
+            sources,
+            settings,
+            post_repo,
+            matching_repo,
+            embedder,
+            topic_synthesizer=topic_synthesizer,
+            summarizer=summarizer,
         )
-        run_cycle(sources, settings, post_repo, matching_repo, embedder, topic_synthesizer=topic_synthesizer)
 
 
 if __name__ == "__main__":
