@@ -1,9 +1,40 @@
+"use client";
+
+import { useState } from "react";
+
 import type { Petition } from "@/lib/petitions";
 
+const COLLAPSED_COUNT = 3;
+
+const RANK_BADGE_STYLE: Record<number, string> = {
+  0: "bg-playground text-white text-[13px]",
+  1: "bg-playground/15 text-playground text-[12px]",
+  2: "bg-playground/8 text-playground text-[12px]",
+};
+
+function RankBadge({ index }: { index: number }) {
+  const style = RANK_BADGE_STYLE[index] ?? "text-[#8A877E] text-[12px]";
+  const filled = index in RANK_BADGE_STYLE;
+  return (
+    <span
+      className={`flex h-5 w-5 shrink-0 items-center justify-center font-extrabold ${style} ${
+        filled ? "rounded-full" : ""
+      }`}
+    >
+      {index + 1}
+    </span>
+  );
+}
+
 export function PetitionWidget({ petitions }: { petitions: Petition[] }) {
+  const [expanded, setExpanded] = useState(false);
+
   if (petitions.length === 0) {
     return null;
   }
+
+  const visible = expanded ? petitions : petitions.slice(0, COLLAPSED_COUNT);
+  const hasMore = petitions.length > COLLAPSED_COUNT;
 
   return (
     <div className="mb-2.5 overflow-hidden rounded-xl border border-line bg-white">
@@ -11,7 +42,7 @@ export function PetitionWidget({ petitions }: { petitions: Petition[] }) {
         <b className="text-[13px] tracking-wide">🔥 실시간 청원 랭킹</b>
       </div>
       <ol className="divide-y divide-line">
-        {petitions.map((petition, index) => (
+        {visible.map((petition, index) => (
           <li key={petition.id}>
             <a
               href={petition.linkUrl}
@@ -19,9 +50,7 @@ export function PetitionWidget({ petitions }: { petitions: Petition[] }) {
               rel="noopener noreferrer"
               className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-pg-tint"
             >
-              <span className="w-4 shrink-0 text-[13px] font-extrabold text-playground">
-                {index + 1}
-              </span>
+              <RankBadge index={index} />
               <span className="line-clamp-1 flex-1 text-[13px] font-medium text-ink">
                 {petition.title}
               </span>
@@ -32,6 +61,15 @@ export function PetitionWidget({ petitions }: { petitions: Petition[] }) {
           </li>
         ))}
       </ol>
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className="block w-full border-t border-line py-2 text-center text-xs font-bold text-[#8A877E] hover:bg-pg-tint"
+        >
+          {expanded ? "접기 ▲" : `더보기 (${petitions.length - COLLAPSED_COUNT}) ▼`}
+        </button>
+      )}
     </div>
   );
 }
