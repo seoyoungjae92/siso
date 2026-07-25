@@ -1,19 +1,22 @@
 import { AbuseSettingsForm } from "@/components/admin/AbuseSettingsForm";
 import { CrawlSettingsForm } from "@/components/admin/CrawlSettingsForm";
 import { ModerationSettingsForm } from "@/components/admin/ModerationSettingsForm";
+import { PetitionSettingsForm } from "@/components/admin/PetitionSettingsForm";
 import {
   fetchAbuseSettings,
   fetchCrawlSettings,
   fetchModerationSettings,
+  fetchPetitionSettings,
   requireAdmin,
 } from "@/lib/admin";
 
 export default async function AdminSettingsPage() {
   await requireAdmin();
-  const [crawlSettings, moderationSettings, abuseSettings] = await Promise.all([
+  const [crawlSettings, moderationSettings, abuseSettings, petitionSettings] = await Promise.all([
     fetchCrawlSettings(),
     fetchModerationSettings(),
     fetchAbuseSettings(),
+    fetchPetitionSettings(),
   ]);
 
   return (
@@ -38,6 +41,14 @@ export default async function AdminSettingsPage() {
 
       {abuseSettings ? (
         <AbuseSettingsForm initial={abuseSettings} />
+      ) : (
+        <p className="text-sm text-[#8A877E]">설정을 불러오지 못했습니다.</p>
+      )}
+
+      <h2 className="mb-4 mt-10 text-lg font-extrabold tracking-tight">국민청원 위젯 설정</h2>
+
+      {petitionSettings ? (
+        <PetitionSettingsForm initial={petitionSettings} />
       ) : (
         <p className="text-sm text-[#8A877E]">설정을 불러오지 못했습니다.</p>
       )}

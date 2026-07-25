@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FeedColumn } from "@/components/FeedColumn";
 import { Playground } from "@/components/Playground";
 import type { TopicPair } from "@/lib/pairs";
+import type { Petition } from "@/lib/petitions";
 import type { PostSummary } from "@/lib/posts";
 
 type Tab = "left" | "playground" | "right";
@@ -24,6 +25,7 @@ export function MobileTabs({
   rightHasMore,
   pairs,
   pairsHasMore,
+  petitions,
 }: {
   leftPosts: PostSummary[];
   leftHasMore: boolean;
@@ -31,6 +33,7 @@ export function MobileTabs({
   rightHasMore: boolean;
   pairs: TopicPair[];
   pairsHasMore: boolean;
+  petitions: Petition[];
 }) {
   const [index, setIndex] = useState(TABS.indexOf("playground"));
   const [dragPx, setDragPx] = useState(0);
@@ -143,7 +146,7 @@ export function MobileTabs({
             <FeedColumn side="left" posts={leftPosts} hasMore={leftHasMore} />
           </div>
           <div className="h-full w-1/3 shrink-0 overflow-y-auto bg-pg-tint px-[14px] py-4">
-            <Playground pairs={pairs} hasMore={pairsHasMore} />
+            <Playground pairs={pairs} hasMore={pairsHasMore} petitions={petitions} />
           </div>
           <div className="h-full w-1/3 shrink-0 overflow-y-auto">
             <FeedColumn side="right" posts={rightPosts} hasMore={rightHasMore} />

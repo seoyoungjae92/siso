@@ -5,16 +5,20 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { loadMorePairs } from "@/app/actions";
 import { AdSlot } from "@/components/AdSlot";
 import { PairCard } from "@/components/PairCard";
+import { PetitionWidget } from "@/components/PetitionWidget";
 import type { TopicPair } from "@/lib/pairs";
+import type { Petition } from "@/lib/petitions";
 
 const AD_EVERY = 3;
 
 export function Playground({
   pairs: initialPairs,
   hasMore: initialHasMore,
+  petitions,
 }: {
   pairs: TopicPair[];
   hasMore: boolean;
+  petitions: Petition[];
 }) {
   const [pairs, setPairs] = useState(initialPairs);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -50,13 +54,19 @@ export function Playground({
   }, [hasMore]);
 
   if (pairs.length === 0) {
-    return <p className="text-sm text-[#6B6960]">아직 매칭된 주제가 없습니다.</p>;
+    return (
+      <>
+        <PetitionWidget petitions={petitions} />
+        <p className="text-sm text-[#6B6960]">아직 매칭된 주제가 없습니다.</p>
+      </>
+    );
   }
 
   const [today, ...rest] = pairs;
 
   return (
     <>
+      <PetitionWidget petitions={petitions} />
       <div className="mb-2.5 flex items-center justify-end gap-3 text-[11px] text-[#8A877E]">
         <span className="flex items-center gap-1">
           <span className="h-2 w-2 rounded-full bg-left-blue" />좌

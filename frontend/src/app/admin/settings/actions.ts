@@ -103,3 +103,30 @@ export async function postUpdateAbuseSettings(input: AbuseSettingsInput) {
   revalidatePath("/admin/settings");
   return { ok: true };
 }
+
+export type PetitionSettingsInput = {
+  eraco: string;
+  topN: number;
+  windowDays: number;
+  cacheTtlMinutes: number;
+};
+
+export async function postUpdatePetitionSettings(input: PetitionSettingsInput) {
+  await requireAdmin();
+
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/petition-settings`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: adminAuthHeader(),
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    return { ok: false, error: await extractErrorMessage(res, "처리에 실패했습니다.") };
+  }
+
+  revalidatePath("/admin/settings");
+  return { ok: true };
+}
