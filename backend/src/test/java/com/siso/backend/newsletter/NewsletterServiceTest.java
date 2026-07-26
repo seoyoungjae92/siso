@@ -1,10 +1,12 @@
 package com.siso.backend.newsletter;
 
+import com.siso.backend.ratelimit.RateLimiter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
@@ -29,8 +31,12 @@ class NewsletterServiceTest {
     @Mock
     private ResendEmailClient resendEmailClient;
 
+    @Mock
+    private RateLimiter rateLimiter;
+
     private NewsletterService newService() {
-        return new NewsletterService(newsletterSubscriberRepository, resendEmailClient, "http://localhost:3000");
+        return new NewsletterService(
+                newsletterSubscriberRepository, resendEmailClient, rateLimiter, "http://localhost:3000");
     }
 
     @Test
@@ -44,6 +50,19 @@ class NewsletterServiceTest {
         assertThat(captor.getValue().getEmail()).isEqualTo("a@example.com");
         assertThat(captor.getValue().getStatus()).isEqualTo("pending");
         verify(resendEmailClient).send(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void subscribe_rateLimited_isRejectedBeforeAnyLookup() {
+        doThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS))
+                .when(rateLimiter).checkOrThrow("newsletter-subscribe", "a@example.com");
+
+        assertThatThrownBy(() -> newService().subscribe("a@example.com"))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+
+        verify(newsletterSubscriberRepository, never()).findByEmail(any());
     }
 
     @Test
@@ -67,11 +86,9 @@ class NewsletterServiceTest {
     }
 
     @Test
-    void subscribe_previouslyUnsubscribed_resetsToPendingWithNewToken() {
+    void subscribe_pendingSubscriber_resendsConfirmationWithNewToken() {
         UUID oldToken = UUID.randomUUID();
         NewsletterSubscriber subscriber = new NewsletterSubscriber("a@example.com", oldToken, OffsetDateTime.now());
-        subscriber.confirm(OffsetDateTime.now());
-        subscriber.unsubscribe(OffsetDateTime.now());
         when(newsletterSubscriberRepository.findByEmail("a@example.com")).thenReturn(Optional.of(subscriber));
 
         newService().subscribe("a@example.com");
@@ -120,18 +137,7 @@ class NewsletterServiceTest {
     }
 
     @Test
-    void confirm_alreadyUnsubscribed_isRejected() {
-        UUID token = UUID.randomUUID();
-        NewsletterSubscriber subscriber = new NewsletterSubscriber("a@example.com", token, OffsetDateTime.now());
-        subscriber.confirm(OffsetDateTime.now());
-        subscriber.unsubscribe(OffsetDateTime.now());
-        when(newsletterSubscriberRepository.findByToken(token)).thenReturn(Optional.of(subscriber));
-
-        assertThatThrownBy(() -> newService().confirm(token.toString())).isInstanceOf(ResponseStatusException.class);
-    }
-
-    @Test
-    void unsubscribe_confirmedSubscriber_becomesUnsubscribed() {
+    void unsubscribe_confirmedSubscriber_deletesSubscriber() {
         UUID token = UUID.randomUUID();
         NewsletterSubscriber subscriber = new NewsletterSubscriber("a@example.com", token, OffsetDateTime.now());
         subscriber.confirm(OffsetDateTime.now());
@@ -139,7 +145,7 @@ class NewsletterServiceTest {
 
         newService().unsubscribe(token.toString());
 
-        assertThat(subscriber.getStatus()).isEqualTo("unsubscribed");
+        verify(newsletterSubscriberRepository).delete(subscriber);
     }
 
     @Test

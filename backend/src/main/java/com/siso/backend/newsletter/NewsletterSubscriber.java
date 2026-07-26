@@ -33,9 +33,6 @@ public class NewsletterSubscriber {
     @Column(name = "confirmed_at")
     private OffsetDateTime confirmedAt;
 
-    @Column(name = "unsubscribed_at")
-    private OffsetDateTime unsubscribedAt;
-
     protected NewsletterSubscriber() {
     }
 
@@ -70,18 +67,9 @@ public class NewsletterSubscriber {
         return confirmedAt;
     }
 
-    public OffsetDateTime getUnsubscribedAt() {
-        return unsubscribedAt;
-    }
-
     public void confirm(OffsetDateTime now) {
         this.status = "confirmed";
         this.confirmedAt = now;
-    }
-
-    public void unsubscribe(OffsetDateTime now) {
-        this.status = "unsubscribed";
-        this.unsubscribedAt = now;
     }
 
     /** 재구독 시 pending으로 되돌리고 새 토큰을 발급 — 이전 토큰은 무효화된다. */
@@ -89,6 +77,5 @@ public class NewsletterSubscriber {
         this.status = "pending";
         this.token = newToken;
         this.confirmedAt = null;
-        this.unsubscribedAt = null;
     }
 }

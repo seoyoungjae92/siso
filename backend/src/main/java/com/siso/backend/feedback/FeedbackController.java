@@ -1,6 +1,7 @@
 package com.siso.backend.feedback;
 
 import com.siso.backend.anon.AnonIdHeader;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,7 +22,7 @@ public class FeedbackController {
     @ResponseStatus(HttpStatus.CREATED)
     public void create(
             @RequestHeader(value = "X-Anon-Id", required = false) String anonId,
-            @RequestBody FeedbackCreateRequest request) {
+            @Valid @RequestBody FeedbackCreateRequest request) {
         feedbackService.create(AnonIdHeader.parse(anonId, true), request);
     }
 }
