@@ -6,6 +6,7 @@ import { CommentThread } from "@/components/CommentThread";
 import { StanceCard } from "@/components/StanceCard";
 import { VoteWidget } from "@/components/VoteWidget";
 import { fetchComments, fetchPairDetail } from "@/lib/comments";
+import { fetchElectionMode } from "@/lib/election";
 
 export default async function PairDetailPage({
   params,
@@ -13,7 +14,11 @@ export default async function PairDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [pair, comments] = await Promise.all([fetchPairDetail(id), fetchComments(id)]);
+  const [pair, comments, electionMode] = await Promise.all([
+    fetchPairDetail(id),
+    fetchComments(id),
+    fetchElectionMode(),
+  ]);
 
   if (!pair) {
     notFound();
@@ -37,7 +42,13 @@ export default async function PairDetailPage({
           <StanceCard side="left" text={pair.leftStance} />
           <StanceCard side="right" text={pair.rightStance} />
         </div>
-        <VoteWidget pairId={id} pair={pair} />
+        {electionMode ? (
+          <p className="mb-4 rounded-[10px] border border-line bg-[#F5F4F0] px-3 py-2.5 text-[12px] text-[#6B6960]">
+            선거 기간 중에는 투표 기능이 일시 중단됩니다.
+          </p>
+        ) : (
+          <VoteWidget pairId={id} pair={pair} />
+        )}
         <div className="mt-4">
           <AdSlot position="discussion" />
         </div>

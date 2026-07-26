@@ -26,6 +26,7 @@ export function MobileTabs({
   pairs,
   pairsHasMore,
   petitions,
+  hideVotes = false,
 }: {
   leftPosts: PostSummary[];
   leftHasMore: boolean;
@@ -34,6 +35,7 @@ export function MobileTabs({
   pairs: TopicPair[];
   pairsHasMore: boolean;
   petitions: Petition[];
+  hideVotes?: boolean;
 }) {
   const [index, setIndex] = useState(TABS.indexOf("playground"));
   const [dragPx, setDragPx] = useState(0);
@@ -146,7 +148,7 @@ export function MobileTabs({
             <FeedColumn side="left" posts={leftPosts} hasMore={leftHasMore} />
           </div>
           <div className="h-full w-1/3 shrink-0 overflow-y-auto bg-pg-tint px-[14px] py-4">
-            <Playground pairs={pairs} hasMore={pairsHasMore} petitions={petitions} />
+            <Playground pairs={pairs} hasMore={pairsHasMore} petitions={petitions} hideVotes={hideVotes} />
           </div>
           <div className="h-full w-1/3 shrink-0 overflow-y-auto">
             <FeedColumn side="right" posts={rightPosts} hasMore={rightHasMore} />

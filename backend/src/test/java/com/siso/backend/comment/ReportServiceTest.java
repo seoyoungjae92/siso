@@ -3,8 +3,11 @@ package com.siso.backend.comment;
 import com.siso.backend.alert.AdminAlert;
 import com.siso.backend.alert.AdminAlertRepository;
 import com.siso.backend.pair.TopicPair;
+import com.siso.backend.settings.ElectionSettings;
+import com.siso.backend.settings.ElectionSettingsRepository;
 import com.siso.backend.settings.ModerationSettings;
 import com.siso.backend.settings.ModerationSettingsRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -21,6 +24,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,8 +46,21 @@ class ReportServiceTest {
     @Mock
     private ModerationSettingsRepository moderationSettingsRepository;
 
+    @Mock
+    private ElectionSettingsRepository electionSettingsRepository;
+
     private ReportService newService() {
-        return new ReportService(reportRepository, commentRepository, adminAlertRepository, moderationSettingsRepository);
+        return new ReportService(
+                reportRepository,
+                commentRepository,
+                adminAlertRepository,
+                moderationSettingsRepository,
+                electionSettingsRepository);
+    }
+
+    @BeforeEach
+    void stubElectionModeDisabledByDefault() {
+        stubElectionMode(false, 5);
     }
 
     private Comment commentWithId(long id) {
@@ -57,6 +74,13 @@ class ReportServiceTest {
         ModerationSettings settings = Mockito.mock(ModerationSettings.class);
         when(settings.getAutoBlindReportThreshold()).thenReturn(threshold);
         when(moderationSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
+    }
+
+    private void stubElectionMode(boolean enabled, int overrideThreshold) {
+        ElectionSettings settings = Mockito.mock(ElectionSettings.class);
+        lenient().when(settings.isEnabled()).thenReturn(enabled);
+        lenient().when(settings.getOverrideAutoBlindThreshold()).thenReturn(overrideThreshold);
+        lenient().when(electionSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
     }
 
     @Test
@@ -151,5 +175,38 @@ class ReportServiceTest {
         service.create(1L, ANON_A, "abuse", null);
 
         assertThat(comment.getStatus()).isEqualTo("blinded");
+    }
+
+    @Test
+    void create_electionModeEnabled_lowersThresholdBelowConfiguredValue() {
+        ReportService service = newService();
+        Comment comment = commentWithId(1L);
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        when(reportRepository.existsByComment_IdAndAnonId(1L, ANON_A)).thenReturn(false);
+        when(reportRepository.countByComment_Id(1L)).thenReturn(5L);
+        when(reportRepository.findByStatusAndComment_Id("pending", 1L)).thenReturn(List.of());
+        stubAutoBlindThreshold(20);
+        stubElectionMode(true, 5);
+
+        service.create(1L, ANON_A, "abuse", null);
+
+        assertThat(comment.getStatus()).isEqualTo("blinded");
+    }
+
+    @Test
+    void create_electionModeEnabled_neverRaisesThresholdAboveConfiguredValue() {
+        ReportService service = newService();
+        Comment comment = commentWithId(1L);
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        when(reportRepository.existsByComment_IdAndAnonId(1L, ANON_A)).thenReturn(false);
+        when(reportRepository.countByComment_Id(1L)).thenReturn(8L);
+        stubAutoBlindThreshold(10);
+        // override(20)이 평소 설정(10)보다 크더라도 더 엄격한(낮은) 값만 적용 —
+        // 선거 모드가 임계값을 올려버리면 안 됨
+        stubElectionMode(true, 20);
+
+        service.create(1L, ANON_A, "abuse", null);
+
+        assertThat(comment.getStatus()).isEqualTo("visible");
     }
 }
