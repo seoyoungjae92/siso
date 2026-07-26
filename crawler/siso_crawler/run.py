@@ -11,6 +11,7 @@ from .fetch import CrawlNotAllowed
 from .fetch import check_dead_link as _check_dead_link
 from .fetch import check_robots_allowed as _check_robots_allowed
 from .fetch import fetch_feed as _fetch_feed
+from .fetch import fetch_robots_parser as _fetch_robots_parser
 from .linkcheck import scan_dead_links
 from .llm_client import (
     build_post_political_classifier,
@@ -39,6 +40,7 @@ def run_cycle(
     check_robots_allowed=_check_robots_allowed,
     fetch_feed=_fetch_feed,
     check_dead_link=_check_dead_link,
+    fetch_robots_parser=_fetch_robots_parser,
     topic_synthesizer=None,
     summarizer=None,
     political_classifier=None,
@@ -89,7 +91,7 @@ def run_cycle(
     deleted = scan_dead_links(
         matching_repo,
         display_window_days=settings.display_window_days,
-        check_robots_allowed=check_robots_allowed,
+        fetch_robots_parser=fetch_robots_parser,
         check_dead_link=check_dead_link,
     )
     logger.info("데드링크 정리: %d건 삭제", deleted)
