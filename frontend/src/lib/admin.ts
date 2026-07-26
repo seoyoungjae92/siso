@@ -272,3 +272,18 @@ export async function fetchAdminFeedback(category?: string, status?: string): Pr
   if (!res.ok) return [];
   return res.json();
 }
+
+export type NewsletterStats = {
+  pending: number;
+  confirmed: number;
+  unsubscribed: number;
+};
+
+export async function fetchNewsletterStats(): Promise<NewsletterStats | null> {
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/newsletter/stats`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
