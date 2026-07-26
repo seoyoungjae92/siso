@@ -19,17 +19,18 @@ function MiniVoteBar({ pair }: { pair: TopicPair }) {
   );
 }
 
-function CardMeta({ pair }: { pair: TopicPair }) {
+function CardMeta({ pair, hideVotes }: { pair: TopicPair; hideVotes: boolean }) {
   const { total } = calculateVotePercentages(pair);
   const voteCount = Math.round(total);
+  const showVoteCount = !hideVotes && voteCount > 0;
 
-  if (voteCount === 0 && pair.commentCount === 0) {
+  if (!showVoteCount && pair.commentCount === 0) {
     return null;
   }
 
   return (
     <div className="mt-2 flex items-center gap-3 text-[11px] text-[#8A877E]">
-      {voteCount > 0 && (
+      {showVoteCount && (
         <span className="flex items-center gap-1">
           <VoteStampIcon />
           {voteCount}명 투표
@@ -40,7 +41,15 @@ function CardMeta({ pair }: { pair: TopicPair }) {
   );
 }
 
-export function PairCard({ pair, large = false }: { pair: TopicPair; large?: boolean }) {
+export function PairCard({
+  pair,
+  large = false,
+  hideVotes = false,
+}: {
+  pair: TopicPair;
+  large?: boolean;
+  hideVotes?: boolean;
+}) {
   return (
     <Link
       href={`/pairs/${pair.id}`}
@@ -53,8 +62,8 @@ export function PairCard({ pair, large = false }: { pair: TopicPair; large?: boo
       )}
       <div className="p-4">
         <h4 className="mb-3 line-clamp-3 text-[15px] font-bold leading-snug text-ink">{pair.title}</h4>
-        <MiniVoteBar pair={pair} />
-        <CardMeta pair={pair} />
+        {!hideVotes && <MiniVoteBar pair={pair} />}
+        <CardMeta pair={pair} hideVotes={hideVotes} />
       </div>
     </Link>
   );

@@ -2,6 +2,8 @@ package com.siso.backend.comment;
 
 import com.siso.backend.alert.AdminAlert;
 import com.siso.backend.alert.AdminAlertRepository;
+import com.siso.backend.settings.ElectionSettings;
+import com.siso.backend.settings.ElectionSettingsRepository;
 import com.siso.backend.settings.ModerationSettingsRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,16 +28,19 @@ public class ReportService {
     private final CommentRepository commentRepository;
     private final AdminAlertRepository adminAlertRepository;
     private final ModerationSettingsRepository moderationSettingsRepository;
+    private final ElectionSettingsRepository electionSettingsRepository;
 
     public ReportService(
             ReportRepository reportRepository,
             CommentRepository commentRepository,
             AdminAlertRepository adminAlertRepository,
-            ModerationSettingsRepository moderationSettingsRepository) {
+            ModerationSettingsRepository moderationSettingsRepository,
+            ElectionSettingsRepository electionSettingsRepository) {
         this.reportRepository = reportRepository;
         this.commentRepository = commentRepository;
         this.adminAlertRepository = adminAlertRepository;
         this.moderationSettingsRepository = moderationSettingsRepository;
+        this.electionSettingsRepository = electionSettingsRepository;
     }
 
     @Transactional
@@ -54,6 +59,13 @@ public class ReportService {
         reportRepository.save(new Report(comment, anonId, reason, detail, OffsetDateTime.now()));
 
         int threshold = moderationSettingsRepository.findById(SETTINGS_ID).orElseThrow().getAutoBlindReportThreshold();
+        ElectionSettings electionSettings = electionSettingsRepository.findById(SETTINGS_ID).orElseThrow();
+        if (electionSettings.isEnabled()) {
+            // D10: 선거 모드 중엔 어드민이 평소 설정한 임계값을 그대로 두고,
+            // 그보다 낮을 때만(더 엄격해질 때만) override 값을 적용한다 —
+            // 선거 모드가 실수로 임계값을 올려버리는 일이 없도록.
+            threshold = Math.min(threshold, electionSettings.getOverrideAutoBlindThreshold());
+        }
         long totalReports = reportRepository.countByComment_Id(commentId);
         if (totalReports >= threshold && !BLINDED.equals(comment.getStatus())) {
             comment.blind();

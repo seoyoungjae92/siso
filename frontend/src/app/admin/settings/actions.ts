@@ -72,6 +72,32 @@ export async function postUpdateModerationSettings(input: ModerationSettingsInpu
   return { ok: true };
 }
 
+export type ElectionSettingsInput = {
+  enabled: boolean;
+  overrideAutoBlindThreshold: number;
+};
+
+export async function postUpdateElectionSettings(input: ElectionSettingsInput) {
+  await requireAdmin();
+
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/election-settings`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: adminAuthHeader(),
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    return { ok: false, error: await extractErrorMessage(res, "처리에 실패했습니다.") };
+  }
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/");
+  return { ok: true };
+}
+
 export type AbuseSettingsInput = {
   multiAccountClusterSize: number;
   multiAccountTrustPenaltyMultiplier: number;

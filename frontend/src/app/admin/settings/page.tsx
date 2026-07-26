@@ -1,10 +1,12 @@
 import { AbuseSettingsForm } from "@/components/admin/AbuseSettingsForm";
 import { CrawlSettingsForm } from "@/components/admin/CrawlSettingsForm";
+import { ElectionSettingsForm } from "@/components/admin/ElectionSettingsForm";
 import { ModerationSettingsForm } from "@/components/admin/ModerationSettingsForm";
 import { PetitionSettingsForm } from "@/components/admin/PetitionSettingsForm";
 import {
   fetchAbuseSettings,
   fetchCrawlSettings,
+  fetchElectionSettings,
   fetchModerationSettings,
   fetchPetitionSettings,
   requireAdmin,
@@ -12,12 +14,14 @@ import {
 
 export default async function AdminSettingsPage() {
   await requireAdmin();
-  const [crawlSettings, moderationSettings, abuseSettings, petitionSettings] = await Promise.all([
-    fetchCrawlSettings(),
-    fetchModerationSettings(),
-    fetchAbuseSettings(),
-    fetchPetitionSettings(),
-  ]);
+  const [crawlSettings, moderationSettings, abuseSettings, petitionSettings, electionSettings] =
+    await Promise.all([
+      fetchCrawlSettings(),
+      fetchModerationSettings(),
+      fetchAbuseSettings(),
+      fetchPetitionSettings(),
+      fetchElectionSettings(),
+    ]);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-10">
@@ -49,6 +53,14 @@ export default async function AdminSettingsPage() {
 
       {petitionSettings ? (
         <PetitionSettingsForm initial={petitionSettings} />
+      ) : (
+        <p className="text-sm text-[#8A877E]">설정을 불러오지 못했습니다.</p>
+      )}
+
+      <h2 className="mb-4 mt-10 text-lg font-extrabold tracking-tight">선거 모드</h2>
+
+      {electionSettings ? (
+        <ElectionSettingsForm initial={electionSettings} />
       ) : (
         <p className="text-sm text-[#8A877E]">설정을 불러오지 못했습니다.</p>
       )}

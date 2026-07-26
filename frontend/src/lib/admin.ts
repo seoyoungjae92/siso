@@ -140,6 +140,21 @@ export async function fetchModerationSettings(): Promise<ModerationSettings | nu
   return res.json();
 }
 
+export type ElectionSettings = {
+  enabled: boolean;
+  overrideAutoBlindThreshold: number;
+  updatedAt: string;
+};
+
+export async function fetchElectionSettings(): Promise<ElectionSettings | null> {
+  const res = await fetch(`${BACKEND_API_URL}/api/admin/election-settings`, {
+    cache: "no-store",
+    headers: { Authorization: adminAuthHeader() },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export type AbuseAlert = {
   id: number;
   type: "multi_account_same_ip" | "activity_spike";

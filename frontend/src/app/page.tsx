@@ -2,16 +2,18 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { FeedColumn } from "@/components/FeedColumn";
 import { MobileTabs } from "@/components/MobileTabs";
 import { Playground } from "@/components/Playground";
+import { fetchElectionMode } from "@/lib/election";
 import { fetchPairs } from "@/lib/pairs";
 import { fetchTopPetitions } from "@/lib/petitions";
 import { fetchPosts } from "@/lib/posts";
 
 export default async function Home() {
-  const [leftPosts, rightPosts, pairs, petitions] = await Promise.all([
+  const [leftPosts, rightPosts, pairs, petitions, electionMode] = await Promise.all([
     fetchPosts("left"),
     fetchPosts("right"),
     fetchPairs(),
     fetchTopPetitions(),
+    fetchElectionMode(),
   ]);
 
   return (
@@ -23,7 +25,7 @@ export default async function Home() {
           <div className="mb-3.5">
             <h2 className="text-[15px] font-extrabold tracking-tight text-playground">놀이터</h2>
           </div>
-          <Playground pairs={pairs.pairs} hasMore={pairs.hasMore} petitions={petitions} />
+          <Playground pairs={pairs.pairs} hasMore={pairs.hasMore} petitions={petitions} hideVotes={electionMode} />
         </section>
         <FeedColumn side="right" posts={rightPosts.posts} hasMore={rightPosts.hasMore} />
       </div>
@@ -36,6 +38,7 @@ export default async function Home() {
           pairs={pairs.pairs}
           pairsHasMore={pairs.hasMore}
           petitions={petitions}
+          hideVotes={electionMode}
         />
       </div>
     </div>
