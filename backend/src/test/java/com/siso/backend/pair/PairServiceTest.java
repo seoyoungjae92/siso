@@ -11,6 +11,9 @@ import com.siso.backend.settings.AbuseSettings;
 import com.siso.backend.settings.AbuseSettingsRepository;
 import com.siso.backend.settings.CrawlSettings;
 import com.siso.backend.settings.CrawlSettingsRepository;
+import com.siso.backend.settings.ElectionSettings;
+import com.siso.backend.settings.ElectionSettingsRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -72,6 +75,9 @@ class PairServiceTest {
     @Mock
     private SpikeDetector spikeDetector;
 
+    @Mock
+    private ElectionSettingsRepository electionSettingsRepository;
+
     private PairService newService() {
         return new PairService(
                 topicPairRepository,
@@ -83,7 +89,19 @@ class PairServiceTest {
                 ipHasher,
                 abuseSettingsRepository,
                 trustScoreService,
-                spikeDetector);
+                spikeDetector,
+                electionSettingsRepository);
+    }
+
+    @BeforeEach
+    void stubElectionModeDisabledByDefault() {
+        stubElectionMode(false);
+    }
+
+    private void stubElectionMode(boolean enabled) {
+        ElectionSettings settings = mock(ElectionSettings.class);
+        Mockito.lenient().when(settings.isEnabled()).thenReturn(enabled);
+        Mockito.lenient().when(electionSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
     }
 
     private void stubDisplayWindowDays(int days) {
@@ -190,6 +208,27 @@ class PairServiceTest {
     }
 
     @Test
+    void getPairs_electionModeEnabled_hidesVoteTallyEvenWhenVotesExist() {
+        stubDisplayWindowDays(7);
+        stubElectionMode(true);
+        PairService pairService = newService();
+        Pageable pageable = PageRequest.of(0, 20);
+
+        TopicPair pair = mock(TopicPair.class);
+        when(pair.getId()).thenReturn(100L);
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+                        eq("active"), any(OffsetDateTime.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(pair)));
+
+        Page<TopicPairDto> result = pairService.getPairs(pageable);
+
+        assertThat(result.getContent().get(0).leftVotes()).isEqualTo(0.0);
+        assertThat(result.getContent().get(0).rightVotes()).isEqualTo(0.0);
+        assertThat(result.getContent().get(0).neutralVotes()).isEqualTo(0.0);
+        verify(voteRepository, Mockito.never()).sumWeightedByPairIdsGroupByStance(any());
+    }
+
+    @Test
     void getPairs_includesVisibleCommentCountPerPair() {
         stubDisplayWindowDays(7);
         PairService pairService = newService();
@@ -245,6 +284,21 @@ class PairServiceTest {
         assertThat(dto.leftVotes()).isEqualTo(1.8);
         assertThat(dto.rightVotes()).isEqualTo(0.0);
         assertThat(dto.commentCount()).isEqualTo(5L);
+    }
+
+    @Test
+    void getPair_electionModeEnabled_hidesVoteTallyEvenWhenVotesExist() {
+        stubElectionMode(true);
+        TopicPair pair = mock(TopicPair.class);
+        when(topicPairRepository.findByIdAndStatusAndTitleIsNotNull(1L, "active")).thenReturn(Optional.of(pair));
+        when(voteRepository.findByPair_IdAndAnonId(1L, ANON_A)).thenReturn(Optional.empty());
+
+        TopicPairDto dto = newService().getPair(1L, ANON_A);
+
+        assertThat(dto.leftVotes()).isEqualTo(0.0);
+        assertThat(dto.rightVotes()).isEqualTo(0.0);
+        assertThat(dto.neutralVotes()).isEqualTo(0.0);
+        verify(voteRepository, Mockito.never()).sumWeightedByPairIdGroupByStance(any());
     }
 
     @Test

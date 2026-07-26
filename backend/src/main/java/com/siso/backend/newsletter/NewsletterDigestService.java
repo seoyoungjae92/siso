@@ -5,6 +5,7 @@ import com.siso.backend.pair.TopicPairRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -40,7 +41,7 @@ public class NewsletterDigestService {
                       <a href="%s/pairs/%d" style="color:#1B1B22;font-weight:bold;text-decoration:none;">%s</a>
                     </li>
                     """
-                            .formatted(frontendUrl, pair.getId(), escape(pair.getTitle())));
+                            .formatted(frontendUrl, pair.getId(), HtmlUtils.htmlEscape(pair.getTitle())));
         }
 
         return """
@@ -59,9 +60,5 @@ public class NewsletterDigestService {
                 </div>
                 """
                 .formatted(items, frontendUrl, unsubscribeUrl);
-    }
-
-    private String escape(String text) {
-        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 }

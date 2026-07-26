@@ -4,16 +4,18 @@ import type { NextRequest } from "next/server";
 const ANON_ID_COOKIE = "anon_id";
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
-function adminAuthExpected(): string {
-  const user = process.env.ADMIN_USERNAME ?? "admin";
-  const pass = process.env.ADMIN_PASSWORD ?? "local-dev-only-password";
+function adminAuthExpected(): string | null {
+  const user = process.env.ADMIN_USERNAME;
+  const pass = process.env.ADMIN_PASSWORD;
+  if (!user || !pass) return null;
   return "Basic " + Buffer.from(`${user}:${pass}`).toString("base64");
 }
 
 export function proxy(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/admin")) {
     const auth = request.headers.get("authorization");
-    if (auth !== adminAuthExpected()) {
+    const expected = adminAuthExpected();
+    if (!expected || auth !== expected) {
       return new NextResponse("Auth required", {
         status: 401,
         headers: { "WWW-Authenticate": 'Basic realm="admin"' },

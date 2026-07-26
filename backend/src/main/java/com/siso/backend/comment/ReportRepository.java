@@ -17,7 +17,7 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     long countByStatus(String status);
 
-    long countByComment_Id(Long commentId);
+    long countByComment_IdAndStatusNot(Long commentId, String status);
 
     // PostgreSQL은 SELECT DISTINCT의 ORDER BY 표현식이 SELECT 목록에 그대로
     // 있어야 해서(실측으로 확인 — 엔티티 전체를 DISTINCT+ORDER BY하면 에러남),
