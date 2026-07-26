@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { AdSlot } from "@/components/AdSlot";
 import { CommentThread } from "@/components/CommentThread";
+import { ShareButton } from "@/components/ShareButton";
 import { StanceCard } from "@/components/StanceCard";
 import { VoteWidget } from "@/components/VoteWidget";
 import { fetchComments, fetchPairDetail } from "@/lib/comments";
@@ -34,6 +35,7 @@ export default async function PairDetailPage({
           ← 목록으로
         </Link>
         <h1 className="mb-2 text-lg font-extrabold tracking-tight">{pair.title}</h1>
+        <ShareButton title={pair.title} />
         <p className="mb-4 text-[12px] text-[#8A877E]">
           🤖 AI가 좌·우 커뮤니티 원문을 분석해 합성한 주제입니다. 원문의 비속어·저품질 표현은
           순화되며, 원문에 없는 사실은 추가하지 않습니다.
