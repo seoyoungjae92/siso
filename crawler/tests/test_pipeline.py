@@ -76,6 +76,7 @@ def test_ingest_source_passes_title_and_summarizer_through_to_summarize(sample_f
     assert result.inserted == 2
     assert len(summarizer.calls) == 2
     assert all(p["summary"].startswith("재작성: ") for p in repo.inserted)
+    assert all(p["title"].startswith("재작성: ") for p in repo.inserted)
 
 
 def test_ingest_source_skips_posts_classified_as_non_political(sample_feed_bytes):
