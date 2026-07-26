@@ -342,10 +342,10 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
 
 ## 18. 백로그 (2차 토론 추가분)
 
-- 투표 결과 OG 이미지 생성기 (`@vercel/og` 또는 satori) — M3
-- CMS 선거 모드 토글 + 선거기간 자동 알림 — M4
-- LLM 신고 분류 배치 (`reports.status='pending'` 대상, cron) — M4
-- 뉴스레터 구독 폼 (이메일만 수집, 개인정보처리방침에 항목 추가) — M4
+- ~~투표 결과 OG 이미지 생성기~~ — 완료(`app/pairs/[id]/opengraph-image.tsx`, `next/og`)
+- ~~CMS 선거 모드 토글~~ — 완료(`election_settings`, `/admin/settings`)
+- ~~LLM 신고 분류 배치~~ — 완료(`ReportClassificationService`, OpenRouter 경유, 자동조치 없는 힌트만)
+- ~~뉴스레터 구독 폼~~ — 완료. 구독 폼뿐 아니라 더블 옵트인 확인 + 주간 자동 발송(TOP 5, Resend)까지 구현(당초 계획보다 확장) — 실제 발송은 `RESEND_API_KEY` + 도메인 인증 필요(미설정 시 구독/확인/수신거부만 동작)
 - 웹푸시 알림("오늘의 링", 선택 동의) — 런칭 후
 - 다크모드 — 런칭 후
 
