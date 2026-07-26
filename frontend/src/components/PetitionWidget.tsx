@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { ShareButton } from "@/components/ShareButton";
 import type { Petition } from "@/lib/petitions";
 
 const COLLAPSED_COUNT = 3;
@@ -43,12 +44,12 @@ export function PetitionWidget({ petitions }: { petitions: Petition[] }) {
       </div>
       <ol className="divide-y divide-line">
         {visible.map((petition, index) => (
-          <li key={petition.id}>
+          <li key={petition.id} className="flex items-center gap-1 px-4 py-2.5 hover:bg-pg-tint">
             <a
               href={petition.linkUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-pg-tint"
+              className="flex min-w-0 flex-1 items-center gap-2.5"
             >
               <RankBadge index={index} />
               <span className="line-clamp-1 flex-1 text-[13px] font-medium text-ink">
@@ -58,6 +59,12 @@ export function PetitionWidget({ petitions }: { petitions: Petition[] }) {
                 {petition.agreeCount.toLocaleString("ko-KR")}명
               </span>
             </a>
+            <ShareButton
+              title={petition.title}
+              url={petition.linkUrl}
+              label="🔗"
+              className="shrink-0 rounded-full p-1.5 text-xs text-[#8A877E] hover:bg-pg-tint"
+            />
           </li>
         ))}
       </ol>
