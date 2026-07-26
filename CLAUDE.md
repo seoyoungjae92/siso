@@ -540,3 +540,68 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
   자체 재서술하도록 전환, API 실패 시에만 발췌로 폴백. `run.py`에서
   `build_post_summarizer`로 배선, `test_summarize.py`/`test_llm_client.py`
   커버.
+
+## 20. 런칭 준비 체크리스트 (2026-07-26)
+
+> 기능 구현은 사실상 완료(18절 백로그는 웹푸시/다크모드만 남았고 둘 다
+> 런칭 후). 남은 건 실제 배포/시크릿/법적 확인 — 아래는 실제 오픈 전
+> 사람이 직접 해야 하는 것 위주로 정리. AI가 대신 결정할 수 없는 항목은
+> 🔴로 표시(19.5절과 동일 기준).
+
+### 20.1 도메인
+- [ ] `siso.kr`/`siso.ai.kr` 등 최종 확정 및 실제 구매 (D7 — 여전히 미정)
+- [ ] 구매 후 DNS를 Vercel(프론트)·Railway/Fly.io(백엔드)로 연결
+
+### 20.2 배포 인프라 (10절 계획 기준, 실제 계정/서비스 생성 필요)
+- [ ] Vercel 프로젝트 생성 + GitHub 연동(main 자동배포) — 애드센스
+      게재 시작 전까지는 Hobby로 시작 가능(D15, Pro 전환은 그때 결정)
+- [ ] Railway 또는 Fly.io에 백엔드 Dockerfile 배포
+- [ ] Supabase 프로젝트 생성(pgvector) — Free tier는 1주 이상 미사용 시
+      자동 일시정지(D16), 크롤러 cron이 최소 주 1회는 돌아야 함
+- [ ] Redis(Railway Redis 또는 Upstash) 연결
+- [ ] Sentry(백/프론트), UptimeRobot 헬스체크 연동
+
+### 20.3 필수 환경변수 — 실제 값으로 교체 (dev 기본값 재사용 금지)
+로컬 기준값은 `.env.example` 참고. 프로덕션에서 특히 주의할 것:
+- `ADMIN_USERNAME`/`ADMIN_PASSWORD` — 이번 리뷰로 하드코딩 기본값이
+  fail-closed로 바뀌어서 이제 필수값. 백엔드·프론트 양쪽에 **동일한
+  값**으로 설정해야 함(다르면 프론트 프록시가 자기가 만든 헤더로 백엔드
+  인증에 실패함)
+- `IP_HASH_SALT` — dev salt(`local-dev-only-salt`) 그대로 쓰지 말 것
+- `OPENROUTER_API_KEY` — 정치성 필터/신고 분류/플레이그라운드 합성에 필요.
+  비워두면 각 기능이 조용히 스킵/폴백됨(에러 아님, 기능 저하)
+- `RESEND_API_KEY` + `NEWSLETTER_FROM_ADDRESS` — 미설정 시 뉴스레터
+  구독/확인/수신거부는 정상 동작하지만 실제 메일 발송만 안 됨(로그 경고만)
+- `FRONTEND_URL`(백엔드용, 뉴스레터 링크 생성) / `NEXT_PUBLIC_SITE_URL`
+  (프론트용, OG 이미지·공유 링크 생성 — `metadataBase`) — 도메인 확정 후
+  실제 값으로. **`next dev`에서는 이 값이 OG 이미지에 반영 안 되는
+  Next.js 16 dev 모드 한정 버그가 있음(확인됨) — `next build`/prod에서만
+  정상 동작하니 로컬에서 안 된다고 당황하지 말 것**
+- `BACKEND_API_URL`(프론트용) — 실제 백엔드 배포 주소
+- `ASSEMBLY_API_KEY` — 선택, 국민청원 위젯. 비워두면 위젯이 자연히 숨겨짐
+
+### 20.4 이메일 발신 도메인 인증
+- [ ] Resend에서 실제 발신 도메인(SPF/DKIM) 인증 — 안 하면
+      `onboarding@resend.dev` 같은 Resend 공용 주소로만 발송 가능해
+      스팸함행 위험이 높고 브랜드 신뢰도도 낮음
+
+### 20.5 법적 문서
+- [ ] `privacy`/`terms` 페이지의 `EFFECTIVE_DATE`, `CONTACT_EMAIL`
+      placeholder를 실제 값으로 교체(현재 두 페이지 모두 미입력 상태 확인됨)
+- [ ] 이번 다각도 리뷰에서 나온 "사람 판단 필요" 1건: 뉴스레터가
+      정보통신망법 §50 광고성 정보에 해당하는지 — 해당 시 제목에
+      "(광고)" 표시·본문에 발신자 연락처 추가 필요
+- [ ] 🔴 애드센스 승인 전 정책 위반 소지(민감 카테고리 + 익명 커뮤니티)
+      사전 확인 (19.5)
+- [ ] 🔴 정보통신망법 임시조치 대응이 자동 블라인드만으로 충분한지
+      변호사 확인 (19.5)
+- [ ] 🔴 해외 AI 사업자(OpenRouter 경유) 전송 관련 처리방침 문구 최종
+      확인 — 변호사 확인 (19.5, D18). 19.5절 원문은 "Claude API"로
+      적혀있지만 D18 이후 실제로는 OpenRouter 경유로 바뀐 상태라 문구
+      검토 시 이 부분 반영할 것
+- [ ] 🔴 사업자등록 시점(서비스 오픈 vs 첫 수익 발생) — 세무사 확인 (19.5)
+
+### 20.6 운영 준비
+- [ ] 신고 접수 알림 채널(이메일/Slack) 결정 — 아직 미정(19.5)
+- [ ] Supabase 백업 정책 확인 후 10절에 반영
+- [ ] Vercel Hobby→Pro 전환은 애드센스 게재 시작 시점에(D15)
