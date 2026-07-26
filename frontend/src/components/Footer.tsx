@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { NewsletterForm } from "@/components/NewsletterForm";
+
 export function Footer() {
   const appName = process.env.APP_NAME ?? "시소";
 
@@ -16,6 +18,9 @@ export function Footer() {
           제보·건의하기
         </Link>
       </nav>
+      <div className="mb-3">
+        <NewsletterForm />
+      </div>
       <p>
         {appName}는 공개된 커뮤니티 게시물의 제목·요약·출처 링크만 수집해 병렬 비교합니다. 원문
         저작권은 각 원 커뮤니티 및 작성자에게 있습니다.
