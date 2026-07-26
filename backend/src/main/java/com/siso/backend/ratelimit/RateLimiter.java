@@ -29,10 +29,15 @@ public class RateLimiter {
     }
 
     public void checkOrThrow(String action, UUID anonId) {
+        checkOrThrow(action, anonId.toString());
+    }
+
+    // anon_id가 없는 요청(예: 이메일만 받는 뉴스레터 구독)을 위한 문자열 키 버전.
+    public void checkOrThrow(String action, String key) {
         boolean withinMinute = tryConsume(
-                "ratelimit:" + action + ":min:" + anonId, PER_MINUTE_LIMIT, Duration.ofMinutes(1));
+                "ratelimit:" + action + ":min:" + key, PER_MINUTE_LIMIT, Duration.ofMinutes(1));
         boolean withinHour = tryConsume(
-                "ratelimit:" + action + ":hour:" + anonId, PER_HOUR_LIMIT, Duration.ofHours(1));
+                "ratelimit:" + action + ":hour:" + key, PER_HOUR_LIMIT, Duration.ofHours(1));
 
         if (!withinMinute || !withinHour) {
             throw new ResponseStatusException(

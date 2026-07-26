@@ -1,4 +1,6 @@
 package com.siso.backend.comment;
 
-public record CommentCreateRequest(String body, Long parentId, String stance) {
+import jakarta.validation.constraints.Size;
+
+public record CommentCreateRequest(@Size(max = 2000) String body, Long parentId, String stance) {
 }

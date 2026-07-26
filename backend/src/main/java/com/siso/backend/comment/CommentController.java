@@ -2,6 +2,7 @@ package com.siso.backend.comment;
 
 import com.siso.backend.anon.AnonIdHeader;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,7 +39,7 @@ public class CommentController {
     public CommentDto createComment(
             @PathVariable Long pairId,
             @RequestHeader(value = "X-Anon-Id", required = false) String anonId,
-            @RequestBody CommentCreateRequest request,
+            @Valid @RequestBody CommentCreateRequest request,
             HttpServletRequest servletRequest) {
         return commentService.create(
                 pairId,
@@ -62,7 +63,7 @@ public class CommentController {
     public void report(
             @PathVariable Long commentId,
             @RequestHeader(value = "X-Anon-Id", required = false) String anonId,
-            @RequestBody ReportCreateRequest request) {
+            @Valid @RequestBody ReportCreateRequest request) {
         reportService.create(commentId, AnonIdHeader.parse(anonId, true), request.reason(), request.detail());
     }
 }

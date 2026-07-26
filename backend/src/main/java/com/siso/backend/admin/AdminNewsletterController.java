@@ -25,8 +25,7 @@ public class AdminNewsletterController {
     public NewsletterStatsDto stats() {
         return new NewsletterStatsDto(
                 newsletterSubscriberRepository.countByStatus("pending"),
-                newsletterSubscriberRepository.countByStatus("confirmed"),
-                newsletterSubscriberRepository.countByStatus("unsubscribed"));
+                newsletterSubscriberRepository.countByStatus("confirmed"));
     }
 
     @PostMapping("/send-now")

@@ -279,7 +279,6 @@ export async function fetchAdminFeedback(category?: string, status?: string): Pr
 export type NewsletterStats = {
   pending: number;
   confirmed: number;
-  unsubscribed: number;
 };
 
 export async function fetchNewsletterStats(): Promise<NewsletterStats | null> {

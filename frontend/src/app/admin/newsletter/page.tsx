@@ -18,7 +18,7 @@ export default async function AdminNewsletterPage() {
       </p>
 
       {stats ? (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-line bg-white p-4 text-center">
             <p className="text-2xl font-extrabold text-ink">{stats.confirmed}</p>
             <p className="text-xs text-[#8A877E]">구독중</p>
@@ -26,10 +26,6 @@ export default async function AdminNewsletterPage() {
           <div className="rounded-xl border border-line bg-white p-4 text-center">
             <p className="text-2xl font-extrabold text-ink">{stats.pending}</p>
             <p className="text-xs text-[#8A877E]">확인 대기</p>
-          </div>
-          <div className="rounded-xl border border-line bg-white p-4 text-center">
-            <p className="text-2xl font-extrabold text-ink">{stats.unsubscribed}</p>
-            <p className="text-xs text-[#8A877E]">수신거부</p>
           </div>
         </div>
       ) : (

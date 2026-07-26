@@ -1,5 +1,6 @@
 package com.siso.backend.newsletter;
 
+import com.siso.backend.ratelimit.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,18 +26,20 @@ public class NewsletterService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final String PENDING = "pending";
     private static final String CONFIRMED = "confirmed";
-    private static final String UNSUBSCRIBED = "unsubscribed";
 
     private final NewsletterSubscriberRepository newsletterSubscriberRepository;
     private final ResendEmailClient resendEmailClient;
+    private final RateLimiter rateLimiter;
     private final String frontendUrl;
 
     public NewsletterService(
             NewsletterSubscriberRepository newsletterSubscriberRepository,
             ResendEmailClient resendEmailClient,
+            RateLimiter rateLimiter,
             @Value("${app.newsletter.frontend-url}") String frontendUrl) {
         this.newsletterSubscriberRepository = newsletterSubscriberRepository;
         this.resendEmailClient = resendEmailClient;
+        this.rateLimiter = rateLimiter;
         this.frontendUrl = frontendUrl;
     }
 
@@ -45,6 +48,10 @@ public class NewsletterService {
         if (email == null || !EMAIL_PATTERN.matcher(email).matches()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "올바른 이메일 주소를 입력해주세요");
         }
+
+        // anon_id가 없는 요청이라 이메일 자체를 키로 쓴다 — 특정 피해자 이메일에
+        // 확인 메일을 반복 발송(메일폭탄)하는 걸 막는다.
+        rateLimiter.checkOrThrow("newsletter-subscribe", email);
 
         Optional<NewsletterSubscriber> existing = newsletterSubscriberRepository.findByEmail(email);
         UUID token;
@@ -73,19 +80,18 @@ public class NewsletterService {
     @Transactional
     public void confirm(String rawToken) {
         NewsletterSubscriber subscriber = findByToken(rawToken);
-        if (UNSUBSCRIBED.equals(subscriber.getStatus())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 수신거부한 이메일입니다");
-        }
         if (!PENDING.equals(subscriber.getStatus())) {
             return;
         }
         subscriber.confirm(OffsetDateTime.now());
     }
 
+    // 개인정보처리방침: 수신거부 시 이메일 주소를 더 이상 보관하지 않는다 —
+    // 상태만 바꾸는 게 아니라 레코드 자체를 삭제한다.
     @Transactional
     public void unsubscribe(String rawToken) {
         NewsletterSubscriber subscriber = findByToken(rawToken);
-        subscriber.unsubscribe(OffsetDateTime.now());
+        newsletterSubscriberRepository.delete(subscriber);
     }
 
     private NewsletterSubscriber findByToken(String rawToken) {
