@@ -11,6 +11,7 @@ from .fakes import (
     FakePostRepository,
     FakePostSummarizer,
     FakeTopicSynthesizer,
+    fake_fetch_robots_parser,
 )
 
 SETTINGS = CrawlSettings(
@@ -223,6 +224,7 @@ def test_run_cycle_deletes_confirmed_dead_links_using_display_window(sample_feed
         check_robots_allowed=lambda target_url: 0,
         fetch_feed=lambda url: sample_feed_bytes,
         check_dead_link=lambda url: True,
+        fetch_robots_parser=fake_fetch_robots_parser,
     )
 
     assert matching_repo.deleted_posts == [1]
@@ -244,6 +246,7 @@ def test_run_cycle_keeps_post_when_link_still_alive(sample_feed_bytes):
         check_robots_allowed=lambda target_url: 0,
         fetch_feed=lambda url: sample_feed_bytes,
         check_dead_link=lambda url: False,
+        fetch_robots_parser=fake_fetch_robots_parser,
     )
 
     assert matching_repo.deleted_posts == []

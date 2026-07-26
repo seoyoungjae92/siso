@@ -19,15 +19,17 @@ class CrawlNotAllowed(Exception):
     """
 
 
-def check_robots_allowed(target_url: str) -> float:
-    """target_url이 robots.txt상 허용되면 적용할 최소 요청 간격(초)을
-    반환하고, 허용되지 않으면 CrawlNotAllowed를 발생시킨다.
+def fetch_robots_parser(url: str) -> tuple[RobotFileParser, float]:
+    """url의 도메인 기준 robots.txt를 가져와 파싱한 결과(파서, 최소 요청
+    간격)를 반환한다. 같은 도메인의 여러 URL을 확인할 때(예: 데드링크
+    일괄 검사) 이 결과를 재사용하면 URL마다 robots.txt를 다시 받지 않아도
+    된다 — 파서의 can_fetch()는 순수 로컬 판정이라 URL별로 다시 호출해도
+    네트워크 요청이 없다.
 
-    robots.txt는 항상 실제로 fetch할 target_url 자신의 도메인 기준으로
-    확인해야 함 — feed_url이 소스의 base_url과 다른 도메인(예: RSS가
-    feeds.feedburner.com에 있는 경우)일 수 있어서, 별도 base_url을
-    받지 않고 target_url에서 직접 호스트를 뽑는다."""
-    robots_url = urljoin(target_url, "/robots.txt")
+    robots.txt 자체를 가져올 수 없는 경우(네트워크 에러, 4xx/5xx 등)는
+    CrawlNotAllowed로 fail-closed 처리한다 — CLAUDE.md의 "robots.txt
+    코드로 강제" 요구사항 취지에 맞춤."""
+    robots_url = urljoin(url, "/robots.txt")
     try:
         response = httpx.get(
             robots_url, timeout=TIMEOUT_SECONDS, headers={"User-Agent": USER_AGENT}
@@ -39,11 +41,27 @@ def check_robots_allowed(target_url: str) -> float:
     parser = RobotFileParser()
     parser.parse(response.text.splitlines())
 
+    crawl_delay = parser.crawl_delay(USER_AGENT)
+    min_interval = (
+        max(DEFAULT_MIN_INTERVAL_SECONDS, float(crawl_delay)) if crawl_delay else DEFAULT_MIN_INTERVAL_SECONDS
+    )
+    return parser, min_interval
+
+
+def check_robots_allowed(target_url: str) -> float:
+    """target_url이 robots.txt상 허용되면 적용할 최소 요청 간격(초)을
+    반환하고, 허용되지 않으면 CrawlNotAllowed를 발생시킨다.
+
+    robots.txt는 항상 실제로 fetch할 target_url 자신의 도메인 기준으로
+    확인해야 함 — feed_url이 소스의 base_url과 다른 도메인(예: RSS가
+    feeds.feedburner.com에 있는 경우)일 수 있어서, 별도 base_url을
+    받지 않고 target_url에서 직접 호스트를 뽑는다."""
+    parser, min_interval = fetch_robots_parser(target_url)
+
     if not parser.can_fetch(USER_AGENT, target_url):
         raise CrawlNotAllowed(f"robots.txt가 접근을 허용하지 않음: {target_url}")
 
-    crawl_delay = parser.crawl_delay(USER_AGENT)
-    return max(DEFAULT_MIN_INTERVAL_SECONDS, float(crawl_delay)) if crawl_delay else DEFAULT_MIN_INTERVAL_SECONDS
+    return min_interval
 
 
 def fetch_feed(url: str, timeout: float = TIMEOUT_SECONDS) -> bytes:

@@ -1,3 +1,16 @@
+class FakeRobotsParser:
+    """항상 허용하는 가짜 robots.txt 파서 — fetch_robots_parser 주입용."""
+
+    def can_fetch(self, user_agent: str, url: str) -> bool:
+        return True
+
+
+def fake_fetch_robots_parser(url: str):
+    """실제 네트워크 요청 없이 (파서, 최소간격 0) 튜플을 반환 — 테스트가
+    빠르게 끝나도록 간격 0을 쓴다."""
+    return FakeRobotsParser(), 0
+
+
 class FakePostRepository:
     def __init__(self, existing_hashes: set[str] | None = None):
         self.existing_hashes = set(existing_hashes or set())
