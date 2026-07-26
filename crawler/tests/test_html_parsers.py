@@ -1,10 +1,17 @@
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from siso_crawler.html_parsers import (
     get_html_parser,
+    parse_82cook_board,
+    parse_clien_board,
     parse_dcinside_gallery,
+    parse_ruliweb_board,
+    parse_theqoo_board,
     parse_todayhumor_bestofbest,
 )
+
+KST = timezone(timedelta(hours=9))
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -40,6 +47,70 @@ def test_parse_dcinside_gallery_excludes_notice_rows():
     assert first.published_at == "2026-07-19T06:47:07+09:00"
 
 
+def test_parse_clien_board_excludes_non_post_rows():
+    html = (FIXTURES_DIR / "clien_park_list.html").read_bytes()
+
+    entries = parse_clien_board(html)
+
+    # fixture엔 광고 슬롯(hongbo) 1개 + 일반 글 2개가 있음 — 광고는 제외되어야 함
+    assert len(entries) == 2
+    first = entries[0]
+    assert first.title == "당대표는 결국 당원이 뽑습니다."
+    assert first.link == "https://www.clien.net/service/board/park/19235154?od=T31&po=0&category=0&groupCd="
+    assert first.summary == ""
+    assert first.published_at == "2026-07-26T17:13:43+09:00"
+
+
+def test_parse_82cook_board_excludes_notice_rows():
+    html = (FIXTURES_DIR / "82cook_entiz_list.html").read_bytes()
+
+    entries = parse_82cook_board(html)
+
+    # fixture엔 공지 1개 + 일반 글 2개가 있음 — 공지는 제외되어야 함
+    assert len(entries) == 2
+    assert all("비밀번호 변경 공지" != e.title for e in entries)
+
+    first = entries[0]
+    assert first.title == "수리비요"
+    assert first.link == "https://www.82cook.com/entiz/read.php?bn=15&num=4219150&page=1"
+    assert first.summary == ""
+    assert first.published_at == "2026-07-26T17:12:13+09:00"
+
+
+def test_parse_ruliweb_board_excludes_notice_and_ad_rows():
+    html = (FIXTURES_DIR / "ruliweb_board_300148_list.html").read_bytes()
+
+    entries = parse_ruliweb_board(html)
+
+    # fixture엔 공지 1개 + 광고 iframe 슬롯 1개 + 일반 글 1개가 있음
+    assert len(entries) == 1
+    first = entries[0]
+    assert first.title == "리짜이밍 - 분당 산호초"
+    assert first.link == "https://bbs.ruliweb.com/community/board/300148/read/38688868"
+    assert first.summary == ""
+    # "시:분"만 표시되는 오늘 글이라 정확한 시각 대신 오늘 날짜인지만 확인
+    today = datetime.now(KST).date().isoformat()
+    assert first.published_at == f"{today}T17:13:00+09:00"
+
+
+def test_parse_theqoo_board_excludes_notice_rows_and_handles_mixed_date_formats():
+    html = (FIXTURES_DIR / "theqoo_politics_list.html").read_bytes()
+
+    entries = parse_theqoo_board(html)
+
+    # fixture엔 공지 1개 + 일반 글 2개(오늘 글 "시:분", 올해 글 "월.일")가 있음
+    assert len(entries) == 2
+
+    today_post = entries[0]
+    assert today_post.title == "정청래 지지선언한 김부선…\"주저없이 '알정찍'\""
+    assert today_post.link == "https://theqoo.net/square/4291905461?category=3836759081"
+    now = datetime.now(KST)
+    assert today_post.published_at == f"{now.date().isoformat()}T11:50:00+09:00"
+
+    this_year_post = entries[1]
+    assert this_year_post.published_at == f"{now.year}-07-25T00:00:00+09:00"
+
+
 def test_get_html_parser_dispatches_by_host():
     assert get_html_parser("https://www.todayhumor.co.kr/board/list.php?table=bestofbest") is (
         parse_todayhumor_bestofbest
@@ -47,4 +118,8 @@ def test_get_html_parser_dispatches_by_host():
     assert get_html_parser("https://gall.dcinside.com/mgallery/board/lists/?id=bosu") is (
         parse_dcinside_gallery
     )
+    assert get_html_parser("https://www.clien.net/service/board/park") is parse_clien_board
+    assert get_html_parser("https://www.82cook.com/entiz/enti.php?bn=15") is parse_82cook_board
+    assert get_html_parser("https://bbs.ruliweb.com/community/board/300148") is parse_ruliweb_board
+    assert get_html_parser("https://theqoo.net/square/category/3836759081") is parse_theqoo_board
     assert get_html_parser("https://unknown-site.test/list") is None
