@@ -17,6 +17,9 @@ public class ModerationSettings {
     @Column(name = "auto_blind_report_threshold", nullable = false)
     private int autoBlindReportThreshold;
 
+    @Column(name = "classification_model", nullable = false)
+    private String classificationModel;
+
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
@@ -31,12 +34,17 @@ public class ModerationSettings {
         return autoBlindReportThreshold;
     }
 
+    public String getClassificationModel() {
+        return classificationModel;
+    }
+
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void update(int autoBlindReportThreshold, OffsetDateTime updatedAt) {
+    public void update(int autoBlindReportThreshold, String classificationModel, OffsetDateTime updatedAt) {
         this.autoBlindReportThreshold = autoBlindReportThreshold;
+        this.classificationModel = classificationModel;
         this.updatedAt = updatedAt;
     }
 }

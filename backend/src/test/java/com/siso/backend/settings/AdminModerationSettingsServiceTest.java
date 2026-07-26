@@ -29,6 +29,7 @@ class AdminModerationSettingsServiceTest {
         ModerationSettings settings = new ModerationSettings();
         ReflectionTestUtils.setField(settings, "id", (short) 1);
         ReflectionTestUtils.setField(settings, "autoBlindReportThreshold", 20);
+        ReflectionTestUtils.setField(settings, "classificationModel", "openrouter/free");
         ReflectionTestUtils.setField(settings, "updatedAt", OffsetDateTime.now());
         return settings;
     }
@@ -40,15 +41,17 @@ class AdminModerationSettingsServiceTest {
         ModerationSettingsDto dto = newService().get();
 
         assertThat(dto.autoBlindReportThreshold()).isEqualTo(20);
+        assertThat(dto.classificationModel()).isEqualTo("openrouter/free");
     }
 
     @Test
-    void update_overwritesThreshold() {
+    void update_overwritesThresholdAndModel() {
         ModerationSettings settings = defaults();
         when(moderationSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
 
-        ModerationSettingsDto dto = newService().update(new ModerationSettingsRequest(10));
+        ModerationSettingsDto dto = newService().update(new ModerationSettingsRequest(10, "anthropic/claude-haiku-4.5"));
 
         assertThat(dto.autoBlindReportThreshold()).isEqualTo(10);
+        assertThat(dto.classificationModel()).isEqualTo("anthropic/claude-haiku-4.5");
     }
 }

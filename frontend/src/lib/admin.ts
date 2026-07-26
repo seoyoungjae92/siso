@@ -127,6 +127,7 @@ export async function fetchCrawlSettings(): Promise<CrawlSettings | null> {
 
 export type ModerationSettings = {
   autoBlindReportThreshold: number;
+  classificationModel: string;
   updatedAt: string;
 };
 

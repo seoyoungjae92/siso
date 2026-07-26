@@ -19,8 +19,12 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     long countByComment_Id(Long commentId);
 
-    @Query("SELECT DISTINCT r.comment FROM Report r "
+    // PostgreSQL은 SELECT DISTINCT의 ORDER BY 표현식이 SELECT 목록에 그대로
+    // 있어야 해서(실측으로 확인 — 엔티티 전체를 DISTINCT+ORDER BY하면 에러남),
+    // 엔티티가 아니라 id만 distinct로 뽑아 호출부에서 CommentRepository로
+    // 다시 조회한다.
+    @Query("SELECT DISTINCT r.comment.id FROM Report r "
             + "WHERE r.status = 'pending' AND r.comment.llmVerdict IS NULL "
             + "ORDER BY r.comment.id")
-    List<Comment> findDistinctCommentsWithUnclassifiedPendingReports(Pageable pageable);
+    List<Long> findDistinctCommentIdsWithUnclassifiedPendingReports(Pageable pageable);
 }
