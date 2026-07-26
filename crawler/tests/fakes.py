@@ -117,22 +117,22 @@ class FakeTopicSynthesizer:
 
 
 class FakePostSummarizer:
-    """호출될 때마다 접두어를 붙여 반환 — 실제로 재작성된 값이 저장되는지
-    확인하는 용도. fail_on에 있는 원문 요약은 SummarizationFailed를 던져서
-    폴백 경로를 테스트한다."""
+    """호출될 때마다 접두어를 붙여 반환 — 실제로 재작성된 값(제목·요약
+    둘 다)이 저장되는지 확인하는 용도. fail_on에 있는 원문 요약은
+    SummarizationFailed를 던져서 폴백 경로를 테스트한다."""
 
     def __init__(self, prefix: str = "재작성: ", fail_on: set | None = None):
         self.prefix = prefix
         self.fail_on = fail_on or set()
         self.calls: list[tuple[str, str]] = []
 
-    def summarize(self, title: str, raw_summary: str) -> str:
-        from siso_crawler.llm_client import SummarizationFailed
+    def summarize(self, title: str, raw_summary: str):
+        from siso_crawler.llm_client import SummarizationFailed, SummarizedPost
 
         self.calls.append((title, raw_summary))
         if raw_summary in self.fail_on:
             raise SummarizationFailed("fixture failure")
-        return f"{self.prefix}{raw_summary}"
+        return SummarizedPost(title=f"{self.prefix}{title}", summary=f"{self.prefix}{raw_summary}")
 
 
 class FakePostPoliticalClassifier:

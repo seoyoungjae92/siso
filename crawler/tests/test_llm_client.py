@@ -123,17 +123,18 @@ def _summarizer() -> OpenRouterPostSummarizer:
     return OpenRouterPostSummarizer(api_key="test-key")
 
 
-def test_summarize_returns_rewritten_text_on_valid_response(monkeypatch):
-    content = '{"summary": "재작성된 요약"}'
+def test_summarize_returns_rewritten_title_and_summary_on_valid_response(monkeypatch):
+    content = '{"title": "재작성된 제목", "summary": "재작성된 요약"}'
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
 
     result = _summarizer().summarize("제목", "원문 요약")
 
-    assert result == "재작성된 요약"
+    assert result.title == "재작성된 제목"
+    assert result.summary == "재작성된 요약"
 
 
 def test_summarize_fails_on_non_stop_finish_reason(monkeypatch):
-    content = '{"summary": "재작성된 요약"}'
+    content = '{"title": "재작성된 제목", "summary": "재작성된 요약"}'
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content, finish_reason="length"))
 
     with pytest.raises(SummarizationFailed):
@@ -147,8 +148,16 @@ def test_summarize_fails_on_malformed_json(monkeypatch):
         _summarizer().summarize("제목", "원문 요약")
 
 
-def test_summarize_fails_on_empty_field(monkeypatch):
-    content = '{"summary": "   "}'
+def test_summarize_fails_on_empty_summary_field(monkeypatch):
+    content = '{"title": "재작성된 제목", "summary": "   "}'
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
+
+    with pytest.raises(SummarizationFailed):
+        _summarizer().summarize("제목", "원문 요약")
+
+
+def test_summarize_fails_on_empty_title_field(monkeypatch):
+    content = '{"title": "   ", "summary": "재작성된 요약"}'
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
 
     with pytest.raises(SummarizationFailed):
@@ -184,7 +193,7 @@ def test_summarize_fails_when_response_missing_choices(monkeypatch):
 
 
 def test_summarize_fails_on_mostly_non_korean_response(monkeypatch):
-    content = '{"summary": "предоставление новых членов低質内容遮蔽ئagression"}'
+    content = '{"title": "제목", "summary": "предоставление новых членов低質内容遮蔽ئagression"}'
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
 
     with pytest.raises(SummarizationFailed):

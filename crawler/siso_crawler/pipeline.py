@@ -60,11 +60,11 @@ def ingest_source(
             result.skipped_duplicate += 1
             continue
 
-        summary_text = summarize(entry.summary, title=entry.title, summarizer=summarizer)
+        summarized = summarize(entry.summary, title=entry.title, summarizer=summarizer)
 
         if political_classifier is not None:
             try:
-                if not political_classifier.is_political(entry.title, summary_text):
+                if not political_classifier.is_political(summarized.title, summarized.summary):
                     result.skipped_non_political += 1
                     continue
             except PoliticalClassificationFailed as exc:
@@ -72,8 +72,8 @@ def ingest_source(
 
         repo.insert_post(
             source_id=source.id,
-            title=entry.title,
-            summary=summary_text,
+            title=summarized.title,
+            summary=summarized.summary,
             origin_url=entry.link,
             origin_url_hash=url_hash,
             published_at=entry.published_at,

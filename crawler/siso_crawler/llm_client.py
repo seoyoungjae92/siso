@@ -31,7 +31,10 @@ SYSTEM_PROMPT = """너는 한국 정치 커뮤니티 좌/우 게시글을 보고
 규칙:
 1. 좌/우 입장 요약은 분량과 어조를 최대한 대칭으로 맞춰라. 한쪽이 더
    길거나, 더 정당해 보이거나, 더 감정적으로 서술되면 안 된다.
-2. 비속어·욕설·인신공격 표현은 전부 순화하거나 제거해라.
+2. 특정 집단을 향한 혐오 표현이나 노골적인 19금 이상의 단어만 순화하거나
+   제거해라. 그 정도가 아닌 강한 어조나 가벼운 비속어는 원문 분위기를
+   살려서 그대로 둬도 된다(단, 좌/우 어느 한쪽만 강하게 남기면 안 되고
+   1번 규칙의 대칭은 항상 지켜라).
 3. 제공된 게시글 제목·요약에 없는 사실을 새로 지어내지 마라 — 어조와
    표현만 다듬고, 주장의 근거는 원문 범위를 넘지 마라.
 4. 반드시 요청된 스키마의 JSON 형식으로만 답해라. 다른 텍스트를 덧붙이지
@@ -180,39 +183,48 @@ def build_topic_synthesizer(api_key: str | None, model: str | None = None) -> To
     return OpenRouterTopicSynthesizer(api_key, model=model or SYNTHESIS_MODEL)
 
 
-SUMMARIZE_SYSTEM_PROMPT = """너는 커뮤니티 게시글 요약을 다시 쓰는 편집자야.
-아래 원문 요약을 참고해서 같은 사실관계를 담은 새로운 한국어 요약을 직접
-작성해줘.
+SUMMARIZE_SYSTEM_PROMPT = """너는 커뮤니티 게시글 제목과 요약을 다시 쓰는
+편집자야. 아래 원문 제목·요약을 참고해서 같은 사실관계를 담은 새로운
+한국어 제목과 요약을 직접 작성해줘.
 
 규칙:
 1. 원문 문장을 그대로 베끼지 말고 반드시 다른 표현으로 다시 써라.
-2. 200자를 넘기지 마라.
+2. 제목은 100자, 요약은 200자를 넘기지 마라.
 3. 원문에 없는 사실을 새로 지어내지 마라 — 사실관계는 원문 범위를
    넘지 마라.
-4. 욕설·비속어·인신공격 표현은 순화하거나 제거해라.
+4. 특정 집단을 향한 혐오 표현이나 노골적인 19금 이상의 단어만 순화하거나
+   제거해라. 그 정도가 아닌 강한 어조나 가벼운 비속어는 원문 분위기를
+   살려서 그대로 둬도 된다.
 5. 반드시 요청된 스키마의 JSON 형식으로만 답해라. 다른 텍스트를 덧붙이지
    마라."""
 
 SUMMARIZE_RESPONSE_JSON_SCHEMA = {
     "type": "object",
-    "properties": {"summary": {"type": "string"}},
-    "required": ["summary"],
+    "properties": {"title": {"type": "string"}, "summary": {"type": "string"}},
+    "required": ["title", "summary"],
     "additionalProperties": False,
 }
 
 
 class SummarizedPostSchema(pydantic.BaseModel):
+    title: str
+    summary: str
+
+
+@dataclass(frozen=True)
+class SummarizedPost:
+    title: str
     summary: str
 
 
 class SummarizationFailed(Exception):
     """API 에러, 비정상 종료, 잘림, 빈 필드, JSON/스키마 불일치, 한글 비율
-    미달 등 모든 실패를 이 예외 하나로 감싼다 — 호출부는 발췌 요약으로
-    안전하게 폴백한다."""
+    미달 등 모든 실패를 이 예외 하나로 감싼다 — 호출부는 원문 제목·발췌
+    요약으로 안전하게 폴백한다."""
 
 
 class PostSummarizer(Protocol):
-    def summarize(self, title: str, raw_summary: str) -> str: ...
+    def summarize(self, title: str, raw_summary: str) -> SummarizedPost: ...
 
 
 class OpenRouterPostSummarizer:
@@ -220,7 +232,7 @@ class OpenRouterPostSummarizer:
         self._api_key = api_key
         self._model = model
 
-    def summarize(self, title: str, raw_summary: str) -> str:
+    def summarize(self, title: str, raw_summary: str) -> SummarizedPost:
         user_prompt = f"제목: {title}\n원문 요약: {raw_summary}"
         app_name = os.environ.get("APP_NAME", "siso")
 
@@ -272,14 +284,15 @@ class OpenRouterPostSummarizer:
         except pydantic.ValidationError as exc:
             raise SummarizationFailed(f"응답 JSON 파싱/스키마 검증 실패: {exc}") from exc
 
-        summary = parsed.summary.strip()
-        if not summary:
+        new_title = parsed.title.strip()
+        new_summary = parsed.summary.strip()
+        if not (new_title and new_summary):
             raise SummarizationFailed("응답에 빈 필드가 있음")
 
-        if _korean_ratio(summary) < MIN_KOREAN_RATIO:
+        if _korean_ratio(f"{new_title} {new_summary}") < MIN_KOREAN_RATIO:
             raise SummarizationFailed("응답의 한글 비율이 너무 낮음(다른 언어가 뒤섞인 응답으로 판단)")
 
-        return summary
+        return SummarizedPost(title=new_title, summary=new_summary)
 
 
 def build_post_summarizer(api_key: str | None, model: str | None = None) -> PostSummarizer | None:
