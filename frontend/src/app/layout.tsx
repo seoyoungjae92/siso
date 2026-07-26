@@ -9,7 +9,14 @@ import "./globals.css";
 
 const appName = process.env.APP_NAME ?? "시소";
 
+// og:image 등 메타데이터의 절대 URL을 만드는 기준 — 없으면 Next.js가
+// http://localhost:3000으로 fallback해서, 카톡/문자 링크 미리보기 서버가
+// 절대 못 가져오는 주소가 og:image에 그대로 박힌다(실측으로 확인한 버그).
+// 서비스 도메인 미정(CLAUDE.md D7)이라 환경변수로 추상화.
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: appName,
   description: "좌·우 커뮤니티 모아보기 + 익명 토론 놀이터",
 };
