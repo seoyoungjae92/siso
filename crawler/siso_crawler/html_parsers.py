@@ -14,7 +14,6 @@ CLIEN_BASE_URL = "https://www.clien.net"
 CLUB82_BASE_URL = "https://www.82cook.com/entiz/"
 RULIWEB_BASE_URL = "https://bbs.ruliweb.com/"
 THEQOO_BASE_URL = "https://theqoo.net"
-FMKOREA_BASE_URL = "https://www.fmkorea.com"
 
 _TIME_ONLY_RE = re.compile(r"^\d{1,2}:\d{2}$")
 _DATE_ONLY_RE = re.compile(r"^\d{4}\.\d{2}\.\d{2}$")
@@ -214,10 +213,10 @@ def parse_ruliweb_board(html: bytes) -> list[RawEntry]:
 
 
 def _parse_xe_style_time(text: str) -> str | None:
-    # 더쿠·에펨코리아 둘 다 같은 게시판 엔진(XE/Rhymix) 계열이라 시각 표기도
-    # 동일하게 세 포맷이 섞여 나온다: "11:50"(오늘, 시:분) / "07.25"(올해,
-    # 월.일) / "24.04.09"(예전, 두자리 연도.월.일). title 속성 같은 정확한
-    # 타임스탬프가 없어서 이 셋만 다룬다. 셋 다 아니면 파싱 포기(None).
+    # XE/Rhymix 계열 게시판 엔진(더쿠 등)은 시각 표기가 세 포맷으로 섞여
+    # 나온다: "11:50"(오늘, 시:분) / "07.25"(올해, 월.일) / "24.04.09"(예전,
+    # 두자리 연도.월.일). title 속성 같은 정확한 타임스탬프가 없어서 이 셋만
+    # 다룬다. 셋 다 아니면 파싱 포기(None).
     now = datetime.now(KST)
     if _TIME_ONLY_RE.match(text):
         hour, minute = (int(part) for part in text.split(":"))
@@ -262,10 +261,6 @@ def parse_theqoo_board(html: bytes) -> list[RawEntry]:
     return _parse_xe_style_board(html, THEQOO_BASE_URL)
 
 
-def parse_fmkorea_board(html: bytes) -> list[RawEntry]:
-    return _parse_xe_style_board(html, FMKOREA_BASE_URL)
-
-
 _PARSERS_BY_HOST = {
     "www.todayhumor.co.kr": parse_todayhumor_bestofbest,
     "gall.dcinside.com": parse_dcinside_gallery,
@@ -273,7 +268,6 @@ _PARSERS_BY_HOST = {
     "www.82cook.com": parse_82cook_board,
     "bbs.ruliweb.com": parse_ruliweb_board,
     "theqoo.net": parse_theqoo_board,
-    "www.fmkorea.com": parse_fmkorea_board,
 }
 
 
