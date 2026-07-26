@@ -3,8 +3,11 @@ import { headers } from "next/headers";
 import { BACKEND_API_URL } from "@/lib/posts";
 
 export function adminAuthHeader(): string {
-  const user = process.env.ADMIN_USERNAME ?? "admin";
-  const pass = process.env.ADMIN_PASSWORD ?? "local-dev-only-password";
+  const user = process.env.ADMIN_USERNAME;
+  const pass = process.env.ADMIN_PASSWORD;
+  if (!user || !pass) {
+    throw new Error("ADMIN_USERNAME/ADMIN_PASSWORD 미설정");
+  }
   return "Basic " + Buffer.from(`${user}:${pass}`).toString("base64");
 }
 

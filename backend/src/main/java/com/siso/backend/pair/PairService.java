@@ -10,6 +10,7 @@ import com.siso.backend.ratelimit.RateLimiter;
 import com.siso.backend.settings.AbuseSettings;
 import com.siso.backend.settings.AbuseSettingsRepository;
 import com.siso.backend.settings.CrawlSettingsRepository;
+import com.siso.backend.settings.ElectionSettingsRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -41,6 +42,7 @@ public class PairService {
     private final AbuseSettingsRepository abuseSettingsRepository;
     private final TrustScoreService trustScoreService;
     private final SpikeDetector spikeDetector;
+    private final ElectionSettingsRepository electionSettingsRepository;
 
     public PairService(
             TopicPairRepository topicPairRepository,
@@ -52,7 +54,8 @@ public class PairService {
             IpHasher ipHasher,
             AbuseSettingsRepository abuseSettingsRepository,
             TrustScoreService trustScoreService,
-            SpikeDetector spikeDetector) {
+            SpikeDetector spikeDetector,
+            ElectionSettingsRepository electionSettingsRepository) {
         this.topicPairRepository = topicPairRepository;
         this.voteRepository = voteRepository;
         this.commentRepository = commentRepository;
@@ -63,6 +66,7 @@ public class PairService {
         this.abuseSettingsRepository = abuseSettingsRepository;
         this.trustScoreService = trustScoreService;
         this.spikeDetector = spikeDetector;
+        this.electionSettingsRepository = electionSettingsRepository;
     }
 
     @Transactional(readOnly = true)
@@ -72,14 +76,21 @@ public class PairService {
         Page<TopicPair> pairs = topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
                 ACTIVE_STATUS, since, pageable);
 
+        // D10: 선거 모드 중엔 공직선거법상 여론조사 결과 공표 리스크를 피하기
+        // 위해 API 응답 자체에서 득표 집계를 감춘다(프론트 렌더링만 가리는 걸로는
+        // curl/스크립트로 그대로 노출됨 — 실측으로 확인된 갭).
+        boolean electionMode = electionSettingsRepository.findById(SETTINGS_ID).orElseThrow().isEnabled();
+
         List<Long> pairIds = pairs.getContent().stream().map(TopicPair::getId).toList();
         Map<Long, Map<String, Double>> talliesByPairId = new HashMap<>();
         Map<Long, Long> commentCountsByPairId = new HashMap<>();
         if (!pairIds.isEmpty()) {
-            for (VoteRepository.WeightedStanceCountByPair row : voteRepository.sumWeightedByPairIdsGroupByStance(pairIds)) {
-                talliesByPairId
-                        .computeIfAbsent(row.getPairId(), key -> new HashMap<>())
-                        .put(row.getStance(), row.getTotal());
+            if (!electionMode) {
+                for (VoteRepository.WeightedStanceCountByPair row : voteRepository.sumWeightedByPairIdsGroupByStance(pairIds)) {
+                    talliesByPairId
+                            .computeIfAbsent(row.getPairId(), key -> new HashMap<>())
+                            .put(row.getStance(), row.getTotal());
+                }
             }
             for (CommentRepository.CommentCountByPair row : commentRepository.countVisibleByPairIds(pairIds)) {
                 commentCountsByPairId.put(row.getPairId(), row.getTotal());
@@ -103,9 +114,12 @@ public class PairService {
         TopicPair pair = topicPairRepository.findByIdAndStatusAndTitleIsNotNull(id, ACTIVE_STATUS)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "pair not found"));
 
+        boolean electionMode = electionSettingsRepository.findById(SETTINGS_ID).orElseThrow().isEnabled();
         Map<String, Double> tally = new HashMap<>();
-        for (VoteRepository.WeightedStanceCount row : voteRepository.sumWeightedByPairIdGroupByStance(id)) {
-            tally.put(row.getStance(), row.getTotal());
+        if (!electionMode) {
+            for (VoteRepository.WeightedStanceCount row : voteRepository.sumWeightedByPairIdGroupByStance(id)) {
+                tally.put(row.getStance(), row.getTotal());
+            }
         }
 
         String myStance = viewerAnonId == null
