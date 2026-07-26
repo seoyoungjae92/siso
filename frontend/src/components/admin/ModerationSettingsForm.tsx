@@ -7,6 +7,7 @@ import type { ModerationSettings } from "@/lib/admin";
 
 export function ModerationSettingsForm({ initial }: { initial: ModerationSettings }) {
   const [threshold, setThreshold] = useState(initial.autoBlindReportThreshold);
+  const [classificationModel, setClassificationModel] = useState(initial.classificationModel);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -16,7 +17,10 @@ export function ModerationSettingsForm({ initial }: { initial: ModerationSetting
     setError(null);
     setSavedAt(null);
     startTransition(async () => {
-      const result = await postUpdateModerationSettings({ autoBlindReportThreshold: threshold });
+      const result = await postUpdateModerationSettings({
+        autoBlindReportThreshold: threshold,
+        classificationModel,
+      });
       if (!result.ok) {
         setError(result.error ?? "오류가 발생했습니다.");
         return;
@@ -42,6 +46,20 @@ export function ModerationSettingsForm({ initial }: { initial: ModerationSetting
         />
         <span className="text-xs text-[#8A877E]">
           댓글 하나에 이 건수만큼 신고가 누적되면 자동으로 블라인드 처리
+        </span>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-bold">신고 1차 분류 모델 (OpenRouter)</span>
+        <input
+          type="text"
+          value={classificationModel}
+          onChange={(e) => setClassificationModel(e.target.value)}
+          required
+          className="rounded border border-line px-2 py-1.5 text-sm"
+        />
+        <span className="text-xs text-[#8A877E]">
+          기본값 openrouter/free(무료). 특정 모델을 쓰려면 OpenRouter 슬러그를 입력(예:
+          anthropic/claude-haiku-4.5)
         </span>
       </label>
       <div className="flex items-center gap-2">

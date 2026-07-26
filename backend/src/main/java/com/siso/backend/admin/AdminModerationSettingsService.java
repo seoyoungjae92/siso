@@ -26,7 +26,7 @@ public class AdminModerationSettingsService {
     @Transactional
     public ModerationSettingsDto update(ModerationSettingsRequest request) {
         ModerationSettings settings = findSingleton();
-        settings.update(request.autoBlindReportThreshold(), OffsetDateTime.now());
+        settings.update(request.autoBlindReportThreshold(), request.classificationModel(), OffsetDateTime.now());
         return toDto(settings);
     }
 
@@ -35,6 +35,7 @@ public class AdminModerationSettingsService {
     }
 
     private ModerationSettingsDto toDto(ModerationSettings settings) {
-        return new ModerationSettingsDto(settings.getAutoBlindReportThreshold(), settings.getUpdatedAt());
+        return new ModerationSettingsDto(
+                settings.getAutoBlindReportThreshold(), settings.getClassificationModel(), settings.getUpdatedAt());
     }
 }

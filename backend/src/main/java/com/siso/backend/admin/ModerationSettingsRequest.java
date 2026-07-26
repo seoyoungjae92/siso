@@ -1,4 +1,4 @@
 package com.siso.backend.admin;
 
-public record ModerationSettingsRequest(int autoBlindReportThreshold) {
+public record ModerationSettingsRequest(int autoBlindReportThreshold, String classificationModel) {
 }

@@ -49,6 +49,7 @@ export async function postUpdateCrawlSettings(input: CrawlSettingsInput) {
 
 export type ModerationSettingsInput = {
   autoBlindReportThreshold: number;
+  classificationModel: string;
 };
 
 export async function postUpdateModerationSettings(input: ModerationSettingsInput) {
