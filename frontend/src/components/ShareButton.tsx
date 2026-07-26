@@ -29,7 +29,21 @@ export function ShareButton({
       return;
     }
 
-    await navigator.clipboard.writeText(shareUrl);
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(shareUrl);
+    } else {
+      // navigator.clipboard는 보안 컨텍스트(HTTPS/localhost)에서만 존재한다 —
+      // 사설 IP로 http 접속하는 로컬 네트워크 테스트 등에서는 아예 없어서
+      // 그냥 호출하면 크래시난다(실측 확인). 레거시 execCommand로 폴백.
+      const textarea = document.createElement("textarea");
+      textarea.value = shareUrl;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
