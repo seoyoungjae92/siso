@@ -10,6 +10,7 @@ from .llm_client import (
 )
 from .models import Source
 from .parser import RawEntry, parse_feed
+from .profanity import contains_banned_word
 from .repository import PostRepository
 from .rss_fixups import get_rss_fixup
 from .summarize import summarize
@@ -23,6 +24,7 @@ class IngestResult:
     inserted: int = 0
     skipped_duplicate: int = 0
     skipped_non_political: int = 0
+    skipped_profanity: int = 0
 
 
 def parse_entries(source: Source, raw_bytes: bytes) -> list[RawEntry]:
@@ -61,6 +63,13 @@ def ingest_source(
             continue
 
         summarized = summarize(entry.summary, title=entry.title, summarizer=summarizer)
+
+        # LLM 순화는 API 장애·레이트리밋이면 조용히 원문으로 폴백하므로,
+        # 그 경우에도 항상 도는 로컬 사전 필터를 최후 방어선으로 둔다
+        # (실측으로 확인 — LLM이 막혀있을 때 욕설이 그대로 저장된 사례 있었음).
+        if contains_banned_word(summarized.title) or contains_banned_word(summarized.summary):
+            result.skipped_profanity += 1
+            continue
 
         if political_classifier is not None:
             try:

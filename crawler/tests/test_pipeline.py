@@ -79,6 +79,27 @@ def test_ingest_source_passes_title_and_summarizer_through_to_summarize(sample_f
     assert all(p["title"].startswith("재작성: ") for p in repo.inserted)
 
 
+def test_ingest_source_skips_posts_containing_banned_word():
+    # 실측으로 확인된 케이스: LLM 순화가 실패(레이트리밋 등)하면 원문
+    # 그대로 폴백하는데, 이때 로컬 사전 필터가 최후 방어선으로 걸러야 한다.
+    feed = """<?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0"><channel>
+      <item>
+        <title>창녀</title>
+        <link>https://example-community.test/posts/1</link>
+        <description>본문 없음</description>
+      </item>
+    </channel></rss>""".encode()
+    repo = FakePostRepository()
+
+    result = ingest_source(SOURCE, feed, repo)
+
+    assert result.fetched == 1
+    assert result.inserted == 0
+    assert result.skipped_profanity == 1
+    assert repo.inserted == []
+
+
 def test_ingest_source_skips_posts_classified_as_non_political(sample_feed_bytes):
     repo = FakePostRepository()
     classifier = FakePostPoliticalClassifier(non_political={"첫 번째 테스트 게시글 제목입니다"})
