@@ -598,6 +598,11 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
   정상 동작하니 로컬에서 안 된다고 당황하지 말 것**
 - `BACKEND_API_URL`(프론트용) — 실제 백엔드 배포 주소
 - `ASSEMBLY_API_KEY` — 선택, 국민청원 위젯. 비워두면 위젯이 자연히 숨겨짐
+- `NEXT_PUBLIC_ADS_ENABLED` — 애드센스 승인 전엔 반드시 `false`(또는
+  미설정). `AdSlot` 컴포넌트가 이 값이 `"true"`일 때만 렌더링됨(2026-08-01
+  추가) — 승인 나기 전까지 광고 placeholder가 실사용자에게 보이는 걸
+  막기 위함. 승인 후 실제 `adsbygoogle` 연동은 아직 미착수, 이 플래그는
+  현재 placeholder 노출만 제어함
 
 ### 20.4 이메일 발신 도메인 인증
 - [ ] Resend에서 실제 발신 도메인(SPF/DKIM) 인증 — 안 하면
