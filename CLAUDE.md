@@ -305,7 +305,13 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
 - **D4**: 광고는 피드 페이지부터 단계적 오픈. 토론 페이지는 모더레이션 안정화 후.
 - **D5**: DB는 Supabase (pgvector 기본 지원).
 - **D6**: 크롤러 스케줄은 GitHub Actions cron으로 시작(무료, 지연 감수) →
-  수집 주기 SLA가 필요해지면 Railway cron 이전.
+  수집 주기 SLA가 필요해지면 Railway cron 이전. **2026-08-01 이관 완료**
+  — Railway에 크롤러 서비스로 배포, 크론으로 자동 실행 중(더 이상 로컬
+  수동 실행 아님). sentence-transformers 모델 로드가 있어 이미지가
+  무겁고, 글 하나당 LLM 호출(정치성 분류+요약) 2회를 순차로 하다 보니
+  소스 하나 처리에 10분 이상 걸릴 수 있어 전체 사이클이 꽤 김(소스
+  10개 기준 1시간+ 가능) — 크론 주기를 사이클 소요 시간보다 짧게 잡으면
+  겹쳐 돌 수 있으니 주의.
 - **D7**: 서비스명·도메인 미정. 코드에서 `APP_NAME` 환경변수로 추상화.
 - **D8**: 프론트는 Next.js SSR — 광고 수익의 전제인 검색 유입을 위해
   토론 페이지가 구글에 색인되어야 함. (React SPA 안 대비 변경)
@@ -360,6 +366,25 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
   댓글 본문 전송)보다는 민감도가 낮다고 판단함 — 사용자 개인이 작성한
   글이 아니라 이미 공개된 커뮤니티 게시물이라 PII 소지가 낮음. 19.3절의
   "재작성이 발췌보다 저작권 리스크가 낮다"는 결론과도 방향이 일치.
+- **D19**: 주제 매칭·합성을 1:1 쌍에서 N:M 클러스터로 재설계
+  (2026-08-01). 프로덕션에 실제로 뜬 합성 주제 하나("보완수사권 폐지의
+  정당성과 영향")의 우 시각 요약이 실제 우파 성향과 반대로 나온 문제를
+  사용자가 직접 발견 — 원인은 좌우 글 딱 1개씩만 보고 그 두 글을 그대로
+  "입장"으로 합성했기 때문(표본이 1개뿐이라 튀는 글을 걸러낼 방법이
+  없었음). 좌우 각각 `synthesis_min_posts_per_side`(어드민 설정, 배포
+  기본값 1 = 기존과 동일 동작) 이상의 글이 모여야 그 순간 주제가
+  생성되고, 합성 프롬프트도 "여러 글의 공통 입장을 종합"하도록 규칙
+  추가. 클러스터링 알고리즘은 기존 1:1 최근접 매칭을 "시드"로 재사용하고
+  시드와 비슷한 같은 편 글들을 코호트로 붙이는 방식(별 모양 구조 — 코호트
+  멤버끼리는 비교 안 함, 주제 이탈 방지). 스키마도
+  `topic_pairs.left_post_id/right_post_id`(1:1 FK) →
+  `posts.topic_pair_id`(nullable FK, many-to-one)로 변경(V23 마이그레이션).
+  사전에 발견해 같이 고친 치명적 버그: 코호트가 덜 찬 상태로
+  `grace_period_hours`가 지나면 `min_cluster_size` 미만 판정으로 정리
+  (prune) 단계에서 삭제되어 영원히 못 자라는 문제 — `find_prunable_posts`에
+  "지금도 cross-side 매칭 후보가 될 수 있는 글은 제외" 조건 추가로 해결.
+  배포 직후 실 데이터로 같은 편 유사도 커버리지를 확인해 초기값(현재 1)을
+  올릴지 판단 예정(20.7절 "다음에 이어서 할 일" 참고).
 
 ## 18. 백로그 (2차 토론 추가분)
 
@@ -574,12 +599,9 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
       `siso.kr`/`.co.kr`은 선점돼서 KISA 신규 도메인 중 서비스 성격(AI
       기반 필터링/합성)과 맞는 `ai.kr`로 결정). 등록정보 숨김·안전잠금
       둘 다 켬.
-- [ ] DNS를 Vercel(프론트)로 연결 — 아직 안 함, 지금은 Vercel 기본
-      도메인(`siso-pied.vercel.app`)으로만 접근 가능. 백엔드(Railway)는
-      사용자에게 노출 안 되는 서버 전용 URL이라 커스텀 도메인 연결
-      불필요하다고 판단(비용/작업 아낌) — 필요해지면 재검토.
-- [ ] 가비아 네임서버 유지, Vercel "Add Domain" 화면이 안내하는
-      A/CNAME 레코드를 가비아 DNS 관리에 추가하는 방식으로 진행 예정
+- [x] DNS를 Vercel(프론트)로 연결 완료 — `https://siso.ai.kr` 실제 200
+      응답 확인됨(HSTS 적용, Vercel 서빙). 백엔드(Railway)는 사용자에게
+      노출 안 되는 서버 전용 URL이라 커스텀 도메인 연결 안 함(의도적).
 
 ### 20.2 배포 인프라 (10절 계획 기준) — 실제 배포 현황은 20.7절 참고
 - [x] Vercel 프로젝트 생성 + GitHub 연동 완료(Hobby 플랜, D15 — Pro
@@ -652,7 +674,7 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
 - [ ] Supabase 백업 정책 확인 후 10절에 반영
 - [ ] Vercel Hobby→Pro 전환은 애드센스 게재 시작 시점에(D15)
 
-### 20.7 실제 배포 리소스 현황 (2026-07-27 기준, 세션/기억 유실 대비 기록)
+### 20.7 실제 배포 리소스 현황 (2026-08-02 기준, 세션/기억 유실 대비 기록)
 
 > 시크릿(비밀번호/API키/커넥션스트링)은 여기 적지 않음 — 각 플랫폼
 > 대시보드에 로그인해서 확인. 여기는 "뭐가 어디에 떠있고 뭐가 아직
@@ -660,21 +682,46 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
 
 | 리소스 | 플랫폼 | 상태 | 비고 |
 |---|---|---|---|
-| 도메인 `siso.ai.kr` | 가비아 | 구매 완료 | DNS 연결 아직 안 함(20.1) |
-| 프론트엔드 | Vercel (Hobby) | 배포됨 | `https://siso-pied.vercel.app` |
+| 도메인 `siso.ai.kr` | 가비아 | 연결 완료 | Vercel로 DNS 연결됨, 실제 200 응답 확인(20.1) |
+| 프론트엔드 | Vercel (Hobby) | 배포됨 | `https://siso.ai.kr` (기본 도메인 `siso-pied.vercel.app`도 유지) |
 | 백엔드 API | Railway (Docker) | 배포됨 | `https://siso-production.up.railway.app` — 순수 REST API라 `/`는 404가 정상, `/api/posts?side=left` 등으로 확인. Root Directory=`/backend`. URL에 `:8080` 붙이면 안 됨(공개 도메인이 내부 포트로 알아서 프록시) |
-| DB | Supabase (region: ap-south-1) | 프로젝트 생성 + 마이그레이션(V1~V17) 적용 완료 | pgvector 활성화됨. **콘텐츠 비어있음** — 운영 DB에 소스 등록 + 크롤링 아직 안 돌림. 연결은 Direct Connection(IPv6 only, 로컬 psql 안 됨) 말고 **Session Pooler**(`aws-1-ap-south-1.pooler.supabase.com:5432`) 사용 |
-| Redis | Upstash | 생성 + 연결 확인 완료 | `rediss://` TLS 필수, 비밀번호 필수 — 백엔드가 이걸 지원 안 했던 걸 PR #99에서 수정 |
-| 크롤러 실행 위치 | 로컬 전용 | 아직 서버 스케줄링 안 함 | Railway/별도 서버에 cron으로 올리는 건 미착수. 지금은 로컬에서 수동 실행만 |
+| DB | Supabase (region: ap-south-1) | 마이그레이션(V1~V23) 적용 완료 | pgvector 활성화됨. **콘텐츠 채워짐**(2026-08-01부터 운영 크롤링 중, 좌우 각 수백 건). 연결은 Direct Connection(IPv6 only, 로컬 psql 안 됨) 말고 **Session Pooler**(`aws-1-ap-south-1.pooler.supabase.com:5432`) 사용 |
+| Redis | Upstash | 연결 정상화 완료 | `rediss://` TLS 필수, 비밀번호 필수(PR #99). **주의**: Railway에 `REDIS_URL` 하나로 통짜로 넣으면 백엔드가 그 값을 아예 안 읽음(`application.properties`가 `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD`/`REDIS_SSL` 4개 개별 변수만 참조) — 반드시 쪼개서 각각 설정. 이거 놓치면 Redis 연결 실패로 `/admin/*` 전부 500, 댓글/투표 레이트리밋도 영향받음(2026-08-01 실제 장애 원인) |
+| 크롤러 | Railway (Docker, cron) | 배포 완료, **잡 분리 진행 중** | 2026-08-01 로컬 전용에서 이관. 처음엔 소스 10개 전부를 한 프로세스가 순서대로 처리하는 구조였는데, 글 하나당 LLM 호출(정치성 분류+요약)을 순차 처리하다 보니 소스 하나에 10분+ 걸려서 좌측 소스만 처리하다 사이클이 끊기고 우측(디시인사이드 5개)이 아예 미도달인 사고 발생(메모리 1GB에서 sentence-transformers 로드+장시간 누적으로 OOM kill 추정, 에러 로그 없이 그냥 끊김). `run.py`를 `CRAWL_MODE=ingest`(+`CRAWL_SIDE=left/right`)/`CRAWL_MODE=postprocess`로 나눠 돌 수 있게 코드 수정함 — **Railway 크론 스케줄 3개로 재구성하는 인프라 작업은 아직 안 됨(다음에 이어서 할 일 참고)** |
 | Sentry / UptimeRobot | - | 미착수 | 20.2 |
 | Resend(이메일 발신 도메인 인증) | - | 미착수 | 20.4 |
 
+**알려진 소스별 이슈(2026-08-01)**:
+- **더쿠(theqoo)**: robots.txt가 아예 없어서(404) "가져올 수 없으면 차단"
+  로직 때문에 매 사이클 100% 확정적으로 막혔던 버그 발견/수정함(PR #113,
+  `fetch.py`) — 404는 예외로 허용 처리. 다음 정상 크롤 사이클에서 실제
+  수집되는지 확인 필요(우측 도달 문제 때문에 아직 검증 전).
+- **오늘의유머(시사게시판)**: Railway 서버 IP로 요청하면 403 Forbidden
+  (실제 운영 로그로 확인) — 로컬(주거용 IP)에선 정상 응답이라 IP 평판
+  기반 차단으로 판단. 코드로 해결 불가(프록시/레지덴셜 IP 우회는 범위
+  밖으로 판단, 안 함). `source_failure_threshold`(기본 5회 연속 실패)로
+  자동 비활성화될 예정 — 필요시 `/admin/sources`에서 수동으로 꺼도 됨.
+- **정치성 분류기**: `openrouter/free`가 매번 다른 모델로 라우팅되는데
+  일부 모델이 요청한 스키마 키(`is_political`) 대신 `political`/`politics`로
+  응답하는 경우가 매우 잦아서 분류가 거의 fail-open되고 있었음 — Pydantic
+  AliasChoices로 변형 키도 인정하도록 수정함(PR #114).
+
 **다음에 이어서 할 일(우선순위순)**:
-1. 운영 Supabase DB에 소스 10개 등록 + 크롤러를 `CRAWLER_DATABASE_URL`로
-   운영 DB 가리키게 해서 실제 콘텐츠 채우기 (로컬 DB 크롤은 이미 검증됨)
-2. `siso.ai.kr` → Vercel 도메인 연결(Vercel "Add Domain" → 안내되는
-   A/CNAME을 가비아 DNS에 추가). 백엔드는 브라우저에 직접 노출 안 되는
-   서버 전용 URL(`BACKEND_API_URL`)이라 커스텀 도메인 불필요
-3. 크롤러를 주기적으로 돌릴 방법 결정(Railway cron service 추가가 가장
-   간단해 보임, 아직 미검토)
-4. 20.4(Resend 도메인 인증), 20.6(Sentry/UptimeRobot) 순으로 진행
+1. **Railway 크론 스케줄 3개로 재구성** — `CRAWL_MODE=ingest`+`CRAWL_SIDE=left`,
+   `CRAWL_MODE=ingest`+`CRAWL_SIDE=right`, `CRAWL_MODE=postprocess`
+   (PR #117 코드는 준비됨, 인프라 설정은 미완료). 크롤러 서비스 메모리도
+   1GB→2GB 정도로 올리는 것 검토(현재 OOM 추정 종료의 유력 원인).
+2. `crawler/siso_crawler/backfill_summaries.py`(신규, 미실행) 돌리기 —
+   OpenRouter 무료 티어 일일 한도(50건) 소진 기간에 `summary=''`로 저장된
+   기존 글 814건을 재요약하는 1회성 스크립트. `CRAWLER_DATABASE_URL`이
+   있는 환경(Railway 크롤러 서비스)에서 `python -m
+   siso_crawler.backfill_summaries` 실행.
+3. D19(N:M 클러스터링) 배포 후 실 데이터로 같은 편(side) 유사도 커버리지
+   확인 → `synthesis_min_posts_per_side` 초기값(현재 1, 기존과 동일 동작)을
+   올릴지 `/admin/settings`에서 결정.
+4. 더쿠 정상화 여부 확인 — 크론 재구성 후 로그에서 "더쿠" 관련 줄이
+   fetched>0으로 뜨는지 확인.
+5. PR #69(TypeScript 5.9.3→7.0.2, 메이저 업그레이드) — 프론트 빌드
+   실패로 머지 보류 중. 별도로 브레이킹 체인지 확인 후 마이그레이션
+   필요.
+6. 20.4(Resend 도메인 인증), 20.6(Sentry/UptimeRobot) 순으로 진행.
