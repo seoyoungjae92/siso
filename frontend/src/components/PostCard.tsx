@@ -16,7 +16,6 @@ export function PostCard({ post, side }: { post: PostSummary; side: Side }) {
         </time>
       </div>
       <h3 className="mb-1 line-clamp-2 text-sm font-bold tracking-tight">{post.title}</h3>
-      <p className="line-clamp-2 text-[12.5px] text-[#6B6960]">{post.summary}</p>
       <div className="mt-2 text-[11px] text-[#A09D94]">
         <a href={post.originUrl} target="_blank" rel="noopener noreferrer">
           원문 보기 ↗
