@@ -15,10 +15,28 @@ const appName = process.env.APP_NAME ?? "시소";
 // 서비스 도메인 미정(CLAUDE.md D7)이라 환경변수로 추상화.
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+const tagline = "같은 주제, 다른 시선";
+const description = "좌·우 커뮤니티 글을 나란히 모아보고, 같은 주제를 두고 익명으로 토론하는 공간";
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: appName,
-  description: "좌·우 커뮤니티 모아보기 + 익명 토론 놀이터",
+  title: {
+    default: `${appName} — ${tagline}`,
+    template: `%s — ${appName}`,
+  },
+  description,
+  openGraph: {
+    title: `${appName} — ${tagline}`,
+    description,
+    siteName: appName,
+    locale: "ko_KR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${appName} — ${tagline}`,
+    description,
+  },
 };
 
 export default function RootLayout({
