@@ -333,7 +333,12 @@ POLITICAL_CLASSIFY_RESPONSE_JSON_SCHEMA = {
 
 
 class PoliticalClassificationSchema(pydantic.BaseModel):
-    is_political: bool
+    # openrouter/free는 매 호출마다 다른 모델로 라우팅되는데, 일부 모델이
+    # 요청한 스키마의 키 이름(is_political)을 안 지키고 political/politics로
+    # 응답하는 경우가 실제로 잦음(2026-08-01 운영 로그로 확인) — 스키마
+    # 검증 실패로 매번 버려지면 정치성 필터가 사실상 안 걸러지는 것과
+    # 같아서, 흔한 변형 키 이름도 같은 필드로 인정한다.
+    is_political: bool = pydantic.Field(validation_alias=pydantic.AliasChoices("is_political", "political", "politics"))
 
 
 class PoliticalClassificationFailed(Exception):
