@@ -15,7 +15,6 @@ from .fetch import fetch_robots_parser as _fetch_robots_parser
 from .linkcheck import scan_dead_links
 from .llm_client import (
     build_post_political_classifier,
-    build_post_summarizer,
     build_topic_synthesizer,
 )
 from .matching import embed_pending_posts, match_pending_posts, prune_stale_candidates
@@ -219,14 +218,18 @@ def main() -> None:
             if side:
                 sources = [s for s in sources if s.side == side]
             post_repo = PsycopgPostRepository(conn)
-            summarizer = build_post_summarizer(api_key, model=settings.synthesis_model)
+            # 좌우 피드는 제목+원문 링크만 보여주기로 함(AI 요약 생략) —
+            # 등록된 소스가 전부 HTML 스크래핑이라 entry.summary가 항상
+            # 비어있어(html_parsers.py) 요약 LLM 호출을 걸어도 어차피
+            # summarizer=None 폴백과 결과가 같았고(둘 다 빈 문자열),
+            # 요약 호출을 아예 빼면 글 하나당 LLM 호출이 절반으로 줄어
+            # 수집 사이클이 빨라지고 비용도 아낌.
             political_classifier = build_post_political_classifier(api_key, model=settings.synthesis_model)
             run_ingest_cycle(
                 sources,
                 settings,
                 post_repo,
                 source_repo,
-                summarizer=summarizer,
                 political_classifier=political_classifier,
             )
 
