@@ -27,7 +27,7 @@ export function FeedColumn({
   const [posts, setPosts] = useState(initialPosts);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [newIds, setNewIds] = useState<Set<number>>(new Set());
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const sentinelRef = useRef<HTMLDivElement>(null);
   const postsRef = useRef(posts);
   // 페이지 커서를 ref로 관리 — IntersectionObserver 콜백이 리렌더 전에
@@ -81,11 +81,20 @@ export function FeedColumn({
   }, [hasMore, side]);
 
   return (
-    <section className={`px-[18px] py-5 ${bg}`}>
+    // min-h-full: 모바일 탭에서 이 section의 부모(overflow-y-auto 스크롤
+    // 컨테이너)는 실측 뷰포트 높이를 갖는데, 게시글이 적으면 section이
+    // 내용만큼만 높이를 차지해 그 아래로 틴트 배경 없이 흰 여백이 보임 —
+    // 최소 부모 높이만큼은 채우도록 보정(데스크톱 grid에서는 이미 grid
+    // stretch로 채워지고 있어 영향 없음).
+    <section className={`min-h-full px-[18px] py-5 ${bg}`}>
       <div className="mb-3.5 flex items-baseline gap-2">
         <h2 className={`text-[15px] font-extrabold tracking-tight ${heading}`}>{title}</h2>
         <span className="text-xs text-[#8A877E]">실시간 수집</span>
       </div>
+
+      {posts.length === 0 && (
+        <p className="text-sm text-[#6B6960]">아직 수집된 글이 없습니다.</p>
+      )}
 
       {posts.map((post, index) => (
         <div key={post.id} className={newIds.has(post.id) ? "animate-new-item" : ""}>
@@ -94,7 +103,15 @@ export function FeedColumn({
         </div>
       ))}
 
-      {hasMore && <div ref={sentinelRef} aria-hidden className="h-1" />}
+      {hasMore && (
+        <div ref={sentinelRef} className="flex h-6 items-center justify-center">
+          {isPending && (
+            <span className="text-xs text-[#8A877E]" role="status">
+              불러오는 중...
+            </span>
+          )}
+        </div>
+      )}
     </section>
   );
 }

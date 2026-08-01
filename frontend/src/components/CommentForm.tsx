@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 
 import { postComment } from "@/app/pairs/[id]/actions";
 
+const BODY_MAX_LENGTH = 2000;
+
 const STANCE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "선택 안 함" },
   { value: "left", label: "좌" },
@@ -53,8 +55,12 @@ export function CommentForm({
         onChange={(e) => setBody(e.target.value)}
         placeholder={parentId ? "답글을 입력하세요" : "댓글을 입력하세요"}
         rows={parentId ? 2 : 3}
+        maxLength={BODY_MAX_LENGTH}
         className="w-full rounded-[10px] border border-line p-2.5 text-sm"
       />
+      <p className="mt-1 text-right text-[11px] text-[#8A877E]">
+        {body.length}/{BODY_MAX_LENGTH}
+      </p>
       <div className="mt-1.5 flex items-center justify-between">
         {!parentId && (
           <div className="flex gap-2 text-xs">

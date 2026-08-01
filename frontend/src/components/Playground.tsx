@@ -25,7 +25,7 @@ export function Playground({
   const [pairs, setPairs] = useState(initialPairs);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [newIds, setNewIds] = useState<Set<number>>(new Set());
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const sentinelRef = useRef<HTMLDivElement>(null);
   const pairsRef = useRef(pairs);
   const cursor = useRef({ nextPage: 1, fetching: false });
@@ -115,7 +115,15 @@ export function Playground({
         </div>
       ))}
 
-      {hasMore && <div ref={sentinelRef} aria-hidden className="h-1" />}
+      {hasMore && (
+        <div ref={sentinelRef} className="flex h-6 items-center justify-center">
+          {isPending && (
+            <span className="text-xs text-[#8A877E]" role="status">
+              불러오는 중...
+            </span>
+          )}
+        </div>
+      )}
     </>
   );
 }

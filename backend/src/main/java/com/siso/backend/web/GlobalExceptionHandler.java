@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
@@ -27,6 +28,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex) {
         String message = ex.getReason() != null ? ex.getReason() : ex.getStatusCode().toString();
         return ResponseEntity.status(ex.getStatusCode()).body(Map.of("message", message));
+    }
+
+    // @Valid 검증 실패(예: 댓글 2000자 초과)는 클라이언트 입력 문제라
+    // 400이어야 하는데, 아래 catch-all(500)에 걸리면 상태 코드가 틀려짐 —
+    // 별도로 잡아서 400 + 정리된 메시지로 응답.
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("message", "입력값이 올바르지 않습니다. 다시 확인해주세요."));
     }
 
     @ExceptionHandler(Exception.class)
