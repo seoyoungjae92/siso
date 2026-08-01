@@ -42,7 +42,7 @@ def test_synthesize_sends_ascii_safe_title_header(monkeypatch):
 
     def fake_post(*args, **kwargs):
         captured["headers"] = kwargs["headers"]
-        return _openrouter_response('{"title": "제목", "left_stance": "좌", "right_stance": "우"}')
+        return _openrouter_response('{"no_clear_issue": false, "title": "제목", "left_stance": "좌", "right_stance": "우"}')
 
     monkeypatch.setattr(httpx, "post", fake_post)
     monkeypatch.setenv("APP_NAME", "시소")
@@ -54,7 +54,7 @@ def test_synthesize_sends_ascii_safe_title_header(monkeypatch):
 
 
 def test_synthesize_returns_topic_on_valid_response(monkeypatch):
-    content = '{"title": "제목", "left_stance": "좌 입장", "right_stance": "우 입장"}'
+    content = '{"no_clear_issue": false, "title": "제목", "left_stance": "좌 입장", "right_stance": "우 입장"}'
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
 
     result = _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
@@ -65,7 +65,7 @@ def test_synthesize_returns_topic_on_valid_response(monkeypatch):
 
 
 def test_synthesize_fails_on_non_stop_finish_reason(monkeypatch):
-    content = '{"title": "제목", "left_stance": "좌", "right_stance": "우"}'
+    content = '{"no_clear_issue": false, "title": "제목", "left_stance": "좌", "right_stance": "우"}'
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content, finish_reason="length"))
 
     with pytest.raises(SynthesisFailed):
@@ -80,7 +80,7 @@ def test_synthesize_fails_on_malformed_json(monkeypatch):
 
 
 def test_synthesize_fails_on_empty_field(monkeypatch):
-    content = '{"title": "  ", "left_stance": "좌", "right_stance": "우"}'
+    content = '{"no_clear_issue": false, "title": "  ", "left_stance": "좌", "right_stance": "우"}'
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
 
     with pytest.raises(SynthesisFailed):
@@ -121,7 +121,7 @@ def test_synthesize_fails_on_mostly_non_korean_response(monkeypatch):
     # 2026-07-24 실제로 openrouter/free 무료 라우터에서 관측된 사례 —
     # 러시아어/중국어/아랍어가 뒤섞인 응답을 낸 모델이 걸림.
     content = (
-        '{"title": "предоставление новых членов ограничения vs.低質内容遮蔽",'
+        '{"no_clear_issue": false, "title": "предоставление новых членов ограничения vs.低質内容遮蔽",'
         ' "left_stance": "회원가입Limits 도입이 다양한 이해관계자",'
         ' "right_stance": "저질 콘텐츠ئagression 방지를 위해"}'
     )
@@ -133,7 +133,7 @@ def test_synthesize_fails_on_mostly_non_korean_response(monkeypatch):
 
 def test_synthesize_allows_some_non_korean_characters(monkeypatch):
     content = (
-        '{"title": "AI 규제 논쟁, GDPR과 한국 상황 비교",'
+        '{"no_clear_issue": false, "title": "AI 규제 논쟁, GDPR과 한국 상황 비교",'
         ' "left_stance": "EU GDPR 수준의 강한 규제가 필요하다는 입장이다.",'
         ' "right_stance": "과도한 규제는 스타트업 성장을 막는다는 반론이다."}'
     )
@@ -149,7 +149,7 @@ def test_synthesize_numbers_multiple_posts_per_side_in_prompt(monkeypatch):
 
     def fake_post(*args, **kwargs):
         captured["body"] = kwargs["json"]
-        return _openrouter_response('{"title": "제목", "left_stance": "좌", "right_stance": "우"}')
+        return _openrouter_response('{"no_clear_issue": false, "title": "제목", "left_stance": "좌", "right_stance": "우"}')
 
     monkeypatch.setattr(httpx, "post", fake_post)
 
@@ -166,7 +166,7 @@ def test_synthesize_numbers_multiple_posts_per_side_in_prompt(monkeypatch):
 
 def test_synthesize_truncates_overlong_response_fields(monkeypatch):
     content = (
-        '{"title": "' + "가" * 300 + '",'
+        '{"no_clear_issue": false, "title": "' + "가" * 300 + '",'
         ' "left_stance": "' + "나" * 600 + '",'
         ' "right_stance": "' + "다" * 600 + '"}'
     )
@@ -177,6 +177,30 @@ def test_synthesize_truncates_overlong_response_fields(monkeypatch):
     assert len(result.title) == 200
     assert len(result.left_stance) == 500
     assert len(result.right_stance) == 500
+
+
+def test_synthesize_fails_when_model_reports_no_clear_issue(monkeypatch):
+    # 좌우 게시글이 서로 무관하거나 명확한 공통 쟁점이 없을 때 모델이
+    # 억지로 답을 지어내지 않고 이 필드로 명시적으로 알리게 함.
+    content = '{"no_clear_issue": true, "title": "", "left_stance": "", "right_stance": ""}'
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
+
+    with pytest.raises(SynthesisFailed):
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
+
+
+def test_synthesize_fails_on_single_garbled_word_amid_korean_text(monkeypatch):
+    # 2026-08-02 실제 관측 사례 — 문장 대부분은 한글이라 한글 비율(70%)
+    # 체크는 못 걸렀지만, 키릴 문자 단어 하나가 섞여있던 응답.
+    content = (
+        '{"no_clear_issue": false, "title": "제목",'
+        ' "left_stance": "주식 시장 변동성을 자연스러운ренстав 고려해야 한다는 입장이다.",'
+        ' "right_stance": "우 입장"}'
+    )
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
+
+    with pytest.raises(SynthesisFailed):
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
 
 def _summarizer() -> OpenRouterPostSummarizer:
