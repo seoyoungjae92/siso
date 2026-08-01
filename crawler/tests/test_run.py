@@ -1,7 +1,7 @@
 from siso_crawler.fetch import CrawlNotAllowed
 from siso_crawler.llm_client import SynthesizedTopic
 from siso_crawler.models import Source
-from siso_crawler.run import run_cycle
+from siso_crawler.run import run_cycle, run_ingest_cycle, run_postprocess_cycle
 from siso_crawler.settings_repository import CrawlSettings
 
 from .fakes import (
@@ -458,3 +458,36 @@ def test_run_cycle_passes_political_classifier_to_ingestion(sample_feed_bytes):
 
     assert len(post_repo.inserted) == 1
     assert post_repo.inserted[0]["title"] == "두 번째 테스트 게시글"
+
+
+def test_run_ingest_cycle_ingests_without_touching_postprocess(sample_feed_bytes):
+    # 좌/우를 별도 프로세스로 분리해 돌릴 수 있으려면 ingest 단계가
+    # matching_repo/embedder 없이도 완전히 독립적으로 동작해야 한다.
+    post_repo = FakePostRepository()
+
+    run_ingest_cycle(
+        sources=[source(1)],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        source_repo=FakeSourceRepository(),
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=lambda url: sample_feed_bytes,
+    )
+
+    assert len(post_repo.inserted) == 2
+
+
+def test_run_postprocess_cycle_runs_matching_without_ingest():
+    # postprocess 단계가 sources/post_repo 없이도 독립적으로 동작해야
+    # ingest와 분리된 별도 스케줄로 돌릴 수 있다.
+    matching_repo = FakeMatchingRepository(
+        pending_embeddings=[(1, "제목", "요약")],
+        unmatched_left=[10],
+        best_matches={10: (20, 0.8)},
+    )
+    embedder = FakeEmbeddingProvider()
+
+    run_postprocess_cycle(SETTINGS, matching_repo, embedder)
+
+    assert 1 in matching_repo.updated_embeddings
+    assert matching_repo.created_pairs == [([10], [20], 0.8)]

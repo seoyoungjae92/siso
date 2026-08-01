@@ -31,21 +31,22 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 
-def run_cycle(
+def run_ingest_cycle(
     sources: list[Source],
     settings: CrawlSettings,
     post_repo,
-    matching_repo,
-    embedder,
     source_repo: SourceRepository,
     check_robots_allowed=_check_robots_allowed,
     fetch_feed=_fetch_feed,
-    check_dead_link=_check_dead_link,
-    fetch_robots_parser=_fetch_robots_parser,
-    topic_synthesizer=None,
     summarizer=None,
     political_classifier=None,
 ) -> None:
+    """글 하나당 LLM 호출(정치성 분류+요약)을 순차로 하다 보니 소스 하나에
+    10분 이상 걸릴 수 있어, 좌/우 소스가 한 프로세스에 다 몰려있으면
+    등록 순서가 앞선 쪽이 시간/메모리를 다 써버리고 뒤쪽은 사이클 내내
+    한 번도 못 도는 문제가 실제로 발생함(2026-08-01, 우측 소스 전부
+    미도달). `sources`를 호출부에서 미리 side로 걸러서 넘기면(main()의
+    CRAWL_SIDE) 좌/우를 별도 프로세스/스케줄로 분리해 돌릴 수 있다."""
     for source in sources:
         if not source.feed_url:
             logger.info("소스 건너뜀(feed_url 없음): %s", source.name)
@@ -79,6 +80,15 @@ def run_cycle(
 
         time.sleep(min_interval)
 
+
+def run_postprocess_cycle(
+    settings: CrawlSettings,
+    matching_repo,
+    embedder,
+    check_dead_link=_check_dead_link,
+    fetch_robots_parser=_fetch_robots_parser,
+    topic_synthesizer=None,
+) -> None:
     # 매칭/정리/데드링크/합성은 서로 독립적으로 DB를 다시 조회하는
     # 단계라 하나가 실패해도 나머지를 막을 이유가 없다 — 예전엔 여기
     # 하나만 죽어도 사이클 전체가 중단돼서, 그날 데드링크 정리처럼
@@ -137,6 +147,45 @@ def run_cycle(
         logger.info("주제 합성 건너뜀 (OPENROUTER_API_KEY 미설정)")
 
 
+def run_cycle(
+    sources: list[Source],
+    settings: CrawlSettings,
+    post_repo,
+    matching_repo,
+    embedder,
+    source_repo: SourceRepository,
+    check_robots_allowed=_check_robots_allowed,
+    fetch_feed=_fetch_feed,
+    check_dead_link=_check_dead_link,
+    fetch_robots_parser=_fetch_robots_parser,
+    topic_synthesizer=None,
+    summarizer=None,
+    political_classifier=None,
+) -> None:
+    """수집(ingest)+후처리(postprocess)를 한 프로세스에서 전부 도는
+    기존 동작 — 로컬 테스트/개발용으로 유지. 운영에서는 main()이
+    CRAWL_MODE/CRAWL_SIDE로 둘을 분리해서 따로 돌린다(위 두 함수의
+    docstring 참고)."""
+    run_ingest_cycle(
+        sources,
+        settings,
+        post_repo,
+        source_repo,
+        check_robots_allowed=check_robots_allowed,
+        fetch_feed=fetch_feed,
+        summarizer=summarizer,
+        political_classifier=political_classifier,
+    )
+    run_postprocess_cycle(
+        settings,
+        matching_repo,
+        embedder,
+        check_dead_link=check_dead_link,
+        fetch_robots_parser=fetch_robots_parser,
+        topic_synthesizer=topic_synthesizer,
+    )
+
+
 def _record_failure_and_maybe_disable(source_repo: SourceRepository, source: Source, threshold: int) -> None:
     """CLAUDE.md §4.2: 실패/차단(robots.txt 불허 포함) 감지 시 해당 소스
     자동 비활성화 + 관리자 알림. threshold회 연속 실패해야 비활성화하는
@@ -150,29 +199,42 @@ def _record_failure_and_maybe_disable(source_repo: SourceRepository, source: Sou
 
 
 def main() -> None:
+    """CRAWL_MODE(미설정/ingest/postprocess)로 어느 단계를 돌지 고른다 —
+    미설정이면 기존처럼 수집+후처리를 전부 한 프로세스에서 돈다(로컬
+    개발용 하위호환). 운영에서는 Railway에 별도 스케줄 3개(ingest 좌,
+    ingest 우, postprocess)로 나눠 등록해서 한 프로세스가 다 떠안다가
+    시간/메모리 초과로 죽는 문제(2026-08-01 실제 발생, 우측 소스 전부
+    미도달)를 피한다. CRAWL_SIDE(left/right)는 CRAWL_MODE=ingest일 때만
+    사용 — 미설정이면 그 모드에서 활성 소스 전부를 대상으로 한다."""
     database_url = os.environ["CRAWLER_DATABASE_URL"]
+    mode = os.environ.get("CRAWL_MODE")
     with psycopg.connect(database_url) as conn:
         settings = PsycopgSettingsRepository(conn).get()
-        source_repo = PsycopgSourceRepository(conn)
-        sources = source_repo.find_enabled()
-        post_repo = PsycopgPostRepository(conn)
-        matching_repo = PsycopgMatchingRepository(conn)
-        embedder = SentenceTransformerEmbeddingProvider()
         api_key = os.environ.get("OPENROUTER_API_KEY")
-        topic_synthesizer = build_topic_synthesizer(api_key, model=settings.synthesis_model)
-        summarizer = build_post_summarizer(api_key, model=settings.synthesis_model)
-        political_classifier = build_post_political_classifier(api_key, model=settings.synthesis_model)
-        run_cycle(
-            sources,
-            settings,
-            post_repo,
-            matching_repo,
-            embedder,
-            source_repo,
-            topic_synthesizer=topic_synthesizer,
-            summarizer=summarizer,
-            political_classifier=political_classifier,
-        )
+
+        if mode != "postprocess":
+            side = os.environ.get("CRAWL_SIDE")
+            source_repo = PsycopgSourceRepository(conn)
+            sources = source_repo.find_enabled()
+            if side:
+                sources = [s for s in sources if s.side == side]
+            post_repo = PsycopgPostRepository(conn)
+            summarizer = build_post_summarizer(api_key, model=settings.synthesis_model)
+            political_classifier = build_post_political_classifier(api_key, model=settings.synthesis_model)
+            run_ingest_cycle(
+                sources,
+                settings,
+                post_repo,
+                source_repo,
+                summarizer=summarizer,
+                political_classifier=political_classifier,
+            )
+
+        if mode != "ingest":
+            matching_repo = PsycopgMatchingRepository(conn)
+            embedder = SentenceTransformerEmbeddingProvider()
+            topic_synthesizer = build_topic_synthesizer(api_key, model=settings.synthesis_model)
+            run_postprocess_cycle(settings, matching_repo, embedder, topic_synthesizer=topic_synthesizer)
 
 
 if __name__ == "__main__":
