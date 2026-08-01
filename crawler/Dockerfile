@@ -15,5 +15,9 @@ COPY siso_crawler ./siso_crawler
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('jhgan/ko-sbert-multitask')"
 
 ENV HF_HUB_OFFLINE=1
+# 표준출력 버퍼링을 끔 — 컨테이너가 OOM 등으로 강제종료(SIGKILL)되면
+# 버퍼에 남은 로그가 그대로 유실돼서 "Starting Container" 한 줄만 남고
+# 실제 원인이 안 보이는 문제를 실제로 겪음.
+ENV PYTHONUNBUFFERED=1
 
 CMD ["python", "-m", "siso_crawler.run"]
