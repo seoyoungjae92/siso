@@ -10,6 +10,7 @@ const FIELDS: {
   label: string;
   step: string;
   hint: string;
+  min?: string;
 }[] = [
   {
     key: "multiAccountClusterSize",
@@ -27,7 +28,8 @@ const FIELDS: {
     key: "trustMaturityHours",
     label: "신뢰도 성숙 기간(시간)",
     step: "1",
-    hint: "가입 후 이 시간이 지나야 신뢰도 점수가 최대치에 도달",
+    min: "1",
+    hint: "가입 후 이 시간이 지나야 신뢰도 점수가 최대치에 도달(0 이하 입력 시 계산 오류 발생)",
   },
   {
     key: "trustMinWeight",
@@ -115,6 +117,7 @@ export function AbuseSettingsForm({ initial }: { initial: AbuseSettings }) {
           <input
             type="number"
             step={field.step}
+            min={field.min}
             value={values[field.key]}
             onChange={(e) =>
               setValues((prev) => ({ ...prev, [field.key]: Number(e.target.value) }))

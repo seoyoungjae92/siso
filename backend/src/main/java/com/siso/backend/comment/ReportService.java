@@ -6,6 +6,7 @@ import com.siso.backend.ratelimit.RateLimiter;
 import com.siso.backend.settings.ElectionSettings;
 import com.siso.backend.settings.ElectionSettingsRepository;
 import com.siso.backend.settings.ModerationSettingsRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,7 +64,15 @@ public class ReportService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 신고한 댓글입니다");
         }
 
-        reportRepository.save(new Report(comment, anonId, reason, detail, OffsetDateTime.now()));
+        // 위 existsBy 체크와 저장 사이에 동시 요청이 끼어들면(더블클릭, 중복 전송)
+        // 둘 다 통과해버릴 수 있어서 DB에 UNIQUE(comment_id, anon_id) 제약을 실제
+        // 방어선으로 둔다 — 여기서 걸리면 같은 400 메시지로 안전하게 응답.
+        try {
+            reportRepository.save(new Report(comment, anonId, reason, detail, OffsetDateTime.now()));
+            reportRepository.flush();
+        } catch (DataIntegrityViolationException exc) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 신고한 댓글입니다");
+        }
 
         int threshold = moderationSettingsRepository.findById(SETTINGS_ID).orElseThrow().getAutoBlindReportThreshold();
         ElectionSettings electionSettings = electionSettingsRepository.findById(SETTINGS_ID).orElseThrow();

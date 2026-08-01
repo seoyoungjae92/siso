@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -109,6 +110,23 @@ class ReportServiceTest {
         Comment comment = commentWithId(1L);
         when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
         when(reportRepository.existsByComment_IdAndAnonId(1L, ANON_A)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(1L, ANON_A, "abuse", null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("이미 신고");
+    }
+
+    @Test
+    void create_concurrentDuplicateRace_isRejectedByDbConstraint() {
+        // existsBy 체크와 실제 저장 사이에 동시 요청이 끼어들면 둘 다 체크는
+        // 통과할 수 있음 — DB UNIQUE(comment_id, anon_id) 제약이 이때 걸려서
+        // DataIntegrityViolationException을 던지는데, 이걸 그대로 흘리지
+        // 않고 같은 사용자 메시지로 변환해야 한다.
+        ReportService service = newService();
+        Comment comment = commentWithId(1L);
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        when(reportRepository.existsByComment_IdAndAnonId(1L, ANON_A)).thenReturn(false);
+        doThrow(new DataIntegrityViolationException("duplicate key")).when(reportRepository).flush();
 
         assertThatThrownBy(() -> service.create(1L, ANON_A, "abuse", null))
                 .isInstanceOf(ResponseStatusException.class)

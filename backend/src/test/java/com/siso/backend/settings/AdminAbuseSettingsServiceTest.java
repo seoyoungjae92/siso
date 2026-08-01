@@ -8,11 +8,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,5 +66,21 @@ class AdminAbuseSettingsServiceTest {
         assertThat(dto.multiAccountClusterSize()).isEqualTo(5);
         assertThat(dto.spikeVoteThreshold()).isEqualTo(50);
         assertThat(dto.duplicateSimilarityThreshold()).isEqualTo(0.9f);
+    }
+
+    @Test
+    void update_rejectsZeroTrustMaturityHours() {
+        // TrustScoreService가 ageHours / trustMaturityHours로 나누므로 0은
+        // 0으로 나누기(NaN)를 그대로 DB에 저장시킨다 — 저장 전에 막아야 한다.
+        AbuseSettingsRequest request = new AbuseSettingsRequest(5, 0.2f, 0, 0.2f, 0.9f, 5, 720, 15, 50, 50);
+
+        assertThatThrownBy(() -> newService().update(request)).isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void update_rejectsNegativeTrustMaturityHours() {
+        AbuseSettingsRequest request = new AbuseSettingsRequest(5, 0.2f, -1, 0.2f, 0.9f, 5, 720, 15, 50, 50);
+
+        assertThatThrownBy(() -> newService().update(request)).isInstanceOf(ResponseStatusException.class);
     }
 }

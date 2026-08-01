@@ -223,9 +223,9 @@ public class CommentService {
 
     private void adjustCount(Comment comment, String type, int delta) {
         if ("up".equals(type)) {
-            comment.adjustUpCount(delta);
+            commentRepository.adjustUpCount(comment.getId(), delta);
         } else {
-            comment.adjustDownCount(delta);
+            commentRepository.adjustDownCount(comment.getId(), delta);
         }
     }
 }

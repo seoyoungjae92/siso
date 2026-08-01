@@ -38,4 +38,15 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     @Modifying
     @Query("UPDATE Comment c SET c.ipHash = NULL WHERE c.createdAt < :cutoff AND c.ipHash IS NOT NULL")
     int purgeIpHashOlderThan(@Param("cutoff") OffsetDateTime cutoff);
+
+    // 엔티티를 읽어서 메모리에서 +1/-1 하고 dirty-checking으로 flush하면
+    // 동시에 들어온 추천 두 건이 서로의 증가분을 덮어써버리는 lost-update가
+    // 남(실측: 감사에서 지적됨). DB가 직접 원자적으로 증감하게 해서 방지.
+    @Modifying
+    @Query("UPDATE Comment c SET c.upCount = c.upCount + :delta WHERE c.id = :id")
+    void adjustUpCount(@Param("id") Long id, @Param("delta") int delta);
+
+    @Modifying
+    @Query("UPDATE Comment c SET c.downCount = c.downCount + :delta WHERE c.id = :id")
+    void adjustDownCount(@Param("id") Long id, @Param("delta") int delta);
 }
