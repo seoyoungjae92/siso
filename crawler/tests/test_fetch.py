@@ -59,8 +59,20 @@ def test_check_robots_allowed_fails_closed_on_network_error(monkeypatch):
         check_robots_allowed("https://example-community.test/rss")
 
 
-def test_check_robots_allowed_fails_closed_on_404(monkeypatch):
+def test_check_robots_allowed_allows_when_robots_txt_missing(monkeypatch):
+    # robots.txt가 아예 없는(404) 사이트는 업계 관례상 제한 없음으로 처리
+    # — 404를 fail-closed로 취급하면 robots.txt를 안 둔(흔한) 사이트가
+    # 영구적으로 전부 막힘(더쿠 실제 사례).
     monkeypatch.setattr(httpx, "get", lambda *a, **k: _robots_response("", status_code=404))
+
+    interval = check_robots_allowed("https://example-community.test/rss")
+
+    assert interval == DEFAULT_MIN_INTERVAL_SECONDS
+
+
+def test_check_robots_allowed_fails_closed_on_non_404_http_error(monkeypatch):
+    # 404 외 4xx/5xx(예: 403 차단)는 여전히 fail-closed 유지.
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: _robots_response("", status_code=403))
 
     with pytest.raises(CrawlNotAllowed):
         check_robots_allowed("https://example-community.test/rss")

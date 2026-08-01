@@ -13,9 +13,13 @@ TIMEOUT_SECONDS = 10.0
 class CrawlNotAllowed(Exception):
     """robots.txt가 대상 URL 접근을 허용하지 않을 때 발생.
 
-    robots.txt 자체를 가져올 수 없는 경우(네트워크 에러, 4xx/5xx 등)도
-    "허용 확인 불가"로 보고 fail-closed 처리한다 — CLAUDE.md의
-    "robots.txt 코드로 강제" 요구사항 취지에 맞춤.
+    robots.txt 자체를 가져올 수 없는 경우(네트워크 에러, 404를 제외한
+    4xx/5xx 등)도 "허용 확인 불가"로 보고 fail-closed 처리한다 —
+    CLAUDE.md의 "robots.txt 코드로 강제" 요구사항 취지에 맞춤. 단, 404는
+    "robots.txt 파일이 아예 없음"이라는 뜻이라 업계 관례(구글 등 주요
+    크롤러, 파이썬 표준 urllib.robotparser)를 따라 제한 없음으로 처리한다
+    — 안 그러면 robots.txt를 안 둔(매우 흔한) 사이트가 영구적으로 전부
+    막힘(더쿠 실제 사례로 확인됨, 2026-08-01).
     """
 
 
@@ -26,20 +30,22 @@ def fetch_robots_parser(url: str) -> tuple[RobotFileParser, float]:
     된다 — 파서의 can_fetch()는 순수 로컬 판정이라 URL별로 다시 호출해도
     네트워크 요청이 없다.
 
-    robots.txt 자체를 가져올 수 없는 경우(네트워크 에러, 4xx/5xx 등)는
-    CrawlNotAllowed로 fail-closed 처리한다 — CLAUDE.md의 "robots.txt
-    코드로 강제" 요구사항 취지에 맞춤."""
+    robots.txt 자체를 가져올 수 없는 경우(네트워크 에러, 404를 제외한
+    4xx/5xx 등)는 CrawlNotAllowed로 fail-closed 처리한다 — CLAUDE.md의
+    "robots.txt 코드로 강제" 요구사항 취지에 맞춤. 404(파일 없음)는
+    예외로 제한 없음 처리(CrawlNotAllowed 클래스 docstring 참고)."""
     robots_url = urljoin(url, "/robots.txt")
     try:
         response = httpx.get(
             robots_url, timeout=TIMEOUT_SECONDS, headers={"User-Agent": USER_AGENT}
         )
-        response.raise_for_status()
+        if response.status_code != 404:
+            response.raise_for_status()
     except httpx.HTTPError as exc:
         raise CrawlNotAllowed(f"robots.txt 확인 실패: {robots_url}") from exc
 
     parser = RobotFileParser()
-    parser.parse(response.text.splitlines())
+    parser.parse(response.text.splitlines() if response.status_code != 404 else [])
 
     crawl_delay = parser.crawl_delay(USER_AGENT)
     min_interval = (
