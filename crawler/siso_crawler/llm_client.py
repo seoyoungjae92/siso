@@ -10,6 +10,11 @@ import pydantic
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 TIMEOUT_SECONDS = 30.0
 
+# OpenRouter 대시보드 표시용 식별자일 뿐이라 실제 서비스명(APP_NAME, "시소"처럼
+# 한글일 수 있음)을 그대로 쓰면 안 됨 — HTTP 헤더는 ASCII만 허용해서 httpx가
+# UnicodeEncodeError를 던짐(운영에서 실제로 겪은 크래시). 고정 ASCII 값 사용.
+OPENROUTER_APP_TITLE = "siso"
+
 # 실제 운영값은 crawl_settings.synthesis_model(어드민에서 조작 가능)에서
 # 읽어온다 — 이건 그 값을 못 읽을 때(예: build_topic_synthesizer를 단독
 # 호출하는 스크립트/테스트)를 위한 폴백 기본값일 뿐. 비용 최소화 우선
@@ -109,7 +114,6 @@ class OpenRouterTopicSynthesizer:
             f"[좌 게시글]\n제목: {left_title}\n요약: {left_summary}\n\n"
             f"[우 게시글]\n제목: {right_title}\n요약: {right_summary}"
         )
-        app_name = os.environ.get("APP_NAME", "siso")
 
         try:
             response = httpx.post(
@@ -119,7 +123,7 @@ class OpenRouterTopicSynthesizer:
                     "Authorization": f"Bearer {self._api_key}",
                     "Content-Type": "application/json",
                     "HTTP-Referer": "https://github.com/seoyoungjae92/siso",
-                    "X-Title": app_name,
+                    "X-Title": OPENROUTER_APP_TITLE,
                 },
                 json={
                     "model": self._model,
@@ -234,7 +238,6 @@ class OpenRouterPostSummarizer:
 
     def summarize(self, title: str, raw_summary: str) -> SummarizedPost:
         user_prompt = f"제목: {title}\n원문 요약: {raw_summary}"
-        app_name = os.environ.get("APP_NAME", "siso")
 
         try:
             response = httpx.post(
@@ -244,7 +247,7 @@ class OpenRouterPostSummarizer:
                     "Authorization": f"Bearer {self._api_key}",
                     "Content-Type": "application/json",
                     "HTTP-Referer": "https://github.com/seoyoungjae92/siso",
-                    "X-Title": app_name,
+                    "X-Title": OPENROUTER_APP_TITLE,
                 },
                 json={
                     "model": self._model,
@@ -344,7 +347,6 @@ class OpenRouterPostPoliticalClassifier:
 
     def is_political(self, title: str, summary: str) -> bool:
         user_prompt = f"제목: {title}\n요약: {summary}"
-        app_name = os.environ.get("APP_NAME", "siso")
 
         try:
             response = httpx.post(
@@ -354,7 +356,7 @@ class OpenRouterPostPoliticalClassifier:
                     "Authorization": f"Bearer {self._api_key}",
                     "Content-Type": "application/json",
                     "HTTP-Referer": "https://github.com/seoyoungjae92/siso",
-                    "X-Title": app_name,
+                    "X-Title": OPENROUTER_APP_TITLE,
                 },
                 json={
                     "model": self._model,

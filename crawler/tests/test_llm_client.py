@@ -2,6 +2,7 @@ import httpx
 import pytest
 
 from siso_crawler.llm_client import (
+    OPENROUTER_APP_TITLE,
     OpenRouterPostPoliticalClassifier,
     OpenRouterPostSummarizer,
     OpenRouterTopicSynthesizer,
@@ -26,6 +27,30 @@ def _openrouter_response(content: str, finish_reason: str = "stop", status_code:
 
 def _synthesizer() -> OpenRouterTopicSynthesizer:
     return OpenRouterTopicSynthesizer(api_key="test-key")
+
+
+def test_openrouter_app_title_is_ascii_safe():
+    # httpx는 HTTP 헤더 값을 ascii로만 인코딩한다 — 실제로 X-Title에
+    # APP_NAME 환경변수(로컬 기본값이 "시소"처럼 한글)를 그대로 넣었다가
+    # UnicodeEncodeError로 운영 배치가 크래시난 적이 있음. 이 상수는
+    # 그 환경변수와 무관하게 항상 ascii여야 한다.
+    OPENROUTER_APP_TITLE.encode("ascii")
+
+
+def test_synthesize_sends_ascii_safe_title_header(monkeypatch):
+    captured = {}
+
+    def fake_post(*args, **kwargs):
+        captured["headers"] = kwargs["headers"]
+        return _openrouter_response('{"title": "제목", "left_stance": "좌", "right_stance": "우"}')
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    monkeypatch.setenv("APP_NAME", "시소")
+
+    _synthesizer().synthesize("좌제목", "좌요약", "우제목", "우요약")
+
+    assert captured["headers"]["X-Title"] == OPENROUTER_APP_TITLE
+    captured["headers"]["X-Title"].encode("ascii")
 
 
 def test_synthesize_returns_topic_on_valid_response(monkeypatch):
