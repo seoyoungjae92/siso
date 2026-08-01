@@ -91,6 +91,7 @@ def run_cycle(
     deleted = scan_dead_links(
         matching_repo,
         display_window_days=settings.display_window_days,
+        limit=settings.dead_link_scan_limit,
         fetch_robots_parser=fetch_robots_parser,
         check_dead_link=check_dead_link,
     )

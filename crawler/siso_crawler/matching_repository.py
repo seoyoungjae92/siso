@@ -18,7 +18,7 @@ class MatchingRepository(Protocol):
 
     def delete_post(self, post_id: int) -> bool: ...
 
-    def find_link_check_candidates(self, display_window_days: int) -> list[tuple[int, str]]: ...
+    def find_link_check_candidates(self, display_window_days: int, limit: int) -> list[tuple[int, str]]: ...
 
     def find_pairs_missing_synthesis(self, limit: int) -> list[tuple[int, str, str, str, str]]: ...
 
@@ -141,11 +141,19 @@ class PsycopgMatchingRepository:
             )
             return [row[0] for row in cur.fetchall()]
 
-    def find_link_check_candidates(self, display_window_days: int) -> list[tuple[int, str]]:
+    def find_link_check_candidates(self, display_window_days: int, limit: int) -> list[tuple[int, str]]:
         """화면에 노출 중인(노출 기간 이내) 글만 데드링크 확인 대상으로
         삼는다 — 이미 노출 안 되는 오래된 글까지 매 배치마다 원문 사이트에
         요청을 보낼 필요는 없음. 삭제 안전 조건(참조 여부)은
-        find_prunable_posts와 동일하게 상태 무관 전체 참조를 배제한다."""
+        find_prunable_posts와 동일하게 상태 무관 전체 참조를 배제한다.
+
+        매칭 안 되는 글은 노출 기간 내내 후보로 남기 때문에 후보가 많이
+        쌓이면 한 사이클이 도메인당 10초 간격 정책 때문에 무한정 길어질
+        수 있음(실측: 로컬에서 659건 쌓여 110분 예상) — limit으로 사이클당
+        처리량을 상한. collected_at 오름차순으로 잘라서, 살아있는 글은
+        노출 기간이 끝나갈 무렵(가장 오래된 것부터) 우선 재확인되고, 아직
+        안 잘린 나머지는 시간이 지나 오래된 후보들이 기간 만료로 빠지면서
+        자연스럽게 순번이 돌아옴."""
         with self._conn.cursor() as cur:
             cur.execute(
                 """
@@ -159,8 +167,10 @@ class PsycopgMatchingRepository:
                   AND NOT EXISTS (
                       SELECT 1 FROM comments c WHERE c.post_id = p.id
                   )
+                ORDER BY p.collected_at ASC
+                LIMIT %s
                 """,
-                (display_window_days,),
+                (display_window_days, limit),
             )
             return [(row[0], row[1]) for row in cur.fetchall()]
 

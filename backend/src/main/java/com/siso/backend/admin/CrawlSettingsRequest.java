@@ -7,5 +7,6 @@ public record CrawlSettingsRequest(
         int gracePeriodHours,
         int displayWindowDays,
         int synthesisLimit,
-        String synthesisModel) {
+        String synthesisModel,
+        int deadLinkScanLimit) {
 }

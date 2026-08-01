@@ -102,8 +102,8 @@ class FakeMatchingRepository:
         self.deleted_posts.append(post_id)
         return True
 
-    def find_link_check_candidates(self, display_window_days: int) -> list[tuple[int, str]]:
-        return self.link_check_candidates
+    def find_link_check_candidates(self, display_window_days: int, limit: int) -> list[tuple[int, str]]:
+        return self.link_check_candidates[:limit]
 
     def find_pairs_missing_synthesis(self, limit: int) -> list[tuple[int, str, str, str, str]]:
         return self.pairs_missing_synthesis[:limit]

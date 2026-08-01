@@ -10,5 +10,6 @@ public record CrawlSettingsDto(
         int displayWindowDays,
         int synthesisLimit,
         String synthesisModel,
+        int deadLinkScanLimit,
         OffsetDateTime updatedAt) {
 }

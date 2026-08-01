@@ -47,6 +47,12 @@ const NUMBER_FIELDS: {
     step: "1",
     hint: "크롤 사이클 1회당 AI로 합성할 플레이그라운드 주제 최대 개수",
   },
+  {
+    key: "deadLinkScanLimit",
+    label: "데드링크 확인 사이클당 처리 개수",
+    step: "1",
+    hint: "매칭 안 된 글이 쌓이면 도메인당 10초 간격 정책 때문에 한 사이클이 무한정 길어질 수 있어 상한을 둠",
+  },
 ];
 
 export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
@@ -58,6 +64,7 @@ export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
     displayWindowDays: initial.displayWindowDays,
     synthesisLimit: initial.synthesisLimit,
     synthesisModel: initial.synthesisModel,
+    deadLinkScanLimit: initial.deadLinkScanLimit,
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

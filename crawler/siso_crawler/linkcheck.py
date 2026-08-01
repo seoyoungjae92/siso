@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 def scan_dead_links(
     repo: MatchingRepository,
     display_window_days: int,
+    limit: int,
     fetch_robots_parser=_fetch_robots_parser,
     check_dead_link=_check_dead_link,
     sleep=time.sleep,
@@ -40,7 +41,7 @@ def scan_dead_links(
     deleted = 0
     parsed_by_domain: dict[str, tuple | None] = {}
 
-    for post_id, origin_url in repo.find_link_check_candidates(display_window_days):
+    for post_id, origin_url in repo.find_link_check_candidates(display_window_days, limit):
         domain = urlparse(origin_url).netloc
         is_first_request_for_domain = domain not in parsed_by_domain
 
@@ -75,7 +76,11 @@ def main() -> None:
     with psycopg.connect(database_url) as conn:
         settings = PsycopgSettingsRepository(conn).get()
         matching_repo = PsycopgMatchingRepository(conn)
-        deleted = scan_dead_links(matching_repo, display_window_days=settings.display_window_days)
+        deleted = scan_dead_links(
+            matching_repo,
+            display_window_days=settings.display_window_days,
+            limit=settings.dead_link_scan_limit,
+        )
         logger.info("데드링크 정리: %d건 삭제", deleted)
 
 

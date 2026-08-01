@@ -12,6 +12,7 @@ def test_scan_dead_links_deletes_confirmed_dead_post():
     deleted = scan_dead_links(
         repo,
         display_window_days=7,
+        limit=100,
         fetch_robots_parser=fake_fetch_robots_parser,
         check_dead_link=lambda url: True,
     )
@@ -28,6 +29,7 @@ def test_scan_dead_links_keeps_post_when_link_alive():
     deleted = scan_dead_links(
         repo,
         display_window_days=7,
+        limit=100,
         fetch_robots_parser=fake_fetch_robots_parser,
         check_dead_link=lambda url: False,
     )
@@ -51,6 +53,7 @@ def test_scan_dead_links_skips_when_robots_disallows_specific_path():
     deleted = scan_dead_links(
         repo,
         display_window_days=7,
+        limit=100,
         fetch_robots_parser=lambda url: (_DisallowsPost1(), 0),
         check_dead_link=lambda url: True,
     )
@@ -70,6 +73,7 @@ def test_scan_dead_links_skips_when_robots_txt_unreachable():
     deleted = scan_dead_links(
         repo,
         display_window_days=7,
+        limit=100,
         fetch_robots_parser=fetch_robots_parser,
         check_dead_link=lambda url: True,
     )
@@ -89,6 +93,7 @@ def test_scan_dead_links_skips_post_that_became_undeletable():
     deleted = scan_dead_links(
         repo,
         display_window_days=7,
+        limit=100,
         fetch_robots_parser=fake_fetch_robots_parser,
         check_dead_link=lambda url: True,
     )
@@ -117,6 +122,7 @@ def test_scan_dead_links_fetches_robots_once_per_domain():
     scan_dead_links(
         repo,
         display_window_days=7,
+        limit=100,
         fetch_robots_parser=fetch_robots_parser,
         check_dead_link=lambda url: False,
     )
@@ -136,12 +142,37 @@ def test_scan_dead_links_sleeps_between_same_domain_requests_but_not_before_firs
     scan_dead_links(
         repo,
         display_window_days=7,
+        limit=100,
         fetch_robots_parser=lambda url: (FakeRobotsParser(), 12.5),
         check_dead_link=lambda url: False,
         sleep=sleep_calls.append,
     )
 
     assert sleep_calls == [12.5]
+
+
+def test_scan_dead_links_respects_limit():
+    # 매칭 안 되는 글은 노출 기간 내내 후보로 남아 쌓일 수 있어서(로컬에서
+    # 실제로 659건까지 쌓여 한 사이클에 110분 걸리는 걸 확인함), limit을
+    # 넘는 후보는 이번 사이클에서 건드리지 않아야 한다.
+    repo = FakeMatchingRepository(
+        link_check_candidates=[
+            (1, "https://example-community.test/post/1"),
+            (2, "https://example-community.test/post/2"),
+            (3, "https://example-community.test/post/3"),
+        ]
+    )
+
+    deleted = scan_dead_links(
+        repo,
+        display_window_days=7,
+        limit=2,
+        fetch_robots_parser=fake_fetch_robots_parser,
+        check_dead_link=lambda url: True,
+    )
+
+    assert deleted == 2
+    assert repo.deleted_posts == [1, 2]
 
 
 def test_scan_dead_links_does_not_sleep_when_switching_domains():
@@ -156,6 +187,7 @@ def test_scan_dead_links_does_not_sleep_when_switching_domains():
     scan_dead_links(
         repo,
         display_window_days=7,
+        limit=100,
         fetch_robots_parser=lambda url: (FakeRobotsParser(), 10.0),
         check_dead_link=lambda url: False,
         sleep=sleep_calls.append,

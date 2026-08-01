@@ -25,6 +25,7 @@ export type CrawlSettingsInput = {
   displayWindowDays: number;
   synthesisLimit: number;
   synthesisModel: string;
+  deadLinkScanLimit: number;
 };
 
 export async function postUpdateCrawlSettings(input: CrawlSettingsInput) {
