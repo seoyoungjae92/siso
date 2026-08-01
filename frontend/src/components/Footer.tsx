@@ -3,7 +3,7 @@ import Link from "next/link";
 import { NewsletterForm } from "@/components/NewsletterForm";
 
 export function Footer() {
-  const appName = process.env.APP_NAME ?? "시소";
+  const appName = "시소";
 
   return (
     <footer className="border-t border-line px-7 py-5 text-xs text-[#8A877E]">
