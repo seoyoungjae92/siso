@@ -1,6 +1,8 @@
 package com.siso.backend.comment;
 
 import com.siso.backend.anon.AnonIdHeader;
+import com.siso.backend.anon.AnonIdSigner;
+import com.siso.backend.anon.ClientIp;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -20,10 +22,13 @@ public class CommentController {
 
     private final CommentService commentService;
     private final ReportService reportService;
+    private final AnonIdSigner anonIdSigner;
 
-    public CommentController(CommentService commentService, ReportService reportService) {
+    public CommentController(
+            CommentService commentService, ReportService reportService, AnonIdSigner anonIdSigner) {
         this.commentService = commentService;
         this.reportService = reportService;
+        this.anonIdSigner = anonIdSigner;
     }
 
     @GetMapping("/api/pairs/{pairId}/comments")
@@ -39,12 +44,13 @@ public class CommentController {
     public CommentDto createComment(
             @PathVariable Long pairId,
             @RequestHeader(value = "X-Anon-Id", required = false) String anonId,
+            @RequestHeader(value = "X-Anon-Sig", required = false) String anonSig,
             @Valid @RequestBody CommentCreateRequest request,
             HttpServletRequest servletRequest) {
         return commentService.create(
                 pairId,
-                AnonIdHeader.parse(anonId, true),
-                servletRequest.getRemoteAddr(),
+                AnonIdHeader.parseAndVerify(anonId, anonSig, anonIdSigner),
+                ClientIp.resolve(servletRequest),
                 request.parentId(),
                 request.body(),
                 request.stance());
@@ -54,8 +60,9 @@ public class CommentController {
     public void react(
             @PathVariable Long commentId,
             @RequestHeader(value = "X-Anon-Id", required = false) String anonId,
+            @RequestHeader(value = "X-Anon-Sig", required = false) String anonSig,
             @RequestBody ReactionCreateRequest request) {
-        commentService.react(commentId, AnonIdHeader.parse(anonId, true), request.type());
+        commentService.react(commentId, AnonIdHeader.parseAndVerify(anonId, anonSig, anonIdSigner), request.type());
     }
 
     @PostMapping("/api/comments/{commentId}/reports")
@@ -63,7 +70,9 @@ public class CommentController {
     public void report(
             @PathVariable Long commentId,
             @RequestHeader(value = "X-Anon-Id", required = false) String anonId,
+            @RequestHeader(value = "X-Anon-Sig", required = false) String anonSig,
             @Valid @RequestBody ReportCreateRequest request) {
-        reportService.create(commentId, AnonIdHeader.parse(anonId, true), request.reason(), request.detail());
+        reportService.create(
+                commentId, AnonIdHeader.parseAndVerify(anonId, anonSig, anonIdSigner), request.reason(), request.detail());
     }
 }
