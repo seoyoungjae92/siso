@@ -27,30 +27,22 @@ function ReactionButton({
   type,
   count,
   active,
-  onError,
+  isPending,
+  onReact,
 }: {
   pairId: string;
   commentId: number;
   type: "up" | "down";
   count: number;
   active: boolean;
-  onError: (message: string | null) => void;
+  isPending: boolean;
+  onReact: (pairId: string, commentId: number, type: "up" | "down") => void;
 }) {
-  const [isPending, startTransition] = useTransition();
-
   return (
     <button
       type="button"
       disabled={isPending}
-      onClick={() =>
-        startTransition(async () => {
-          onError(null);
-          const result = await postReaction(pairId, commentId, type);
-          if (!result.ok) {
-            onError(result.error ?? "추천 처리에 실패했습니다.");
-          }
-        })
-      }
+      onClick={() => onReact(pairId, commentId, type)}
       className={`rounded-full border px-2 py-0.5 text-[11px] font-bold disabled:opacity-50 ${
         active ? "border-playground bg-pg-tint text-playground" : "border-line text-[#8A877E]"
       }`}
@@ -119,6 +111,17 @@ function ReportControl({ pairId, commentId }: { pairId: string; commentId: numbe
 
 function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
   const [reactionError, setReactionError] = useState<string | null>(null);
+  const [isReactionPending, startReactionTransition] = useTransition();
+
+  function handleReact(pairId: string, commentId: number, type: "up" | "down") {
+    startReactionTransition(async () => {
+      setReactionError(null);
+      const result = await postReaction(pairId, commentId, type);
+      if (!result.ok) {
+        setReactionError(result.error ?? "추천 처리에 실패했습니다.");
+      }
+    });
+  }
 
   return (
     <div className="rounded-[10px] border border-line bg-white p-2.5">
@@ -140,7 +143,7 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
           {formatRelativeTime(comment.createdAt)}
         </time>
       </div>
-      <p className={`mb-2 text-[13px] ${comment.blinded ? "italic text-[#A09D94]" : ""}`}>
+      <p className={`mb-2 break-words text-[13px] ${comment.blinded ? "italic text-[#A09D94]" : ""}`}>
         {comment.body}
       </p>
       {!comment.blinded && (
@@ -151,7 +154,8 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
             type="up"
             count={comment.upCount}
             active={comment.myReaction === "up"}
-            onError={setReactionError}
+            isPending={isReactionPending}
+            onReact={handleReact}
           />
           <ReactionButton
             pairId={pairId}
@@ -159,7 +163,8 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
             type="down"
             count={comment.downCount}
             active={comment.myReaction === "down"}
-            onError={setReactionError}
+            isPending={isReactionPending}
+            onReact={handleReact}
           />
           {reactionError && (
             <span className="text-[10.5px] text-right-red">{reactionError}</span>
@@ -184,6 +189,10 @@ export function CommentThread({ pairId, comments }: { pairId: string; comments: 
       list.push(comment);
       repliesByParent.set(comment.parentId, list);
     }
+  }
+  // 대댓글은 상위 댓글 정렬 옵션(추천순/최신순)과 무관하게 항상 시간순 고정
+  for (const list of repliesByParent.values()) {
+    list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
   return (

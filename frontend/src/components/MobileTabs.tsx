@@ -123,6 +123,12 @@ export function MobileTabs({
     setDragPx(0);
   }
 
+  function handleTouchCancel() {
+    gesture.current = null;
+    setDragging(false);
+    setDragPx(0);
+  }
+
   return (
     <div
       ref={rootRef}
@@ -135,6 +141,7 @@ export function MobileTabs({
         style={{ touchAction: "pan-y", overscrollBehaviorX: "none" }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
       >
         <div
           className="flex h-full"

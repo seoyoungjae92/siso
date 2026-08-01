@@ -31,6 +31,7 @@ export function proxy(request: NextRequest) {
   response.cookies.set(ANON_ID_COOKIE, crypto.randomUUID(), {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     maxAge: ONE_YEAR_SECONDS,
     path: "/",
   });
