@@ -159,14 +159,6 @@ public class Comment {
         this.llmClassifiedAt = llmClassifiedAt;
     }
 
-    public void adjustUpCount(int delta) {
-        this.upCount += delta;
-    }
-
-    public void adjustDownCount(int delta) {
-        this.downCount += delta;
-    }
-
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

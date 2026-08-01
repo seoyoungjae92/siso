@@ -31,9 +31,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -261,6 +263,10 @@ class CommentServiceTest {
 
     @Test
     void react_withNoExistingReaction_createsAndIncrementsCount() {
+        // upCount/downCount는 lost-update 방지를 위해 DB에서 직접 원자적으로
+        // 증감하므로(CommentRepository.adjustUpCount/adjustDownCount), 목으로
+        // 감싼 리포지토리 호출을 검증한다 — 엔티티의 메모리 값은 더 이상
+        // 서비스가 건드리지 않는다.
         CommentService service = newService();
         Comment comment = commentWithId(1L, ANON_A);
         when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
@@ -269,8 +275,8 @@ class CommentServiceTest {
 
         service.react(1L, ANON_B, "up");
 
-        assertThat(comment.getUpCount()).isEqualTo(1);
-        assertThat(comment.getDownCount()).isEqualTo(0);
+        verify(commentRepository).adjustUpCount(1L, 1);
+        verify(commentRepository, never()).adjustDownCount(anyLong(), anyInt());
         verify(reactionRepository).save(any(Reaction.class));
         verify(spikeDetector).recordReactionUpAndCheck(1L, 30, 10);
     }
@@ -279,14 +285,13 @@ class CommentServiceTest {
     void react_sameTypeAgain_togglesOff() {
         CommentService service = newService();
         Comment comment = commentWithId(1L, ANON_A);
-        comment.adjustUpCount(1);
         Reaction existing = new Reaction(comment, ANON_B, "up");
         when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
         when(reactionRepository.findByComment_IdAndAnonId(1L, ANON_B)).thenReturn(Optional.of(existing));
 
         service.react(1L, ANON_B, "up");
 
-        assertThat(comment.getUpCount()).isEqualTo(0);
+        verify(commentRepository).adjustUpCount(1L, -1);
         verify(reactionRepository).delete(existing);
     }
 
@@ -294,15 +299,14 @@ class CommentServiceTest {
     void react_switchingType_adjustsBothCounts() {
         CommentService service = newService();
         Comment comment = commentWithId(1L, ANON_A);
-        comment.adjustUpCount(1);
         Reaction existing = new Reaction(comment, ANON_B, "up");
         when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
         when(reactionRepository.findByComment_IdAndAnonId(1L, ANON_B)).thenReturn(Optional.of(existing));
 
         service.react(1L, ANON_B, "down");
 
-        assertThat(comment.getUpCount()).isEqualTo(0);
-        assertThat(comment.getDownCount()).isEqualTo(1);
+        verify(commentRepository).adjustUpCount(1L, -1);
+        verify(commentRepository).adjustDownCount(1L, 1);
         assertThat(existing.getType()).isEqualTo("down");
     }
 
