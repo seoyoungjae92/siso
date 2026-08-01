@@ -93,8 +93,8 @@ class FakeMatchingRepository:
     def count_similar_posts(self, post_id: int, threshold: float) -> int:
         return self.similar_counts.get(post_id, 0)
 
-    def find_prunable_posts(self, grace_period_hours: int) -> list[int]:
-        return self.prunable_posts
+    def find_prunable_posts(self, grace_period_hours: int, limit: int) -> list[int]:
+        return self.prunable_posts[:limit]
 
     def delete_post(self, post_id: int) -> bool:
         if post_id in self.undeletable_posts:
@@ -166,3 +166,25 @@ class FakePostPoliticalClassifier:
         if title in self.fail_on:
             raise PoliticalClassificationFailed("fixture failure")
         return title not in self.non_political
+
+
+class FakeSourceRepository:
+    def __init__(self, sources: list | None = None):
+        self.sources = sources or []
+        self.failure_counts: dict[int, int] = {}
+        self.disabled: list[int] = []
+        self.alerts: list[tuple[int, str, int]] = []
+
+    def find_enabled(self) -> list:
+        return [s for s in self.sources if s.enabled]
+
+    def record_failure(self, source_id: int) -> int:
+        self.failure_counts[source_id] = self.failure_counts.get(source_id, 0) + 1
+        return self.failure_counts[source_id]
+
+    def record_success(self, source_id: int) -> None:
+        self.failure_counts[source_id] = 0
+
+    def disable_and_alert(self, source_id: int, source_name: str, consecutive_failures: int) -> None:
+        self.disabled.append(source_id)
+        self.alerts.append((source_id, source_name, consecutive_failures))

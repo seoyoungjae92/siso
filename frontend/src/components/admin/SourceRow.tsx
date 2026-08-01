@@ -40,6 +40,9 @@ export function SourceRow({ source }: { source: Source }) {
           <span className="text-xs font-normal text-[#8A877E]">{source.crawlType.toUpperCase()}</span>
         </div>
         <div className="text-xs text-[#8A877E]">{source.baseUrl}</div>
+        {source.consecutiveFailures > 0 && (
+          <div className="text-xs text-right-red">연속 실패 {source.consecutiveFailures}회</div>
+        )}
       </div>
       <div className="flex items-center gap-2">
         {toggleError && <span className="text-xs text-right-red">{toggleError}</span>}

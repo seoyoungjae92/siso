@@ -26,6 +26,8 @@ export type CrawlSettingsInput = {
   synthesisLimit: number;
   synthesisModel: string;
   deadLinkScanLimit: number;
+  pruneScanLimit: number;
+  sourceFailureThreshold: number;
 };
 
 export async function postUpdateCrawlSettings(input: CrawlSettingsInput) {

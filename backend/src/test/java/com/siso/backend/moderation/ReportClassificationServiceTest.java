@@ -77,7 +77,7 @@ class ReportClassificationServiceTest {
         Comment comment = commentWithId(1L);
         when(reportRepository.findDistinctCommentIdsWithUnclassifiedPendingReports(any(Pageable.class)))
                 .thenReturn(List.of(1L));
-        when(commentRepository.findAllById(List.of(1L))).thenReturn(List.of(comment));
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
         when(reportRepository.findByStatusAndComment_Id("pending", 1L))
                 .thenReturn(List.of(new Report(comment, ANON_A, "abuse", "욕설입니다", OffsetDateTime.now())));
         when(classifier.classify("openrouter/free", "신고당한 댓글", List.of("abuse"), List.of("욕설입니다")))
@@ -91,6 +91,9 @@ class ReportClassificationServiceTest {
         assertThat(comment.getLlmClassifiedAt()).isNotNull();
         // 힌트만 제공 — 실제 상태 변경(블라인드)은 하지 않는다
         assertThat(comment.getStatus()).isEqualTo("visible");
+        // 배치 전체를 감싸는 트랜잭션이 없어졌으니, 결과는 명시적으로
+        // save()해야 실제로 반영된다.
+        verify(commentRepository).save(comment);
     }
 
     @Test
@@ -100,7 +103,7 @@ class ReportClassificationServiceTest {
         Comment comment = commentWithId(1L);
         when(reportRepository.findDistinctCommentIdsWithUnclassifiedPendingReports(any(Pageable.class)))
                 .thenReturn(List.of(1L));
-        when(commentRepository.findAllById(List.of(1L))).thenReturn(List.of(comment));
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
         when(reportRepository.findByStatusAndComment_Id("pending", 1L))
                 .thenReturn(List.of(new Report(comment, ANON_A, "abuse", null, OffsetDateTime.now())));
         when(classifier.classify(any(), any(), any(), any())).thenThrow(new ReportClassificationFailed("API 에러"));
@@ -109,16 +112,15 @@ class ReportClassificationServiceTest {
 
         assertThat(result).isZero();
         assertThat(comment.getLlmVerdict()).isNull();
+        verify(commentRepository, never()).save(any(Comment.class));
     }
 
     @Test
     void classifyPending_noPendingReportsLeftForCandidate_skipsWithoutCallingClassifier() {
         when(classifier.isEnabled()).thenReturn(true);
         stubModel("openrouter/free");
-        Comment comment = commentWithId(1L);
         when(reportRepository.findDistinctCommentIdsWithUnclassifiedPendingReports(any(Pageable.class)))
                 .thenReturn(List.of(1L));
-        when(commentRepository.findAllById(List.of(1L))).thenReturn(List.of(comment));
         when(reportRepository.findByStatusAndComment_Id("pending", 1L)).thenReturn(List.of());
 
         int result = newService().classifyPending();

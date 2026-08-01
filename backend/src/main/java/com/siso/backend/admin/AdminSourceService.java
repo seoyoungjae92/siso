@@ -72,6 +72,7 @@ public class AdminSourceService {
                 source.getFeedUrl(),
                 source.getCrawlType().value(),
                 source.isEnabled(),
+                source.getConsecutiveFailures(),
                 source.getCreatedAt());
     }
 }

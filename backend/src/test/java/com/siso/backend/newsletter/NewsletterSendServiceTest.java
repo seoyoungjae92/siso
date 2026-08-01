@@ -1,5 +1,7 @@
 package com.siso.backend.newsletter;
 
+import com.siso.backend.alert.AdminAlert;
+import com.siso.backend.alert.AdminAlertRepository;
 import com.siso.backend.pair.TopicPair;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,9 +36,16 @@ class NewsletterSendServiceTest {
     @Mock
     private ResendEmailClient resendEmailClient;
 
+    @Mock
+    private AdminAlertRepository adminAlertRepository;
+
     private NewsletterSendService newService() {
         return new NewsletterSendService(
-                newsletterSubscriberRepository, newsletterDigestService, resendEmailClient, "http://localhost:3000");
+                newsletterSubscriberRepository,
+                newsletterDigestService,
+                resendEmailClient,
+                adminAlertRepository,
+                "http://localhost:3000");
     }
 
     private NewsletterSubscriber confirmedSubscriber(String email) {
@@ -88,7 +97,7 @@ class NewsletterSendServiceTest {
     }
 
     @Test
-    void sendWeeklyDigest_oneSubscriberFails_continuesWithOthers() {
+    void sendWeeklyDigest_subscriberFailsBothAttempts_continuesWithOthersAndRaisesAlert() {
         when(resendEmailClient.isEnabled()).thenReturn(true);
         when(newsletterDigestService.findTopPairsForDigest()).thenReturn(List.of(fakePair()));
         NewsletterSubscriber sub1 = confirmedSubscriber("a@example.com");
@@ -103,5 +112,42 @@ class NewsletterSendServiceTest {
 
         assertThat(result).isEqualTo(1);
         verify(resendEmailClient).send(eq("b@example.com"), anyString(), anyString());
+        // 일시적 장애일 수 있으니 한 번 더 재시도 — 총 2번 호출돼야 함
+        verify(resendEmailClient, times(2)).send(eq("a@example.com"), anyString(), anyString());
+        verify(adminAlertRepository).save(any(AdminAlert.class));
+    }
+
+    @Test
+    void sendWeeklyDigest_subscriberFailsOnceThenSucceedsOnRetry_countsAsSentAndNoAlert() {
+        // 일시적 장애(첫 시도만 실패, 재시도는 성공)면 정상 발송으로 쳐야
+        // 하고, 알림도 남기면 안 됨(진짜 문제만 알림).
+        when(resendEmailClient.isEnabled()).thenReturn(true);
+        when(newsletterDigestService.findTopPairsForDigest()).thenReturn(List.of(fakePair()));
+        NewsletterSubscriber sub1 = confirmedSubscriber("a@example.com");
+        when(newsletterSubscriberRepository.findByStatus("confirmed")).thenReturn(List.of(sub1));
+        when(newsletterDigestService.buildDigestHtml(any(), anyString())).thenReturn("<html></html>");
+        doThrow(new NewsletterSendFailed("일시 장애"))
+                .doNothing()
+                .when(resendEmailClient)
+                .send(eq("a@example.com"), anyString(), anyString());
+
+        int result = newService().sendWeeklyDigest();
+
+        assertThat(result).isEqualTo(1);
+        verify(resendEmailClient, times(2)).send(eq("a@example.com"), anyString(), anyString());
+        verify(adminAlertRepository, never()).save(any(AdminAlert.class));
+    }
+
+    @Test
+    void sendWeeklyDigest_allSucceed_doesNotRaiseAlert() {
+        when(resendEmailClient.isEnabled()).thenReturn(true);
+        when(newsletterDigestService.findTopPairsForDigest()).thenReturn(List.of(fakePair()));
+        NewsletterSubscriber sub1 = confirmedSubscriber("a@example.com");
+        when(newsletterSubscriberRepository.findByStatus("confirmed")).thenReturn(List.of(sub1));
+        when(newsletterDigestService.buildDigestHtml(any(), anyString())).thenReturn("<html></html>");
+
+        newService().sendWeeklyDigest();
+
+        verify(adminAlertRepository, never()).save(any(AdminAlert.class));
     }
 }

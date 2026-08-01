@@ -35,6 +35,8 @@ public class AdminCrawlSettingsService {
                 request.synthesisLimit(),
                 request.synthesisModel(),
                 request.deadLinkScanLimit(),
+                request.pruneScanLimit(),
+                request.sourceFailureThreshold(),
                 OffsetDateTime.now());
         return toDto(settings);
     }
@@ -53,6 +55,8 @@ public class AdminCrawlSettingsService {
                 settings.getSynthesisLimit(),
                 settings.getSynthesisModel(),
                 settings.getDeadLinkScanLimit(),
+                settings.getPruneScanLimit(),
+                settings.getSourceFailureThreshold(),
                 settings.getUpdatedAt());
     }
 }

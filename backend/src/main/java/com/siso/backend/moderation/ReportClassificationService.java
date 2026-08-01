@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -27,6 +26,12 @@ import java.util.Set;
  * 개별 댓글 분류 실패(API 에러, 응답 형식 이상 등)는 건너뛰고 나머지를
  * 계속 처리한다(크롤러/PetitionSyncService와 동일한 "개별 실패는 스킵"
  * 원칙) — 다음 배치에서 다시 시도된다(llm_verdict가 여전히 null이므로).
+ *
+ * classifyPending() 전체를 감싸는 트랜잭션은 의도적으로 없다 — 배치당
+ * 최대 20번 순차적으로 도는 OpenRouter HTTP 호출 내내 DB 커넥션 하나를
+ * 계속 붙잡아두던 문제(감사에서 지적, 현재 트래픽 규모에선 위험 낮다고
+ * 확인됐지만 구조는 고쳐둠)를 없애기 위해, 댓글 하나당 결과를
+ * commentRepository.save()로 그때그때 짧게 커밋한다.
  */
 @Service
 public class ReportClassificationService {
@@ -53,7 +58,6 @@ public class ReportClassificationService {
         this.classifier = classifier;
     }
 
-    @Transactional
     public int classifyPending() {
         if (!classifier.isEnabled()) {
             return 0;
@@ -62,20 +66,24 @@ public class ReportClassificationService {
         String model = moderationSettingsRepository.findById(SETTINGS_ID).orElseThrow().getClassificationModel();
         List<Long> candidateIds = reportRepository.findDistinctCommentIdsWithUnclassifiedPendingReports(
                 PageRequest.of(0, BATCH_SIZE));
-        List<Comment> candidates = commentRepository.findAllById(candidateIds);
 
         int classified = 0;
-        for (Comment comment : candidates) {
-            if (classifyOne(comment, model)) {
+        for (Long commentId : candidateIds) {
+            if (classifyOne(commentId, model)) {
                 classified++;
             }
         }
         return classified;
     }
 
-    private boolean classifyOne(Comment comment, String model) {
-        List<Report> reports = reportRepository.findByStatusAndComment_Id(PENDING, comment.getId());
+    private boolean classifyOne(Long commentId, String model) {
+        List<Report> reports = reportRepository.findByStatusAndComment_Id(PENDING, commentId);
         if (reports.isEmpty()) {
+            return false;
+        }
+
+        Comment comment = commentRepository.findById(commentId).orElse(null);
+        if (comment == null) {
             return false;
         }
 
@@ -84,9 +92,10 @@ public class ReportClassificationService {
 
         ReportClassification result;
         try {
+            // OpenRouter 호출 동안은 DB 트랜잭션을 전혀 열어두지 않는다.
             result = classifier.classify(model, comment.getBody(), reasons, details);
         } catch (ReportClassificationFailed e) {
-            log.warn("신고 분류 실패, 건너뜀(commentId={}): {}", comment.getId(), e.getMessage());
+            log.warn("신고 분류 실패, 건너뜀(commentId={}): {}", commentId, e.getMessage());
             return false;
         }
 
@@ -95,6 +104,7 @@ public class ReportClassificationService {
         }
 
         comment.applyLlmClassification(result.verdict(), result.reason(), OffsetDateTime.now());
+        commentRepository.save(comment);
         return true;
     }
 }

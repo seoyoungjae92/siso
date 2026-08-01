@@ -45,10 +45,11 @@ def prune_stale_candidates(
     repo: MatchingRepository,
     grace_period_hours: int,
     min_cluster_size: int,
+    limit: int,
     prune_threshold: float = PRUNE_SIMILARITY_THRESHOLD,
 ) -> int:
     deleted = 0
-    for post_id in repo.find_prunable_posts(grace_period_hours):
+    for post_id in repo.find_prunable_posts(grace_period_hours, limit):
         cluster_size = repo.count_similar_posts(post_id, prune_threshold) + 1  # 자기 자신 포함
         if cluster_size < min_cluster_size and repo.delete_post(post_id):
             deleted += 1

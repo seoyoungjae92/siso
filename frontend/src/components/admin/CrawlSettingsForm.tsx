@@ -53,6 +53,18 @@ const NUMBER_FIELDS: {
     step: "1",
     hint: "매칭 안 된 글이 쌓이면 도메인당 10초 간격 정책 때문에 한 사이클이 무한정 길어질 수 있어 상한을 둠",
   },
+  {
+    key: "pruneScanLimit",
+    label: "정리(prune) 사이클당 처리 개수",
+    step: "1",
+    hint: "매칭 안 된 글이 쌓이면 정리 후보도 같이 늘어나 한 사이클이 길어질 수 있어 상한을 둠",
+  },
+  {
+    key: "sourceFailureThreshold",
+    label: "소스 자동 비활성화 임계값(연속 실패 횟수)",
+    step: "1",
+    hint: "소스가 이 횟수만큼 연속으로 수집 실패하면 자동으로 비활성화됨",
+  },
 ];
 
 export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
@@ -65,6 +77,8 @@ export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
     synthesisLimit: initial.synthesisLimit,
     synthesisModel: initial.synthesisModel,
     deadLinkScanLimit: initial.deadLinkScanLimit,
+    pruneScanLimit: initial.pruneScanLimit,
+    sourceFailureThreshold: initial.sourceFailureThreshold,
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
