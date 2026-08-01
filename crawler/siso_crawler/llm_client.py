@@ -46,21 +46,32 @@ SYSTEM_PROMPT = """너는 한국 정치 커뮤니티 좌/우 게시글을 보고
    마라.
 5. 각 진영에 게시글이 여러 건 주어질 수 있다 — 그 중 하나만 대표로 삼지
    말고, 여러 글에 공통되는/대표적인 입장을 종합해서 요약해라.
-6. left_stance, right_stance는 각각 500자를 넘기지 마라."""
+6. left_stance, right_stance는 각각 500자를 넘기지 마라.
+7. 가장 먼저, 좌/우 게시글들이 실제로 같은 구체적인 정치·시사 쟁점을
+   다루고 있는지 판단해라. 서로 무관한 내용이거나(예: 한쪽은 애니메이션
+   감상평, 다른 쪽은 특정 정당 지지 이야기처럼 전혀 다른 주제), 명확히
+   대비되는 구체적 쟁점을 찾을 수 없다면 억지로 답을 지어내지 마라 —
+   이 경우 no_clear_issue를 true로 하고 title/left_stance/right_stance는
+   빈 문자열("")로 반환해라.
+8. 응답은 반드시 자연스러운 한국어 문장으로만 작성해라. 러시아어, 아랍어
+   등 다른 문자 체계나 알파벳 조각이 단어 중간에 섞이면 절대 안 된다.
+   오탈자·문법 오류 없이 매끄럽게 다듬어라."""
 
 RESPONSE_JSON_SCHEMA = {
     "type": "object",
     "properties": {
+        "no_clear_issue": {"type": "boolean"},
         "title": {"type": "string"},
         "left_stance": {"type": "string"},
         "right_stance": {"type": "string"},
     },
-    "required": ["title", "left_stance", "right_stance"],
+    "required": ["no_clear_issue", "title", "left_stance", "right_stance"],
     "additionalProperties": False,
 }
 
 
 class SynthesizedTopicSchema(pydantic.BaseModel):
+    no_clear_issue: bool
     title: str
     left_stance: str
     right_stance: str
@@ -84,6 +95,21 @@ def _korean_ratio(text: str) -> float:
     if not letters:
         return 1.0
     return sum(1 for ch in letters if _is_hangul(ch)) / len(letters)
+
+
+def _has_disallowed_script(text: str) -> bool:
+    """_korean_ratio는 전체 비율만 보기 때문에, 대부분 한국어인 문장에
+    단어 하나만 키릴/아랍 문자로 깨져도(예: "ренстав", "ضبط") 70%
+    임계값을 넘겨서 못 걸러낸 사례가 실제로 있었음(2026-08-02). 한글
+    정치 요약에 나올 일이 없는 문자 체계(한글·ASCII 외 전부)가 단 한
+    글자라도 섞여있으면 깨진 응답으로 본다."""
+    for ch in text:
+        if not ch.isalpha():
+            continue
+        if _is_hangul(ch) or ch.isascii():
+            continue
+        return True
+    return False
 
 
 @dataclass(frozen=True)
@@ -173,12 +199,18 @@ class OpenRouterTopicSynthesizer:
         except pydantic.ValidationError as exc:
             raise SynthesisFailed(f"응답 JSON 파싱/스키마 검증 실패: {exc}") from exc
 
+        if parsed.no_clear_issue:
+            raise SynthesisFailed("좌/우 게시글 사이에 명확한 공통 쟁점을 찾지 못함(모델 판단)")
+
         if not (parsed.title.strip() and parsed.left_stance.strip() and parsed.right_stance.strip()):
             raise SynthesisFailed("응답에 빈 필드가 있음")
 
         combined = f"{parsed.title} {parsed.left_stance} {parsed.right_stance}"
         if _korean_ratio(combined) < MIN_KOREAN_RATIO:
             raise SynthesisFailed("응답의 한글 비율이 너무 낮음(다른 언어가 뒤섞인 응답으로 판단)")
+
+        if _has_disallowed_script(combined):
+            raise SynthesisFailed("응답에 한글/영문 외 문자 체계(러시아어·아랍어 등)가 섞여있음")
 
         return SynthesizedTopic(
             title=parsed.title.strip()[:200],
