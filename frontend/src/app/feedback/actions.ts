@@ -1,6 +1,6 @@
 "use server";
 
-import { getAnonId } from "@/lib/anon";
+import { getSignedAnonHeaders } from "@/lib/anon";
 import { BACKEND_API_URL } from "@/lib/posts";
 
 async function extractErrorMessage(res: Response, fallback: string): Promise<string> {
@@ -16,8 +16,8 @@ async function extractErrorMessage(res: Response, fallback: string): Promise<str
 }
 
 export async function postFeedback(category: string, body: string, contact: string) {
-  const anonId = await getAnonId();
-  if (!anonId) {
+  const anonHeaders = await getSignedAnonHeaders();
+  if (!anonHeaders) {
     return { ok: false, error: "익명 ID가 없습니다. 새로고침 후 다시 시도해주세요." };
   }
   if (!body.trim()) {
@@ -28,7 +28,7 @@ export async function postFeedback(category: string, body: string, contact: stri
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Anon-Id": anonId,
+      ...anonHeaders,
     },
     body: JSON.stringify({ category, body, contact: contact.trim() || null }),
   });

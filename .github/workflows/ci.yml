@@ -36,6 +36,7 @@ jobs:
         env:
           ADMIN_USERNAME: ci-test-admin
           ADMIN_PASSWORD: ci-test-password
+          ANON_ID_SIGNING_SECRET: ci-test-anon-signing-secret
 
   frontend-build:
     runs-on: ubuntu-latest

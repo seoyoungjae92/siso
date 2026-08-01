@@ -1,6 +1,8 @@
 package com.siso.backend.pair;
 
 import com.siso.backend.anon.AnonIdHeader;
+import com.siso.backend.anon.AnonIdSigner;
+import com.siso.backend.anon.ClientIp;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -18,9 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PairController {
 
     private final PairService pairService;
+    private final AnonIdSigner anonIdSigner;
 
-    public PairController(PairService pairService) {
+    public PairController(PairService pairService, AnonIdSigner anonIdSigner) {
         this.pairService = pairService;
+        this.anonIdSigner = anonIdSigner;
     }
 
     @GetMapping("/api/pairs")
@@ -42,9 +46,13 @@ public class PairController {
     public void vote(
             @PathVariable Long pairId,
             @RequestHeader(value = "X-Anon-Id", required = false) String anonId,
+            @RequestHeader(value = "X-Anon-Sig", required = false) String anonSig,
             @RequestBody VoteCreateRequest request,
             HttpServletRequest servletRequest) {
         pairService.vote(
-                pairId, AnonIdHeader.parse(anonId, true), servletRequest.getRemoteAddr(), request.stance());
+                pairId,
+                AnonIdHeader.parseAndVerify(anonId, anonSig, anonIdSigner),
+                ClientIp.resolve(servletRequest),
+                request.stance());
     }
 }

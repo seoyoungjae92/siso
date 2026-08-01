@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getAnonId } from "@/lib/anon";
+import { getSignedAnonHeaders } from "@/lib/anon";
 import { BACKEND_API_URL } from "@/lib/posts";
 
 async function extractErrorMessage(res: Response, fallback: string): Promise<string> {
@@ -23,8 +23,8 @@ export async function postComment(
   parentId?: number,
   stance?: string,
 ) {
-  const anonId = await getAnonId();
-  if (!anonId) {
+  const anonHeaders = await getSignedAnonHeaders();
+  if (!anonHeaders) {
     return { ok: false, error: "익명 ID가 없습니다. 새로고침 후 다시 시도해주세요." };
   }
   if (!body.trim()) {
@@ -35,7 +35,7 @@ export async function postComment(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Anon-Id": anonId,
+      ...anonHeaders,
     },
     body: JSON.stringify({ body, parentId, stance }),
   });
@@ -49,8 +49,8 @@ export async function postComment(
 }
 
 export async function postReaction(pairId: string, commentId: number, type: "up" | "down") {
-  const anonId = await getAnonId();
-  if (!anonId) {
+  const anonHeaders = await getSignedAnonHeaders();
+  if (!anonHeaders) {
     return { ok: false, error: "익명 ID가 없습니다. 새로고침 후 다시 시도해주세요." };
   }
 
@@ -58,7 +58,7 @@ export async function postReaction(pairId: string, commentId: number, type: "up"
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Anon-Id": anonId,
+      ...anonHeaders,
     },
     body: JSON.stringify({ type }),
   });
@@ -77,8 +77,8 @@ export async function postReport(
   reason: "abuse" | "hate" | "spam" | "etc",
   detail?: string,
 ) {
-  const anonId = await getAnonId();
-  if (!anonId) {
+  const anonHeaders = await getSignedAnonHeaders();
+  if (!anonHeaders) {
     return { ok: false, error: "익명 ID가 없습니다. 새로고침 후 다시 시도해주세요." };
   }
 
@@ -86,7 +86,7 @@ export async function postReport(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Anon-Id": anonId,
+      ...anonHeaders,
     },
     body: JSON.stringify({ reason, detail }),
   });
@@ -100,8 +100,8 @@ export async function postReport(
 }
 
 export async function postVote(pairId: string, stance: "left" | "right" | "neutral") {
-  const anonId = await getAnonId();
-  if (!anonId) {
+  const anonHeaders = await getSignedAnonHeaders();
+  if (!anonHeaders) {
     return { ok: false, error: "익명 ID가 없습니다. 새로고침 후 다시 시도해주세요." };
   }
 
@@ -109,7 +109,7 @@ export async function postVote(pairId: string, stance: "left" | "right" | "neutr
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Anon-Id": anonId,
+      ...anonHeaders,
     },
     body: JSON.stringify({ stance }),
   });
