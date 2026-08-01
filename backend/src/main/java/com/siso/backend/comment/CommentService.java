@@ -184,7 +184,7 @@ public class CommentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type must be 'up' or 'down'");
         }
 
-        rateLimiter.checkOrThrow("reaction", anonId);
+        rateLimiter.checkOrThrow("reaction", commentId + ":" + anonId);
 
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "comment not found"));

@@ -282,6 +282,20 @@ class CommentServiceTest {
     }
 
     @Test
+    void react_ratelimitsPerCommentNotGloballyPerAnonId() {
+        // 댓글 A에 대한 리액션이 댓글 B 리액션의 레이트리밋 버킷을 소모하면 안 됨
+        CommentService service = newService();
+        Comment comment = commentWithId(1L, ANON_A);
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        when(reactionRepository.findByComment_IdAndAnonId(1L, ANON_B)).thenReturn(Optional.empty());
+        stubAbuseSettings();
+
+        service.react(1L, ANON_B, "up");
+
+        verify(rateLimiter).checkOrThrow("reaction", "1:" + ANON_B);
+    }
+
+    @Test
     void react_sameTypeAgain_togglesOff() {
         CommentService service = newService();
         Comment comment = commentWithId(1L, ANON_A);

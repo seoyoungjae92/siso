@@ -23,7 +23,7 @@ export function calculateVotePercentages(votes: {
   }
   const leftPct = Math.round((votes.leftVotes / total) * 100);
   const neutralPct = Math.round((votes.neutralVotes / total) * 100);
-  const rightPct = 100 - leftPct - neutralPct;
+  const rightPct = Math.max(0, 100 - leftPct - neutralPct);
   return { leftPct, neutralPct, rightPct, total };
 }
 
