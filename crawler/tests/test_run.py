@@ -268,7 +268,7 @@ def test_run_cycle_runs_embedding_and_matching_after_ingest(sample_feed_bytes):
     )
 
     assert 1 in matching_repo.updated_embeddings
-    assert matching_repo.created_pairs == [(10, 20, 0.8)]
+    assert matching_repo.created_pairs == [([10], [20], 0.8)]
 
 
 def test_run_cycle_prunes_stale_candidates_using_settings(sample_feed_bytes):
@@ -296,7 +296,7 @@ def test_run_cycle_prunes_stale_candidates_using_settings(sample_feed_bytes):
 def test_run_cycle_runs_synthesis_when_synthesizer_provided(sample_feed_bytes):
     post_repo = FakePostRepository()
     matching_repo = FakeMatchingRepository(
-        pairs_missing_synthesis=[(1, "좌", "좌요약", "우", "우요약")],
+        pairs_missing_synthesis=[(1, [("좌", "좌요약")], [("우", "우요약")])],
     )
     embedder = FakeEmbeddingProvider()
     synthesizer = FakeTopicSynthesizer(
@@ -321,7 +321,7 @@ def test_run_cycle_runs_synthesis_when_synthesizer_provided(sample_feed_bytes):
 def test_run_cycle_skips_synthesis_when_synthesizer_is_none(sample_feed_bytes):
     post_repo = FakePostRepository()
     matching_repo = FakeMatchingRepository(
-        pairs_missing_synthesis=[(1, "좌", "좌요약", "우", "우요약")],
+        pairs_missing_synthesis=[(1, [("좌", "좌요약")], [("우", "우요약")])],
     )
     embedder = FakeEmbeddingProvider()
 

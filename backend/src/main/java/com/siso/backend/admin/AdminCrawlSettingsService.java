@@ -37,6 +37,8 @@ public class AdminCrawlSettingsService {
                 request.deadLinkScanLimit(),
                 request.pruneScanLimit(),
                 request.sourceFailureThreshold(),
+                request.cohortSimilarityThreshold(),
+                request.synthesisMinPostsPerSide(),
                 OffsetDateTime.now());
         return toDto(settings);
     }
@@ -57,6 +59,8 @@ public class AdminCrawlSettingsService {
                 settings.getDeadLinkScanLimit(),
                 settings.getPruneScanLimit(),
                 settings.getSourceFailureThreshold(),
+                settings.getCohortSimilarityThreshold(),
+                settings.getSynthesisMinPostsPerSide(),
                 settings.getUpdatedAt());
     }
 }

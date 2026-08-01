@@ -90,7 +90,12 @@ def run_cycle(
         logger.warning("임베딩 계산 실패: %s", exc)
 
     try:
-        matched = match_pending_posts(matching_repo, threshold=settings.match_similarity_threshold)
+        matched = match_pending_posts(
+            matching_repo,
+            threshold=settings.match_similarity_threshold,
+            cohort_threshold=settings.cohort_similarity_threshold,
+            min_posts_per_side=settings.synthesis_min_posts_per_side,
+        )
         logger.info("매칭: %d쌍 생성", matched)
     except Exception as exc:  # noqa: BLE001
         logger.warning("매칭 실패: %s", exc)
@@ -101,6 +106,7 @@ def run_cycle(
             grace_period_hours=settings.grace_period_hours,
             min_cluster_size=settings.min_cluster_size,
             limit=settings.prune_scan_limit,
+            match_similarity_threshold=settings.match_similarity_threshold,
             prune_threshold=settings.prune_similarity_threshold,
         )
         logger.info("정리(prune): %d건 삭제", pruned)

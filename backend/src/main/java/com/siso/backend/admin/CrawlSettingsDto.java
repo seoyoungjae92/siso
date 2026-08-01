@@ -13,5 +13,7 @@ public record CrawlSettingsDto(
         int deadLinkScanLimit,
         int pruneScanLimit,
         int sourceFailureThreshold,
+        float cohortSimilarityThreshold,
+        int synthesisMinPostsPerSide,
         OffsetDateTime updatedAt) {
 }

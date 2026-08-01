@@ -43,7 +43,10 @@ SYSTEM_PROMPT = """너는 한국 정치 커뮤니티 좌/우 게시글을 보고
 3. 제공된 게시글 제목·요약에 없는 사실을 새로 지어내지 마라 — 어조와
    표현만 다듬고, 주장의 근거는 원문 범위를 넘지 마라.
 4. 반드시 요청된 스키마의 JSON 형식으로만 답해라. 다른 텍스트를 덧붙이지
-   마라."""
+   마라.
+5. 각 진영에 게시글이 여러 건 주어질 수 있다 — 그 중 하나만 대표로 삼지
+   말고, 여러 글에 공통되는/대표적인 입장을 종합해서 요약해라.
+6. left_stance, right_stance는 각각 500자를 넘기지 마라."""
 
 RESPONSE_JSON_SCHEMA = {
     "type": "object",
@@ -98,8 +101,12 @@ class SynthesisFailed(Exception):
 
 class TopicSynthesizer(Protocol):
     def synthesize(
-        self, left_title: str, left_summary: str, right_title: str, right_summary: str
+        self, left_posts: list[tuple[str, str]], right_posts: list[tuple[str, str]]
     ) -> SynthesizedTopic: ...
+
+
+def _format_side(posts: list[tuple[str, str]]) -> str:
+    return "\n\n".join(f"[{i + 1}] 제목: {title}\n요약: {summary}" for i, (title, summary) in enumerate(posts))
 
 
 class OpenRouterTopicSynthesizer:
@@ -108,11 +115,10 @@ class OpenRouterTopicSynthesizer:
         self._model = model
 
     def synthesize(
-        self, left_title: str, left_summary: str, right_title: str, right_summary: str
+        self, left_posts: list[tuple[str, str]], right_posts: list[tuple[str, str]]
     ) -> SynthesizedTopic:
         user_prompt = (
-            f"[좌 게시글]\n제목: {left_title}\n요약: {left_summary}\n\n"
-            f"[우 게시글]\n제목: {right_title}\n요약: {right_summary}"
+            f"[좌 게시글]\n{_format_side(left_posts)}\n\n[우 게시글]\n{_format_side(right_posts)}"
         )
 
         try:
@@ -175,9 +181,9 @@ class OpenRouterTopicSynthesizer:
             raise SynthesisFailed("응답의 한글 비율이 너무 낮음(다른 언어가 뒤섞인 응답으로 판단)")
 
         return SynthesizedTopic(
-            title=parsed.title.strip(),
-            left_stance=parsed.left_stance.strip(),
-            right_stance=parsed.right_stance.strip(),
+            title=parsed.title.strip()[:200],
+            left_stance=parsed.left_stance.strip()[:500],
+            right_stance=parsed.right_stance.strip()[:500],
         )
 
 

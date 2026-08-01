@@ -56,17 +56,19 @@ class FakeMatchingRepository:
         pending_embeddings: list[tuple[int, str, str]] | None = None,
         unmatched_left: list[int] | None = None,
         best_matches: dict[int, tuple[int, float]] | None = None,
+        same_side_similar: dict[int, list[tuple[int, float]]] | None = None,
         similar_counts: dict[int, int] | None = None,
         prunable_posts: list[int] | None = None,
         undeletable_posts: set[int] | None = None,
         link_check_candidates: list[tuple[int, str]] | None = None,
-        pairs_missing_synthesis: list[tuple[int, str, str, str, str]] | None = None,
+        pairs_missing_synthesis: list[tuple[int, list[tuple[str, str]], list[tuple[str, str]]]] | None = None,
     ):
         self.pending_embeddings = pending_embeddings or []
         self.unmatched_left = unmatched_left or []
         self.best_matches = best_matches or {}
+        self.same_side_similar = same_side_similar or {}
         self.updated_embeddings: dict[int, list[float]] = {}
-        self.created_pairs: list[tuple[int, int, float]] = []
+        self.created_pairs: list[tuple[list[int], list[int], float]] = []
         self.similar_counts = similar_counts or {}
         self.prunable_posts = prunable_posts or []
         self.undeletable_posts = undeletable_posts or set()
@@ -87,13 +89,16 @@ class FakeMatchingRepository:
     def find_best_cross_side_match(self, post_id: int) -> tuple[int, float] | None:
         return self.best_matches.get(post_id)
 
-    def create_pair(self, left_id: int, right_id: int, similarity: float) -> None:
-        self.created_pairs.append((left_id, right_id, similarity))
+    def find_similar_same_side_posts(self, post_id: int, threshold: float, limit: int) -> list[tuple[int, float]]:
+        return self.same_side_similar.get(post_id, [])[:limit]
+
+    def create_pair(self, left_ids: list[int], right_ids: list[int], similarity: float) -> None:
+        self.created_pairs.append((left_ids, right_ids, similarity))
 
     def count_similar_posts(self, post_id: int, threshold: float) -> int:
         return self.similar_counts.get(post_id, 0)
 
-    def find_prunable_posts(self, grace_period_hours: int, limit: int) -> list[int]:
+    def find_prunable_posts(self, grace_period_hours: int, match_similarity_threshold: float, limit: int) -> list[int]:
         return self.prunable_posts[:limit]
 
     def delete_post(self, post_id: int) -> bool:
@@ -105,7 +110,9 @@ class FakeMatchingRepository:
     def find_link_check_candidates(self, display_window_days: int, limit: int) -> list[tuple[int, str]]:
         return self.link_check_candidates[:limit]
 
-    def find_pairs_missing_synthesis(self, limit: int) -> list[tuple[int, str, str, str, str]]:
+    def find_pairs_missing_synthesis(
+        self, limit: int
+    ) -> list[tuple[int, list[tuple[str, str]], list[tuple[str, str]]]]:
         return self.pairs_missing_synthesis[:limit]
 
     def update_pair_synthesis(self, pair_id: int, title: str, left_stance: str, right_stance: str) -> None:
@@ -113,17 +120,17 @@ class FakeMatchingRepository:
 
 
 class FakeTopicSynthesizer:
-    """(left_title, right_title) 키로 미리 정해둔 결과를 반환. fail_keys에
+    """(첫 좌글 제목, 첫 우글 제목) 키로 미리 정해둔 결과를 반환. fail_keys에
     있는 키는 SynthesisFailed를 던져서 실패-격리 경로를 테스트한다."""
 
     def __init__(self, results: dict, fail_keys: set | None = None):
         self.results = results
         self.fail_keys = fail_keys or set()
 
-    def synthesize(self, left_title, left_summary, right_title, right_summary):
+    def synthesize(self, left_posts, right_posts):
         from siso_crawler.llm_client import SynthesisFailed
 
-        key = (left_title, right_title)
+        key = (left_posts[0][0], right_posts[0][0])
         if key in self.fail_keys or key not in self.results:
             raise SynthesisFailed(f"no fixture for {key}")
         return self.results[key]

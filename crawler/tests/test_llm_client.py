@@ -47,7 +47,7 @@ def test_synthesize_sends_ascii_safe_title_header(monkeypatch):
     monkeypatch.setattr(httpx, "post", fake_post)
     monkeypatch.setenv("APP_NAME", "시소")
 
-    _synthesizer().synthesize("좌제목", "좌요약", "우제목", "우요약")
+    _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
     assert captured["headers"]["X-Title"] == OPENROUTER_APP_TITLE
     captured["headers"]["X-Title"].encode("ascii")
@@ -57,7 +57,7 @@ def test_synthesize_returns_topic_on_valid_response(monkeypatch):
     content = '{"title": "제목", "left_stance": "좌 입장", "right_stance": "우 입장"}'
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
 
-    result = _synthesizer().synthesize("좌제목", "좌요약", "우제목", "우요약")
+    result = _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
     assert result.title == "제목"
     assert result.left_stance == "좌 입장"
@@ -69,14 +69,14 @@ def test_synthesize_fails_on_non_stop_finish_reason(monkeypatch):
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content, finish_reason="length"))
 
     with pytest.raises(SynthesisFailed):
-        _synthesizer().synthesize("좌제목", "좌요약", "우제목", "우요약")
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
 
 def test_synthesize_fails_on_malformed_json(monkeypatch):
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response("이건 JSON이 아님"))
 
     with pytest.raises(SynthesisFailed):
-        _synthesizer().synthesize("좌제목", "좌요약", "우제목", "우요약")
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
 
 def test_synthesize_fails_on_empty_field(monkeypatch):
@@ -84,7 +84,7 @@ def test_synthesize_fails_on_empty_field(monkeypatch):
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
 
     with pytest.raises(SynthesisFailed):
-        _synthesizer().synthesize("좌제목", "좌요약", "우제목", "우요약")
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
 
 def test_synthesize_fails_on_network_error(monkeypatch):
@@ -94,7 +94,7 @@ def test_synthesize_fails_on_network_error(monkeypatch):
     monkeypatch.setattr(httpx, "post", raise_error)
 
     with pytest.raises(SynthesisFailed):
-        _synthesizer().synthesize("좌제목", "좌요약", "우제목", "우요약")
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
 
 def test_synthesize_fails_on_http_error_status(monkeypatch):
@@ -103,7 +103,7 @@ def test_synthesize_fails_on_http_error_status(monkeypatch):
     )
 
     with pytest.raises(SynthesisFailed):
-        _synthesizer().synthesize("좌제목", "좌요약", "우제목", "우요약")
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
 
 def test_synthesize_fails_when_response_missing_choices(monkeypatch):
@@ -114,7 +114,7 @@ def test_synthesize_fails_when_response_missing_choices(monkeypatch):
     monkeypatch.setattr(httpx, "post", fake_post)
 
     with pytest.raises(SynthesisFailed):
-        _synthesizer().synthesize("좌제목", "좌요약", "우제목", "우요약")
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
 
 def test_synthesize_fails_on_mostly_non_korean_response(monkeypatch):
@@ -128,7 +128,7 @@ def test_synthesize_fails_on_mostly_non_korean_response(monkeypatch):
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
 
     with pytest.raises(SynthesisFailed):
-        _synthesizer().synthesize("좌제목", "좌요약", "우제목", "우요약")
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
 
 def test_synthesize_allows_some_non_korean_characters(monkeypatch):
@@ -139,9 +139,44 @@ def test_synthesize_allows_some_non_korean_characters(monkeypatch):
     )
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
 
-    result = _synthesizer().synthesize("좌제목", "좌요약", "우제목", "우요약")
+    result = _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
     assert "GDPR" in result.title
+
+
+def test_synthesize_numbers_multiple_posts_per_side_in_prompt(monkeypatch):
+    captured = {}
+
+    def fake_post(*args, **kwargs):
+        captured["body"] = kwargs["json"]
+        return _openrouter_response('{"title": "제목", "left_stance": "좌", "right_stance": "우"}')
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    _synthesizer().synthesize(
+        [("좌1", "좌요약1"), ("좌2", "좌요약2")],
+        [("우1", "우요약1")],
+    )
+
+    user_message = captured["body"]["messages"][1]["content"]
+    assert "[1] 제목: 좌1" in user_message
+    assert "[2] 제목: 좌2" in user_message
+    assert "[1] 제목: 우1" in user_message
+
+
+def test_synthesize_truncates_overlong_response_fields(monkeypatch):
+    content = (
+        '{"title": "' + "가" * 300 + '",'
+        ' "left_stance": "' + "나" * 600 + '",'
+        ' "right_stance": "' + "다" * 600 + '"}'
+    )
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
+
+    result = _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
+
+    assert len(result.title) == 200
+    assert len(result.left_stance) == 500
+    assert len(result.right_stance) == 500
 
 
 def _summarizer() -> OpenRouterPostSummarizer:

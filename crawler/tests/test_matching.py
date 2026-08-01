@@ -30,7 +30,57 @@ def test_match_pending_posts_creates_pair_above_threshold():
     matched = match_pending_posts(repo, threshold=0.6)
 
     assert matched == 1
-    assert repo.created_pairs == [(10, 20, 0.8)]
+    assert repo.created_pairs == [([10], [20], 0.8)]
+
+
+def test_match_pending_posts_defers_when_cohort_below_min_posts_per_side():
+    # 시드 쌍(10, 20)은 있지만 같은 편 코호트가 없어서 min_posts_per_side=2를
+    # 못 채움 — 이번 사이클엔 아무것도 생성되지 않아야 한다.
+    repo = FakeMatchingRepository(
+        unmatched_left=[10],
+        best_matches={10: (20, 0.8)},
+    )
+
+    matched = match_pending_posts(repo, threshold=0.6, min_posts_per_side=2)
+
+    assert matched == 0
+    assert repo.created_pairs == []
+
+
+def test_match_pending_posts_creates_pair_when_cohort_meets_min_posts_per_side():
+    repo = FakeMatchingRepository(
+        unmatched_left=[10],
+        best_matches={10: (20, 0.8)},
+        same_side_similar={10: [(11, 0.7)], 20: [(21, 0.6)]},
+    )
+
+    matched = match_pending_posts(repo, threshold=0.6, min_posts_per_side=2)
+
+    assert matched == 1
+    assert repo.created_pairs == [([10, 11], [20, 21], 0.8)]
+
+
+def test_match_pending_posts_excludes_already_consumed_cohort_members():
+    # 좌 10과 30이 둘 다 시드가 될 수 있고, 둘의 코호트가 같은 글(11)을
+    # 놓고 겹침 — 먼저 소비된 쪽이 가져가고, 이후 시드는 그 글을 다시
+    # 코호트에 넣으면 안 된다.
+    repo = FakeMatchingRepository(
+        unmatched_left=[10, 30],
+        best_matches={10: (20, 0.8), 30: (40, 0.7)},
+        same_side_similar={
+            10: [(11, 0.7)],
+            30: [(11, 0.65)],
+            20: [(21, 0.6)],
+            40: [(41, 0.6)],
+        },
+    )
+
+    matched = match_pending_posts(repo, threshold=0.6, min_posts_per_side=2)
+
+    # 10번 시드가 먼저 11을 코호트로 확보 → 30번 시드는 11이 이미 소비돼
+    # 좌측 코호트가 자기 자신뿐이라 min_posts_per_side=2 미달로 생성 안 됨.
+    assert matched == 1
+    assert repo.created_pairs == [([10, 11], [20, 21], 0.8)]
 
 
 def test_match_pending_posts_skips_below_threshold():

@@ -10,5 +10,7 @@ public record CrawlSettingsRequest(
         String synthesisModel,
         int deadLinkScanLimit,
         int pruneScanLimit,
-        int sourceFailureThreshold) {
+        int sourceFailureThreshold,
+        float cohortSimilarityThreshold,
+        int synthesisMinPostsPerSide) {
 }

@@ -14,9 +14,9 @@ def synthesize_pending_topics(
     repo: MatchingRepository, synthesizer: TopicSynthesizer, limit: int = DEFAULT_SYNTHESIS_LIMIT
 ) -> int:
     synthesized = 0
-    for pair_id, left_title, left_summary, right_title, right_summary in repo.find_pairs_missing_synthesis(limit):
+    for pair_id, left_posts, right_posts in repo.find_pairs_missing_synthesis(limit):
         try:
-            result = synthesizer.synthesize(left_title, left_summary, right_title, right_summary)
+            result = synthesizer.synthesize(left_posts, right_posts)
         except SynthesisFailed as exc:
             logger.warning("주제 합성 실패(pair_id=%d): %s", pair_id, exc)
             continue
