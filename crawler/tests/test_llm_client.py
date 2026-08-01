@@ -278,6 +278,22 @@ def test_classify_returns_false_for_non_political_post(monkeypatch):
     assert _classifier().is_political("오늘 점심 뭐 먹지", "요약") is False
 
 
+def test_classify_accepts_political_key_variant(monkeypatch):
+    # openrouter/free 라우팅 모델 중 일부가 요청한 스키마 키(is_political)
+    # 대신 political/politics로 응답하는 경우가 실제로 관측됨(2026-08-01).
+    content = '{"political": true}'
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
+
+    assert _classifier().is_political("정치인 발언 논란", "요약") is True
+
+
+def test_classify_accepts_politics_key_variant(monkeypatch):
+    content = '{"politics": false}'
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
+
+    assert _classifier().is_political("오늘 점심 뭐 먹지", "요약") is False
+
+
 def test_classify_fails_on_non_stop_finish_reason(monkeypatch):
     content = '{"is_political": true}'
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content, finish_reason="length"))
