@@ -555,17 +555,30 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
 > 🔴로 표시(19.5절과 동일 기준).
 
 ### 20.1 도메인
-- [ ] `siso.kr`/`siso.ai.kr` 등 최종 확정 및 실제 구매 (D7 — 여전히 미정)
-- [ ] 구매 후 DNS를 Vercel(프론트)·Railway/Fly.io(백엔드)로 연결
+- [x] `siso.ai.kr` 확정 및 실제 구매 완료(2026-07-27, 가비아, D7 갱신 —
+      `siso.kr`/`.co.kr`은 선점돼서 KISA 신규 도메인 중 서비스 성격(AI
+      기반 필터링/합성)과 맞는 `ai.kr`로 결정). 등록정보 숨김·안전잠금
+      둘 다 켬.
+- [ ] DNS를 Vercel(프론트)로 연결 — 아직 안 함, 지금은 Vercel 기본
+      도메인(`siso-pied.vercel.app`)으로만 접근 가능. 백엔드(Railway)는
+      사용자에게 노출 안 되는 서버 전용 URL이라 커스텀 도메인 연결
+      불필요하다고 판단(비용/작업 아낌) — 필요해지면 재검토.
+- [ ] 가비아 네임서버 유지, Vercel "Add Domain" 화면이 안내하는
+      A/CNAME 레코드를 가비아 DNS 관리에 추가하는 방식으로 진행 예정
 
-### 20.2 배포 인프라 (10절 계획 기준, 실제 계정/서비스 생성 필요)
-- [ ] Vercel 프로젝트 생성 + GitHub 연동(main 자동배포) — 애드센스
-      게재 시작 전까지는 Hobby로 시작 가능(D15, Pro 전환은 그때 결정)
-- [ ] Railway 또는 Fly.io에 백엔드 Dockerfile 배포
-- [ ] Supabase 프로젝트 생성(pgvector) — Free tier는 1주 이상 미사용 시
-      자동 일시정지(D16), 크롤러 cron이 최소 주 1회는 돌아야 함
-- [ ] Redis(Railway Redis 또는 Upstash) 연결
-- [ ] Sentry(백/프론트), UptimeRobot 헬스체크 연동
+### 20.2 배포 인프라 (10절 계획 기준) — 실제 배포 현황은 20.7절 참고
+- [x] Vercel 프로젝트 생성 + GitHub 연동 완료(Hobby 플랜, D15 — Pro
+      전환은 애드센스 게재 시작 시점에)
+- [x] Railway에 백엔드 Dockerfile 배포 완료(Fly.io 대신 Railway 선택 —
+      설정 간단함 우선)
+- [x] Supabase 프로젝트 생성 + pgvector 활성화 + 마이그레이션 17개 전부
+      적용 완료(2026-07-27). **아직 실제 크롤링을 운영 DB에 돌린 적
+      없어서 콘텐츠가 비어있음** — 다음 세션에서 진행
+- [x] Redis(Upstash) 생성 + 연결 확인 완료. 연결 과정에서 백엔드가
+      Redis 비밀번호/TLS 설정 자체를 지원 안 하던 갭 발견해서 수정함
+      (PR #99, `spring.data.redis.password`/`ssl.enabled` 추가) —
+      이거 없이 배포했으면 투표/댓글 레이트리밋 API가 전부 500 났을 것
+- [ ] Sentry(백/프론트), UptimeRobot 헬스체크 연동 — 아직 안 함
 
 ### 20.3 필수 환경변수 — 실제 값으로 교체 (dev 기본값 재사용 금지)
 로컬 기준값은 `.env.example` 참고. 프로덕션에서 특히 주의할 것:
@@ -611,3 +624,30 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
 - [ ] 신고 접수 알림 채널(이메일/Slack) 결정 — 아직 미정(19.5)
 - [ ] Supabase 백업 정책 확인 후 10절에 반영
 - [ ] Vercel Hobby→Pro 전환은 애드센스 게재 시작 시점에(D15)
+
+### 20.7 실제 배포 리소스 현황 (2026-07-27 기준, 세션/기억 유실 대비 기록)
+
+> 시크릿(비밀번호/API키/커넥션스트링)은 여기 적지 않음 — 각 플랫폼
+> 대시보드에 로그인해서 확인. 여기는 "뭐가 어디에 떠있고 뭐가 아직
+> 안 됐는지"만 기록.
+
+| 리소스 | 플랫폼 | 상태 | 비고 |
+|---|---|---|---|
+| 도메인 `siso.ai.kr` | 가비아 | 구매 완료 | DNS 연결 아직 안 함(20.1) |
+| 프론트엔드 | Vercel (Hobby) | 배포됨 | `https://siso-pied.vercel.app` |
+| 백엔드 API | Railway (Docker) | 배포됨 | `https://siso-production.up.railway.app` — 순수 REST API라 `/`는 404가 정상, `/api/posts?side=left` 등으로 확인. Root Directory=`/backend`. URL에 `:8080` 붙이면 안 됨(공개 도메인이 내부 포트로 알아서 프록시) |
+| DB | Supabase (region: ap-south-1) | 프로젝트 생성 + 마이그레이션(V1~V17) 적용 완료 | pgvector 활성화됨. **콘텐츠 비어있음** — 운영 DB에 소스 등록 + 크롤링 아직 안 돌림. 연결은 Direct Connection(IPv6 only, 로컬 psql 안 됨) 말고 **Session Pooler**(`aws-1-ap-south-1.pooler.supabase.com:5432`) 사용 |
+| Redis | Upstash | 생성 + 연결 확인 완료 | `rediss://` TLS 필수, 비밀번호 필수 — 백엔드가 이걸 지원 안 했던 걸 PR #99에서 수정 |
+| 크롤러 실행 위치 | 로컬 전용 | 아직 서버 스케줄링 안 함 | Railway/별도 서버에 cron으로 올리는 건 미착수. 지금은 로컬에서 수동 실행만 |
+| Sentry / UptimeRobot | - | 미착수 | 20.2 |
+| Resend(이메일 발신 도메인 인증) | - | 미착수 | 20.4 |
+
+**다음에 이어서 할 일(우선순위순)**:
+1. 운영 Supabase DB에 소스 10개 등록 + 크롤러를 `CRAWLER_DATABASE_URL`로
+   운영 DB 가리키게 해서 실제 콘텐츠 채우기 (로컬 DB 크롤은 이미 검증됨)
+2. `siso.ai.kr` → Vercel 도메인 연결(Vercel "Add Domain" → 안내되는
+   A/CNAME을 가비아 DNS에 추가). 백엔드는 브라우저에 직접 노출 안 되는
+   서버 전용 URL(`BACKEND_API_URL`)이라 커스텀 도메인 불필요
+3. 크롤러를 주기적으로 돌릴 방법 결정(Railway cron service 추가가 가장
+   간단해 보임, 아직 미검토)
+4. 20.4(Resend 도메인 인증), 20.6(Sentry/UptimeRobot) 순으로 진행
