@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { postUnsubscribeNewsletter } from "@/app/newsletter/actions";
 import { BackLink } from "@/components/BackLink";
 
-const appName = process.env.APP_NAME ?? "시소";
+const appName = "시소";
 
 export const metadata: Metadata = {
   title: `뉴스레터 수신거부 - ${appName}`,

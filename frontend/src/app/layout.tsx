@@ -7,7 +7,7 @@ import { Header } from "@/components/Header";
 
 import "./globals.css";
 
-const appName = process.env.APP_NAME ?? "시소";
+const appName = "시소";
 
 // og:image 등 메타데이터의 절대 URL을 만드는 기준 — 없으면 Next.js가
 // http://localhost:3000으로 fallback해서, 카톡/문자 링크 미리보기 서버가

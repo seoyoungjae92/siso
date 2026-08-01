@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { BackLink } from "@/components/BackLink";
 
-const appName = process.env.APP_NAME ?? "시소";
+const appName = "시소";
 const CONTACT_EMAIL = "siso.contact.help@gmail.com";
 const EFFECTIVE_DATE = "2026-08-01";
 

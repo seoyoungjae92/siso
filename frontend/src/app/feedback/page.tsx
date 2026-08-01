@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { BackLink } from "@/components/BackLink";
 import { FeedbackForm } from "@/components/FeedbackForm";
 
-const appName = process.env.APP_NAME ?? "시소";
+const appName = "시소";
 
 export const metadata: Metadata = {
   title: `제보·건의하기 - ${appName}`,

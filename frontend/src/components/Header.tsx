@@ -26,7 +26,7 @@ function SeesawLogo() {
 }
 
 export function Header() {
-  const appName = process.env.APP_NAME ?? "시소";
+  const appName = "시소";
 
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-line bg-white px-4 py-3.5 sm:px-7">
