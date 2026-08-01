@@ -5,7 +5,7 @@ from urllib.robotparser import RobotFileParser
 
 import httpx
 
-USER_AGENT = "siso-crawler/0.1 (+contact: TODO-set-before-launch@example.com)"
+USER_AGENT = "siso-crawler/0.1 (+contact: siso.contact.help@gmail.com)"
 DEFAULT_MIN_INTERVAL_SECONDS = 10.0
 TIMEOUT_SECONDS = 10.0
 
