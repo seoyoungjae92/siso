@@ -36,6 +36,8 @@ class AdminCrawlSettingsServiceTest {
         ReflectionTestUtils.setField(settings, "synthesisLimit", 10);
         ReflectionTestUtils.setField(settings, "synthesisModel", "openrouter/free");
         ReflectionTestUtils.setField(settings, "deadLinkScanLimit", 100);
+        ReflectionTestUtils.setField(settings, "pruneScanLimit", 100);
+        ReflectionTestUtils.setField(settings, "sourceFailureThreshold", 5);
         ReflectionTestUtils.setField(settings, "updatedAt", OffsetDateTime.now());
         return settings;
     }
@@ -54,6 +56,8 @@ class AdminCrawlSettingsServiceTest {
         assertThat(dto.synthesisLimit()).isEqualTo(10);
         assertThat(dto.synthesisModel()).isEqualTo("openrouter/free");
         assertThat(dto.deadLinkScanLimit()).isEqualTo(100);
+        assertThat(dto.pruneScanLimit()).isEqualTo(100);
+        assertThat(dto.sourceFailureThreshold()).isEqualTo(5);
     }
 
     @Test
@@ -62,7 +66,7 @@ class AdminCrawlSettingsServiceTest {
         when(crawlSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
 
         CrawlSettingsRequest request =
-                new CrawlSettingsRequest(0.6f, 0.4f, 5, 72, 14, 20, "anthropic/claude-haiku-4.5", 50);
+                new CrawlSettingsRequest(0.6f, 0.4f, 5, 72, 14, 20, "anthropic/claude-haiku-4.5", 50, 60, 7);
         CrawlSettingsDto dto = newService().update(request);
 
         assertThat(dto.matchSimilarityThreshold()).isEqualTo(0.6f);
@@ -73,5 +77,7 @@ class AdminCrawlSettingsServiceTest {
         assertThat(dto.synthesisLimit()).isEqualTo(20);
         assertThat(dto.synthesisModel()).isEqualTo("anthropic/claude-haiku-4.5");
         assertThat(dto.deadLinkScanLimit()).isEqualTo(50);
+        assertThat(dto.pruneScanLimit()).isEqualTo(60);
+        assertThat(dto.sourceFailureThreshold()).isEqualTo(7);
     }
 }

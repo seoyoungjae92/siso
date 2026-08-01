@@ -14,7 +14,7 @@ class MatchingRepository(Protocol):
 
     def count_similar_posts(self, post_id: int, threshold: float) -> int: ...
 
-    def find_prunable_posts(self, grace_period_hours: int) -> list[int]: ...
+    def find_prunable_posts(self, grace_period_hours: int, limit: int) -> list[int]: ...
 
     def delete_post(self, post_id: int) -> bool: ...
 
@@ -117,11 +117,17 @@ class PsycopgMatchingRepository:
             )
             return cur.fetchone()[0]
 
-    def find_prunable_posts(self, grace_period_hours: int) -> list[int]:
+    def find_prunable_posts(self, grace_period_hours: int, limit: int) -> list[int]:
         """유예기간이 지났고, embedding이 있고(임베딩 안 된 글은 아직
         평가 자체가 안 된 것이라 제외), topic_pairs/comments에 상태와
         무관하게 참조되지 않은 후보. 클러스터 크기 판정은 호출부에서
-        count_similar_posts로 별도 확인한다."""
+        count_similar_posts로 별도 확인한다.
+
+        매칭 안 되는 글이 쌓이면 이 후보도 같이 늘어나고, 후보 하나당
+        count_similar_posts가 전체 임베딩 테이블을 스캔하는 호출을
+        하나씩 만들어서(find_link_check_candidates와 동일한 문제 유형)
+        limit으로 사이클당 처리량을 상한. 오래된 것부터 우선 처리하면
+        나머지는 유예기간 통과분이 늘어나며 자연 회전한다."""
         with self._conn.cursor() as cur:
             cur.execute(
                 """
@@ -136,8 +142,10 @@ class PsycopgMatchingRepository:
                   AND NOT EXISTS (
                       SELECT 1 FROM comments c WHERE c.post_id = p.id
                   )
+                ORDER BY p.collected_at ASC
+                LIMIT %s
                 """,
-                (grace_period_hours,),
+                (grace_period_hours, limit),
             )
             return [row[0] for row in cur.fetchall()]
 

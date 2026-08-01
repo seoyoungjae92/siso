@@ -8,5 +8,7 @@ public record CrawlSettingsRequest(
         int displayWindowDays,
         int synthesisLimit,
         String synthesisModel,
-        int deadLinkScanLimit) {
+        int deadLinkScanLimit,
+        int pruneScanLimit,
+        int sourceFailureThreshold) {
 }

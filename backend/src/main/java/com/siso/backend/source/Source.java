@@ -35,6 +35,9 @@ public class Source {
     @Column(nullable = false)
     private boolean enabled;
 
+    @Column(name = "consecutive_failures", nullable = false)
+    private int consecutiveFailures;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -85,6 +88,10 @@ public class Source {
         return enabled;
     }
 
+    public int getConsecutiveFailures() {
+        return consecutiveFailures;
+    }
+
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
@@ -99,5 +106,11 @@ public class Source {
 
     public void toggle() {
         this.enabled = !this.enabled;
+        if (this.enabled) {
+            // 크롤러가 연속 실패로 자동 비활성화한 소스를 관리자가 다시 켤 때는
+            // 카운터를 리셋해줘야, 원인 해결 여부와 무관하게 곧바로 다시
+            // 자동 비활성화되는 걸 막을 수 있다.
+            this.consecutiveFailures = 0;
+        }
     }
 }

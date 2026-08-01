@@ -10,5 +10,6 @@ public record SourceDto(
         String feedUrl,
         String crawlType,
         boolean enabled,
+        int consecutiveFailures,
         OffsetDateTime createdAt) {
 }

@@ -60,7 +60,7 @@ def test_prune_stale_candidates_deletes_below_min_cluster_size():
     # 미달로 삭제 대상.
     repo = FakeMatchingRepository(prunable_posts=[1], similar_counts={1: 1})
 
-    deleted = prune_stale_candidates(repo, grace_period_hours=48, min_cluster_size=3)
+    deleted = prune_stale_candidates(repo, grace_period_hours=48, min_cluster_size=3, limit=100)
 
     assert deleted == 1
     assert repo.deleted_posts == [1]
@@ -71,7 +71,7 @@ def test_prune_stale_candidates_keeps_post_at_min_cluster_size():
     # 이상이라 삭제 안 됨.
     repo = FakeMatchingRepository(prunable_posts=[1], similar_counts={1: 2})
 
-    deleted = prune_stale_candidates(repo, grace_period_hours=48, min_cluster_size=3)
+    deleted = prune_stale_candidates(repo, grace_period_hours=48, min_cluster_size=3, limit=100)
 
     assert deleted == 0
     assert repo.deleted_posts == []
@@ -86,7 +86,23 @@ def test_prune_stale_candidates_skips_post_that_became_undeletable():
         undeletable_posts={1},
     )
 
-    deleted = prune_stale_candidates(repo, grace_period_hours=48, min_cluster_size=3)
+    deleted = prune_stale_candidates(repo, grace_period_hours=48, min_cluster_size=3, limit=100)
 
     assert deleted == 1
     assert repo.deleted_posts == [2]
+
+
+def test_prune_stale_candidates_respects_limit():
+    # 매칭 안 되는 글은 유예기간 동안 계속 정리 후보로 남을 수 있고,
+    # 후보 하나당 count_similar_posts가 전체 임베딩 테이블을 스캔하는
+    # 호출을 만든다 — limit을 넘는 후보는 이번 사이클에서 건드리지 않아야
+    # 한다(dead_link_scan_limit과 동일한 문제 유형).
+    repo = FakeMatchingRepository(
+        prunable_posts=[1, 2, 3],
+        similar_counts={1: 0, 2: 0, 3: 0},
+    )
+
+    deleted = prune_stale_candidates(repo, grace_period_hours=48, min_cluster_size=3, limit=2)
+
+    assert deleted == 2
+    assert repo.deleted_posts == [1, 2]

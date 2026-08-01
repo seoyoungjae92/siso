@@ -70,6 +70,7 @@ export type Source = {
   feedUrl: string | null;
   crawlType: "rss" | "html";
   enabled: boolean;
+  consecutiveFailures: number;
   createdAt: string;
 };
 
@@ -117,6 +118,8 @@ export type CrawlSettings = {
   synthesisLimit: number;
   synthesisModel: string;
   deadLinkScanLimit: number;
+  pruneScanLimit: number;
+  sourceFailureThreshold: number;
   updatedAt: string;
 };
 

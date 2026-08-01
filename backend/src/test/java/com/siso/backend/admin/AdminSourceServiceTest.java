@@ -104,6 +104,22 @@ class AdminSourceServiceTest {
     }
 
     @Test
+    void toggle_reEnabling_resetsConsecutiveFailures() {
+        // 크롤러가 연속 실패로 자동 비활성화한 소스를 관리자가 다시 켤 때
+        // 카운터를 리셋 안 하면, 원인 해결 여부와 무관하게 다음 실패
+        // 한 번으로 곧바로 다시 자동 비활성화될 수 있다.
+        Source source = sourceWithId(1L);
+        ReflectionTestUtils.setField(source, "enabled", false);
+        ReflectionTestUtils.setField(source, "consecutiveFailures", 5);
+        when(sourceRepository.findById(1L)).thenReturn(Optional.of(source));
+
+        SourceDto dto = newService().toggle(1L);
+
+        assertThat(dto.enabled()).isTrue();
+        assertThat(dto.consecutiveFailures()).isEqualTo(0);
+    }
+
+    @Test
     void toggle_nonExistentId_isNotFound() {
         when(sourceRepository.findById(99L)).thenReturn(Optional.empty());
 

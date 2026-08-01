@@ -38,6 +38,12 @@ public class CrawlSettings {
     @Column(name = "dead_link_scan_limit", nullable = false)
     private int deadLinkScanLimit;
 
+    @Column(name = "prune_scan_limit", nullable = false)
+    private int pruneScanLimit;
+
+    @Column(name = "source_failure_threshold", nullable = false)
+    private int sourceFailureThreshold;
+
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
@@ -80,6 +86,14 @@ public class CrawlSettings {
         return deadLinkScanLimit;
     }
 
+    public int getPruneScanLimit() {
+        return pruneScanLimit;
+    }
+
+    public int getSourceFailureThreshold() {
+        return sourceFailureThreshold;
+    }
+
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -93,6 +107,8 @@ public class CrawlSettings {
             int synthesisLimit,
             String synthesisModel,
             int deadLinkScanLimit,
+            int pruneScanLimit,
+            int sourceFailureThreshold,
             OffsetDateTime updatedAt) {
         this.matchSimilarityThreshold = matchSimilarityThreshold;
         this.pruneSimilarityThreshold = pruneSimilarityThreshold;
@@ -102,6 +118,8 @@ public class CrawlSettings {
         this.synthesisLimit = synthesisLimit;
         this.synthesisModel = synthesisModel;
         this.deadLinkScanLimit = deadLinkScanLimit;
+        this.pruneScanLimit = pruneScanLimit;
+        this.sourceFailureThreshold = sourceFailureThreshold;
         this.updatedAt = updatedAt;
     }
 }

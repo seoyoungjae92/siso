@@ -11,5 +11,7 @@ public record CrawlSettingsDto(
         int synthesisLimit,
         String synthesisModel,
         int deadLinkScanLimit,
+        int pruneScanLimit,
+        int sourceFailureThreshold,
         OffsetDateTime updatedAt) {
 }
