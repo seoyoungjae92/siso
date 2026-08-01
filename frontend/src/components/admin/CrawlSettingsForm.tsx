@@ -65,6 +65,18 @@ const NUMBER_FIELDS: {
     step: "1",
     hint: "소스가 이 횟수만큼 연속으로 수집 실패하면 자동으로 비활성화됨",
   },
+  {
+    key: "cohortSimilarityThreshold",
+    label: "코호트 결속 유사도 임계값",
+    step: "0.01",
+    hint: "같은 진영 내에서 \"같은 이야기\"로 묶어 요약에 같이 반영할 글을 판단하는 유사도 기준(0~1)",
+  },
+  {
+    key: "synthesisMinPostsPerSide",
+    label: "주제 합성 최소 글 개수(진영당)",
+    step: "1",
+    hint: "1=지금과 동일(변경 없음). 올리면 그 순간부터 좌·우 각각 이 개수 이상 모여야 새 주제가 뜸",
+  },
 ];
 
 export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
@@ -79,6 +91,8 @@ export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
     deadLinkScanLimit: initial.deadLinkScanLimit,
     pruneScanLimit: initial.pruneScanLimit,
     sourceFailureThreshold: initial.sourceFailureThreshold,
+    cohortSimilarityThreshold: initial.cohortSimilarityThreshold,
+    synthesisMinPostsPerSide: initial.synthesisMinPostsPerSide,
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

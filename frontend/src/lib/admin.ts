@@ -120,6 +120,8 @@ export type CrawlSettings = {
   deadLinkScanLimit: number;
   pruneScanLimit: number;
   sourceFailureThreshold: number;
+  cohortSimilarityThreshold: number;
+  synthesisMinPostsPerSide: number;
   updatedAt: string;
 };
 

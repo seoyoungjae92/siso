@@ -44,6 +44,12 @@ public class CrawlSettings {
     @Column(name = "source_failure_threshold", nullable = false)
     private int sourceFailureThreshold;
 
+    @Column(name = "cohort_similarity_threshold", nullable = false)
+    private float cohortSimilarityThreshold;
+
+    @Column(name = "synthesis_min_posts_per_side", nullable = false)
+    private int synthesisMinPostsPerSide;
+
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
@@ -94,6 +100,14 @@ public class CrawlSettings {
         return sourceFailureThreshold;
     }
 
+    public float getCohortSimilarityThreshold() {
+        return cohortSimilarityThreshold;
+    }
+
+    public int getSynthesisMinPostsPerSide() {
+        return synthesisMinPostsPerSide;
+    }
+
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -109,6 +123,8 @@ public class CrawlSettings {
             int deadLinkScanLimit,
             int pruneScanLimit,
             int sourceFailureThreshold,
+            float cohortSimilarityThreshold,
+            int synthesisMinPostsPerSide,
             OffsetDateTime updatedAt) {
         this.matchSimilarityThreshold = matchSimilarityThreshold;
         this.pruneSimilarityThreshold = pruneSimilarityThreshold;
@@ -120,6 +136,8 @@ public class CrawlSettings {
         this.deadLinkScanLimit = deadLinkScanLimit;
         this.pruneScanLimit = pruneScanLimit;
         this.sourceFailureThreshold = sourceFailureThreshold;
+        this.cohortSimilarityThreshold = cohortSimilarityThreshold;
+        this.synthesisMinPostsPerSide = synthesisMinPostsPerSide;
         this.updatedAt = updatedAt;
     }
 }

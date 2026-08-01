@@ -16,6 +16,8 @@ class CrawlSettings:
     dead_link_scan_limit: int = 100
     prune_scan_limit: int = 100
     source_failure_threshold: int = 5
+    cohort_similarity_threshold: float = 0.5
+    synthesis_min_posts_per_side: int = 1
 
 
 class SettingsRepository(Protocol):
@@ -41,7 +43,8 @@ class PsycopgSettingsRepository:
                     SELECT match_similarity_threshold, prune_similarity_threshold,
                            min_cluster_size, grace_period_hours, display_window_days,
                            synthesis_limit, synthesis_model, dead_link_scan_limit,
-                           prune_scan_limit, source_failure_threshold
+                           prune_scan_limit, source_failure_threshold,
+                           cohort_similarity_threshold, synthesis_min_posts_per_side
                     FROM crawl_settings WHERE id = 1
                     """
                 )

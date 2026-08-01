@@ -28,6 +28,8 @@ export type CrawlSettingsInput = {
   deadLinkScanLimit: number;
   pruneScanLimit: number;
   sourceFailureThreshold: number;
+  cohortSimilarityThreshold: number;
+  synthesisMinPostsPerSide: number;
 };
 
 export async function postUpdateCrawlSettings(input: CrawlSettingsInput) {

@@ -13,6 +13,19 @@ MATCH_SIMILARITY_THRESHOLD = 0.5
 # 분리한 별도 상수. 실제 운영값은 crawl_settings 테이블에서 읽어온다.
 PRUNE_SIMILARITY_THRESHOLD = 0.5
 
+# 코호트(같은 진영 내 "같은 이야기" 후보) 결속 임계값 — 매칭/정리
+# 임계값과도 별도 개념(관리자가 코호트 결속력만 따로 튜닝해도 매칭/정리
+# 로직이 영향받지 않도록)이라 같은 이유로 분리. 실제 운영값은
+# crawl_settings 테이블에서 읽어온다.
+COHORT_SIMILARITY_THRESHOLD = 0.5
+
+# 코호트 하나에 몇 건까지 붙일지 상한 — 무료 LLM 모델 컨텍스트/응답 길이
+# 문제(llm_client.py MAX_TOKENS 참고)로 넉넉하게 잡지 않는다.
+MAX_COHORT_SIZE = 5
+
+# 실제 운영값은 crawl_settings.synthesis_min_posts_per_side에서 읽어온다.
+SYNTHESIS_MIN_POSTS_PER_SIDE_DEFAULT = 1
+
 
 def embed_pending_posts(
     repo: MatchingRepository, embedder: EmbeddingProvider, limit: int = 50
@@ -25,18 +38,50 @@ def embed_pending_posts(
 
 
 def match_pending_posts(
-    repo: MatchingRepository, threshold: float = MATCH_SIMILARITY_THRESHOLD
+    repo: MatchingRepository,
+    threshold: float = MATCH_SIMILARITY_THRESHOLD,
+    cohort_threshold: float = COHORT_SIMILARITY_THRESHOLD,
+    min_posts_per_side: int = SYNTHESIS_MIN_POSTS_PER_SIDE_DEFAULT,
 ) -> int:
     matched = 0
+    # 이번 사이클에서 이미 어떤 코호트에 편입된 post_id — find_unmatched_posts가
+    # 루프 시작 시점의 스냅샷이라, 코호트로 소비된 글이 뒤에서 다시 시드로
+    # 뽑히거나 다른 코호트에 중복 편입되는 걸 막는다.
+    consumed: set[int] = set()
+
     for post_id in repo.find_unmatched_posts("left"):
+        if post_id in consumed:
+            continue
+
         result = repo.find_best_cross_side_match(post_id)
         if result is None:
             continue
-
         right_id, similarity = result
-        if similarity >= threshold:
-            repo.create_pair(post_id, right_id, similarity)
-            matched += 1
+        if similarity < threshold or right_id in consumed:
+            continue
+
+        left_cohort = [
+            pid
+            for pid, _ in repo.find_similar_same_side_posts(post_id, cohort_threshold, MAX_COHORT_SIZE)
+            if pid not in consumed
+        ]
+        left_ids = [post_id] + left_cohort
+        if len(left_ids) < min_posts_per_side:
+            continue  # 우측 코호트 조회 전에 조기 종료 — 매 사이클 재시도되므로 비용 절감
+
+        right_cohort = [
+            pid
+            for pid, _ in repo.find_similar_same_side_posts(right_id, cohort_threshold, MAX_COHORT_SIZE)
+            if pid not in consumed
+        ]
+        right_ids = [right_id] + right_cohort
+        if len(right_ids) < min_posts_per_side:
+            continue
+
+        repo.create_pair(left_ids, right_ids, similarity)
+        matched += 1
+        consumed.update(left_ids)
+        consumed.update(right_ids)
 
     return matched
 
@@ -46,10 +91,11 @@ def prune_stale_candidates(
     grace_period_hours: int,
     min_cluster_size: int,
     limit: int,
+    match_similarity_threshold: float = MATCH_SIMILARITY_THRESHOLD,
     prune_threshold: float = PRUNE_SIMILARITY_THRESHOLD,
 ) -> int:
     deleted = 0
-    for post_id in repo.find_prunable_posts(grace_period_hours, limit):
+    for post_id in repo.find_prunable_posts(grace_period_hours, match_similarity_threshold, limit):
         cluster_size = repo.count_similar_posts(post_id, prune_threshold) + 1  # 자기 자신 포함
         if cluster_size < min_cluster_size and repo.delete_post(post_id):
             deleted += 1
