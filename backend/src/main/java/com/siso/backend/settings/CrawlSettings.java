@@ -35,6 +35,9 @@ public class CrawlSettings {
     @Column(name = "synthesis_model", nullable = false)
     private String synthesisModel;
 
+    @Column(name = "dead_link_scan_limit", nullable = false)
+    private int deadLinkScanLimit;
+
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
@@ -73,6 +76,10 @@ public class CrawlSettings {
         return synthesisModel;
     }
 
+    public int getDeadLinkScanLimit() {
+        return deadLinkScanLimit;
+    }
+
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -85,6 +92,7 @@ public class CrawlSettings {
             int displayWindowDays,
             int synthesisLimit,
             String synthesisModel,
+            int deadLinkScanLimit,
             OffsetDateTime updatedAt) {
         this.matchSimilarityThreshold = matchSimilarityThreshold;
         this.pruneSimilarityThreshold = pruneSimilarityThreshold;
@@ -93,6 +101,7 @@ public class CrawlSettings {
         this.displayWindowDays = displayWindowDays;
         this.synthesisLimit = synthesisLimit;
         this.synthesisModel = synthesisModel;
+        this.deadLinkScanLimit = deadLinkScanLimit;
         this.updatedAt = updatedAt;
     }
 }

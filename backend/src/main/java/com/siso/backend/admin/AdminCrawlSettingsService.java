@@ -34,6 +34,7 @@ public class AdminCrawlSettingsService {
                 request.displayWindowDays(),
                 request.synthesisLimit(),
                 request.synthesisModel(),
+                request.deadLinkScanLimit(),
                 OffsetDateTime.now());
         return toDto(settings);
     }
@@ -51,6 +52,7 @@ public class AdminCrawlSettingsService {
                 settings.getDisplayWindowDays(),
                 settings.getSynthesisLimit(),
                 settings.getSynthesisModel(),
+                settings.getDeadLinkScanLimit(),
                 settings.getUpdatedAt());
     }
 }

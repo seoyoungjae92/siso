@@ -35,6 +35,7 @@ class AdminCrawlSettingsServiceTest {
         ReflectionTestUtils.setField(settings, "displayWindowDays", 7);
         ReflectionTestUtils.setField(settings, "synthesisLimit", 10);
         ReflectionTestUtils.setField(settings, "synthesisModel", "openrouter/free");
+        ReflectionTestUtils.setField(settings, "deadLinkScanLimit", 100);
         ReflectionTestUtils.setField(settings, "updatedAt", OffsetDateTime.now());
         return settings;
     }
@@ -52,6 +53,7 @@ class AdminCrawlSettingsServiceTest {
         assertThat(dto.displayWindowDays()).isEqualTo(7);
         assertThat(dto.synthesisLimit()).isEqualTo(10);
         assertThat(dto.synthesisModel()).isEqualTo("openrouter/free");
+        assertThat(dto.deadLinkScanLimit()).isEqualTo(100);
     }
 
     @Test
@@ -60,7 +62,7 @@ class AdminCrawlSettingsServiceTest {
         when(crawlSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
 
         CrawlSettingsRequest request =
-                new CrawlSettingsRequest(0.6f, 0.4f, 5, 72, 14, 20, "anthropic/claude-haiku-4.5");
+                new CrawlSettingsRequest(0.6f, 0.4f, 5, 72, 14, 20, "anthropic/claude-haiku-4.5", 50);
         CrawlSettingsDto dto = newService().update(request);
 
         assertThat(dto.matchSimilarityThreshold()).isEqualTo(0.6f);
@@ -70,5 +72,6 @@ class AdminCrawlSettingsServiceTest {
         assertThat(dto.displayWindowDays()).isEqualTo(14);
         assertThat(dto.synthesisLimit()).isEqualTo(20);
         assertThat(dto.synthesisModel()).isEqualTo("anthropic/claude-haiku-4.5");
+        assertThat(dto.deadLinkScanLimit()).isEqualTo(50);
     }
 }

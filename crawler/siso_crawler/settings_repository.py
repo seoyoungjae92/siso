@@ -11,6 +11,7 @@ class CrawlSettings:
     display_window_days: int
     synthesis_limit: int = 10
     synthesis_model: str = "openrouter/free"
+    dead_link_scan_limit: int = 100
 
 
 class SettingsRepository(Protocol):
@@ -27,7 +28,7 @@ class PsycopgSettingsRepository:
                 """
                 SELECT match_similarity_threshold, prune_similarity_threshold,
                        min_cluster_size, grace_period_hours, display_window_days,
-                       synthesis_limit, synthesis_model
+                       synthesis_limit, synthesis_model, dead_link_scan_limit
                 FROM crawl_settings WHERE id = 1
                 """
             )

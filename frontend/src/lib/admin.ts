@@ -116,6 +116,7 @@ export type CrawlSettings = {
   displayWindowDays: number;
   synthesisLimit: number;
   synthesisModel: string;
+  deadLinkScanLimit: number;
   updatedAt: string;
 };
 
