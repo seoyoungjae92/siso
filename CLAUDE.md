@@ -610,8 +610,15 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
       스팸함행 위험이 높고 브랜드 신뢰도도 낮음
 
 ### 20.5 법적 문서
-- [ ] `privacy`/`terms` 페이지의 `EFFECTIVE_DATE`, `CONTACT_EMAIL`
-      placeholder를 실제 값으로 교체(현재 두 페이지 모두 미입력 상태 확인됨)
+- [x] `privacy`/`terms` 페이지의 `EFFECTIVE_DATE`(2026-08-01),
+      `CONTACT_EMAIL`(siso.contact.help@gmail.com) placeholder를 실제
+      값으로 교체 완료(2026-08-01). 크롤러 User-Agent(`fetch.py`)의
+      연락처도 같은 주소로 채움 — §7에 명시된 "원 커뮤니티 삭제 요청
+      접수 채널(이메일)"이 실제 사용자향 "건의하기" 폼과 다른 이유:
+      원 커뮤니티/작성자는 siso 계정이 없어 폼에 접점이 없고, 이메일은
+      요청자 쪽에 발송 증빙이 남아 저작권/개인정보 삭제 요청처럼
+      증빙이 중요한 경우에 적합. 건의하기 폼은 그대로 일반 사용자용
+      채널로 병행
 - [x] ~~뉴스레터가 정보통신망법 §50 광고성 정보에 해당하는지~~ —
       해소(2026-07-27, D12): 뉴스레터에 광고를 넣지 않기로 결정해서
       판단 자체가 불필요해짐

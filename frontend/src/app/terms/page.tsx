@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { BackLink } from "@/components/BackLink";
 
 const appName = process.env.APP_NAME ?? "시소";
-const CONTACT_EMAIL = "[문의 이메일을 입력하세요]";
-const EFFECTIVE_DATE = "[시행일을 입력하세요 (예: 2026-08-01)]";
+const CONTACT_EMAIL = "siso.contact.help@gmail.com";
+const EFFECTIVE_DATE = "2026-08-01";
 
 export const metadata: Metadata = {
   title: `이용약관 - ${appName}`,
