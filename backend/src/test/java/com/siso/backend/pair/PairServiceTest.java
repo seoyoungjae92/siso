@@ -302,6 +302,40 @@ class PairServiceTest {
     }
 
     @Test
+    void getFeaturedPair_returnsTopEngagementPairMappedToDto() {
+        stubDisplayWindowDays(7);
+        TopicPair pair = mock(TopicPair.class);
+        when(pair.getId()).thenReturn(100L);
+        when(topicPairRepository.findTopEngagementSince(any(OffsetDateTime.class), eq(PageRequest.of(0, 1))))
+                .thenReturn(List.of(pair));
+
+        VoteRepository.WeightedStanceCount leftCount = mock(VoteRepository.WeightedStanceCount.class);
+        when(leftCount.getStance()).thenReturn("left");
+        when(leftCount.getTotal()).thenReturn(4.0);
+        when(voteRepository.sumWeightedByPairIdGroupByStance(100L)).thenReturn(List.of(leftCount));
+
+        CommentRepository.CommentCountByPair count = mock(CommentRepository.CommentCountByPair.class);
+        when(count.getTotal()).thenReturn(7L);
+        when(commentRepository.countVisibleByPairIds(List.of(100L))).thenReturn(List.of(count));
+
+        TopicPairDto dto = newService().getFeaturedPair();
+
+        assertThat(dto.id()).isEqualTo(100L);
+        assertThat(dto.leftVotes()).isEqualTo(4.0);
+        assertThat(dto.commentCount()).isEqualTo(7L);
+    }
+
+    @Test
+    void getFeaturedPair_noneWithinDisplayWindow_returnsNotFound() {
+        stubDisplayWindowDays(7);
+        when(topicPairRepository.findTopEngagementSince(any(OffsetDateTime.class), eq(PageRequest.of(0, 1))))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> newService().getFeaturedPair())
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
     void vote_withNoExistingVote_createsOneAndRecordsAnonUserVote() {
         PairService pairService = newService();
         when(topicPairRepository.existsById(1L)).thenReturn(true);

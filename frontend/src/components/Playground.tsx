@@ -14,16 +14,19 @@ const AD_EVERY = 3;
 export function Playground({
   pairs: initialPairs,
   hasMore: initialHasMore,
+  featured: initialFeatured,
   petitions,
   hideVotes = false,
 }: {
   pairs: TopicPair[];
   hasMore: boolean;
+  featured: TopicPair | null;
   petitions: Petition[];
   hideVotes?: boolean;
 }) {
   const [pairs, setPairs] = useState(initialPairs);
   const [hasMore, setHasMore] = useState(initialHasMore);
+  const [featured, setFeatured] = useState(initialFeatured);
   const [newIds, setNewIds] = useState<Set<number>>(new Set());
   const [isPending, startTransition] = useTransition();
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -47,6 +50,10 @@ export function Playground({
     const timer = setTimeout(() => setNewIds(new Set()), 500);
     return () => clearTimeout(timer);
   }, [initialPairs]);
+
+  useEffect(() => {
+    setFeatured(initialFeatured);
+  }, [initialFeatured]);
 
   useEffect(() => {
     if (!hasMore) return;
@@ -75,7 +82,7 @@ export function Playground({
     return () => observer.disconnect();
   }, [hasMore]);
 
-  if (pairs.length === 0) {
+  if (pairs.length === 0 && !featured) {
     return (
       <>
         <PetitionWidget petitions={petitions} />
@@ -84,7 +91,11 @@ export function Playground({
     );
   }
 
-  const [today, ...rest] = pairs;
+  // "오늘의 링"은 참여도(투표+댓글) 최상위 주제 — 로드된 목록엔 없을 수도
+  // 있으므로(다른 페이지의 글일 수 있음) 별도로 받아오고, 목록에 같은
+  // 글이 있으면 중복 노출되지 않게 걸러낸다.
+  const today = featured ?? pairs[0];
+  const rest = featured ? pairs.filter((pair) => pair.id !== featured.id) : pairs.slice(1);
 
   return (
     <>

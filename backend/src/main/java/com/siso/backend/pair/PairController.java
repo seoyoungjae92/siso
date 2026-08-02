@@ -35,6 +35,11 @@ public class PairController {
         return pairService.getPairs(pageable);
     }
 
+    @GetMapping("/api/pairs/featured")
+    public TopicPairDto getFeaturedPair() {
+        return pairService.getFeaturedPair();
+    }
+
     @GetMapping("/api/pairs/{id}")
     public TopicPairDto getPair(
             @PathVariable Long id,
