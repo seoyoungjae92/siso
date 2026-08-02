@@ -105,7 +105,7 @@ export function Playground({
           선거 기간 중에는 투표 기능이 일시 중단됩니다.
         </p>
       )}
-      <div className="mb-2.5 flex items-center justify-end gap-3 text-[11px] text-[#8A877E]">
+      <div className="mb-2.5 flex items-center justify-end gap-3 text-[11px] text-[#767268]">
         <span className="flex items-center gap-1">
           <span className="h-2 w-2 rounded-full bg-left-blue" />좌
         </span>
@@ -129,7 +129,7 @@ export function Playground({
       {hasMore && (
         <div ref={sentinelRef} className="flex h-6 items-center justify-center">
           {isPending && (
-            <span className="text-xs text-[#8A877E]" role="status">
+            <span className="text-xs text-[#767268]" role="status">
               불러오는 중...
             </span>
           )}

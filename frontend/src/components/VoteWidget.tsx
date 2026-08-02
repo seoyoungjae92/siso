@@ -74,7 +74,7 @@ export function VoteWidget({ pairId, pair }: { pairId: string; pair: TopicPairDe
         <span className="block h-full bg-playground" style={{ width: `${neutralPct}%` }} />
         <span className="block h-full bg-right-red" style={{ width: `${rightPct}%` }} />
       </div>
-      <div className="flex justify-between text-[11px] text-[#8A877E]">
+      <div className="flex justify-between text-[11px] text-[#767268]">
         <span>좌에 공감 {leftPct}%</span>
         <span>중립 {neutralPct}%</span>
         <span>우에 공감 {rightPct}%</span>

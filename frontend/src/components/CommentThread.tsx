@@ -44,7 +44,7 @@ function ReactionButton({
       disabled={isPending}
       onClick={() => onReact(pairId, commentId, type)}
       className={`rounded-full border px-2 py-0.5 text-[11px] font-bold disabled:opacity-50 ${
-        active ? "border-playground bg-pg-tint text-playground" : "border-line text-[#8A877E]"
+        active ? "border-playground bg-pg-tint text-playground" : "border-line text-[#767268]"
       }`}
     >
       {type === "up" ? "👍" : "👎"} {count}
@@ -59,7 +59,7 @@ function ReportControl({ pairId, commentId }: { pairId: string; commentId: numbe
   const [isPending, startTransition] = useTransition();
 
   if (done) {
-    return <span className="text-[11px] text-[#8A877E]">신고 접수됨</span>;
+    return <span className="text-[11px] text-[#767268]">신고 접수됨</span>;
   }
 
   if (!open) {
@@ -67,7 +67,7 @@ function ReportControl({ pairId, commentId }: { pairId: string; commentId: numbe
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-[11px] font-bold text-[#8A877E]"
+        className="text-[11px] font-bold text-[#767268]"
       >
         신고
       </button>
@@ -92,7 +92,7 @@ function ReportControl({ pairId, commentId }: { pairId: string; commentId: numbe
               setDone(true);
             })
           }
-          className="rounded-full border border-line px-2 py-0.5 text-[10.5px] text-[#8A877E] disabled:opacity-50"
+          className="rounded-full border border-line px-2 py-0.5 text-[10.5px] text-[#767268] disabled:opacity-50"
         >
           {option.label}
         </button>
@@ -100,7 +100,7 @@ function ReportControl({ pairId, commentId }: { pairId: string; commentId: numbe
       <button
         type="button"
         onClick={() => setOpen(false)}
-        className="text-[10.5px] text-[#A09D94]"
+        className="text-[10.5px] text-[#767268]"
       >
         취소
       </button>
@@ -135,15 +135,15 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
           </span>
         )}
         {comment.selfReply && (
-          <span className="rounded-full bg-[#8A877E] px-1.5 py-0.5 text-[9.5px] font-extrabold text-white">
+          <span className="rounded-full bg-[#767268] px-1.5 py-0.5 text-[9.5px] font-extrabold text-white">
             본인 댓글
           </span>
         )}
-        <time className="ml-auto font-medium text-[#A09D94]">
+        <time className="ml-auto font-medium text-[#767268]">
           {formatRelativeTime(comment.createdAt)}
         </time>
       </div>
-      <p className={`mb-2 break-words text-[13px] ${comment.blinded ? "italic text-[#A09D94]" : ""}`}>
+      <p className={`mb-2 break-words text-[13px] ${comment.blinded ? "italic text-[#767268]" : ""}`}>
         {comment.body}
       </p>
       {!comment.blinded && (
@@ -210,7 +210,7 @@ export function CommentThread({ pairId, comments }: { pairId: string; comments: 
             <button
               type="button"
               onClick={() => setOpenReplyId(openReplyId === comment.id ? null : comment.id)}
-              className="mt-1 text-[11px] font-bold text-[#8A877E]"
+              className="mt-1 text-[11px] font-bold text-[#767268]"
             >
               답글
             </button>

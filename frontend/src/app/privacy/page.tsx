@@ -15,7 +15,7 @@ export default function PrivacyPage() {
     <div className="mx-auto w-full max-w-3xl px-4 py-10">
       <BackLink />
       <h1 className="mb-2 text-2xl font-extrabold tracking-tight">개인정보처리방침</h1>
-      <p className="mb-8 text-sm text-[#8A877E]">시행일: {EFFECTIVE_DATE}</p>
+      <p className="mb-8 text-sm text-[#767268]">시행일: {EFFECTIVE_DATE}</p>
 
       <div className="space-y-8 text-[14px] leading-relaxed text-[#33322E]">
         <section>
