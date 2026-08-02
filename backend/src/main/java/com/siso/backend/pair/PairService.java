@@ -12,6 +12,7 @@ import com.siso.backend.settings.AbuseSettingsRepository;
 import com.siso.backend.settings.CrawlSettingsRepository;
 import com.siso.backend.settings.ElectionSettingsRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -107,6 +108,41 @@ public class PairService {
                     commentCountsByPairId.getOrDefault(pair.getId(), 0L),
                     null);
         });
+    }
+
+    // "오늘의 링" — 최근성이 아니라 (투표+댓글) 참여도가 가장 높은 주제 1건.
+    // getPairs와 같은 display_window_days 창 안에서, 뉴스레터용
+    // findTopEngagementSince와 동일한 단순 랭킹 기준을 그대로 재사용한다.
+    @Transactional(readOnly = true)
+    public TopicPairDto getFeaturedPair() {
+        int displayWindowDays = crawlSettingsRepository.findById(SETTINGS_ID).orElseThrow().getDisplayWindowDays();
+        OffsetDateTime since = OffsetDateTime.now().minusDays(displayWindowDays);
+        List<TopicPair> top = topicPairRepository.findTopEngagementSince(since, PageRequest.of(0, 1));
+        if (top.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "no featured pair");
+        }
+        TopicPair pair = top.get(0);
+
+        boolean electionMode = electionSettingsRepository.findById(SETTINGS_ID).orElseThrow().isEnabled();
+        Map<String, Double> tally = new HashMap<>();
+        if (!electionMode) {
+            for (VoteRepository.WeightedStanceCount row : voteRepository.sumWeightedByPairIdGroupByStance(pair.getId())) {
+                tally.put(row.getStance(), row.getTotal());
+            }
+        }
+
+        long commentCount = commentRepository.countVisibleByPairIds(List.of(pair.getId())).stream()
+                .findFirst()
+                .map(CommentRepository.CommentCountByPair::getTotal)
+                .orElse(0L);
+
+        return TopicPairDto.from(
+                pair,
+                tally.getOrDefault("left", 0.0),
+                tally.getOrDefault("right", 0.0),
+                tally.getOrDefault("neutral", 0.0),
+                commentCount,
+                null);
     }
 
     @Transactional(readOnly = true)

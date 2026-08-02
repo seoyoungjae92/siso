@@ -25,6 +25,7 @@ export function MobileTabs({
   rightHasMore,
   pairs,
   pairsHasMore,
+  featured,
   petitions,
   hideVotes = false,
 }: {
@@ -34,6 +35,7 @@ export function MobileTabs({
   rightHasMore: boolean;
   pairs: TopicPair[];
   pairsHasMore: boolean;
+  featured: TopicPair | null;
   petitions: Petition[];
   hideVotes?: boolean;
 }) {
@@ -155,7 +157,13 @@ export function MobileTabs({
             <FeedColumn side="left" posts={leftPosts} hasMore={leftHasMore} />
           </div>
           <div className="h-full w-1/3 shrink-0 overflow-y-auto bg-pg-tint px-[14px] py-4">
-            <Playground pairs={pairs} hasMore={pairsHasMore} petitions={petitions} hideVotes={hideVotes} />
+            <Playground
+              pairs={pairs}
+              hasMore={pairsHasMore}
+              featured={featured}
+              petitions={petitions}
+              hideVotes={hideVotes}
+            />
           </div>
           <div className="h-full w-1/3 shrink-0 overflow-y-auto">
             <FeedColumn side="right" posts={rightPosts} hasMore={rightHasMore} />

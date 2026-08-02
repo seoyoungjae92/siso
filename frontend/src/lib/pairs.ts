@@ -37,6 +37,19 @@ export type PairsResult = {
   hasMore: boolean;
 };
 
+export async function fetchFeaturedPair(): Promise<TopicPair | null> {
+  try {
+    const res = await fetch(`${BACKEND_API_URL}/api/pairs/featured`, {
+      // fetchPairs와 동일하게 개인화 데이터 없음, 동일 주기로 재검증.
+      next: { revalidate: 30 },
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchPairs(page = 0): Promise<PairsResult> {
   try {
     const res = await fetch(`${BACKEND_API_URL}/api/pairs?page=${page}&size=10`, {
