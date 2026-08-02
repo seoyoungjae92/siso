@@ -7,7 +7,7 @@ function MiniVoteBar({ pair }: { pair: TopicPair }) {
   const { leftPct, neutralPct, rightPct, total } = calculateVotePercentages(pair);
 
   if (total === 0) {
-    return <div className="h-1.5 w-full rounded-full bg-line" />;
+    return null;
   }
 
   return (
