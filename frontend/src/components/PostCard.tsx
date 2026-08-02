@@ -6,12 +6,22 @@ export const ACCENT: Record<Side, string> = {
   right: "text-right-red",
 };
 
+const BADGE: Record<Side, string> = {
+  left: "bg-blue-tint text-left-blue",
+  right: "bg-red-tint text-right-red",
+};
+
 export function PostCard({ post, side }: { post: PostSummary; side: Side }) {
   return (
     <article className="mb-2.5 rounded-[10px] border border-line bg-white p-3">
-      <div className={`mb-1 flex justify-between text-[11px] font-bold ${ACCENT[side]}`}>
-        <span>{post.sourceName}</span>
-        <time className="font-medium text-[#A09D94]">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] font-bold ${BADGE[side]}`}
+        >
+          <span className="h-1 w-1 rounded-full bg-current" />
+          {post.sourceName}
+        </span>
+        <time className="text-[11px] font-medium text-[#A09D94]">
           {formatRelativeTime(post.publishedAt ?? post.collectedAt)}
         </time>
       </div>
