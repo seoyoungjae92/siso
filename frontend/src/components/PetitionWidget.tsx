@@ -14,7 +14,7 @@ const RANK_BADGE_STYLE: Record<number, string> = {
 };
 
 function RankBadge({ index }: { index: number }) {
-  const style = RANK_BADGE_STYLE[index] ?? "text-[#8A877E] text-[12px]";
+  const style = RANK_BADGE_STYLE[index] ?? "text-[#767268] text-[12px]";
   const filled = index in RANK_BADGE_STYLE;
   return (
     <span
@@ -55,7 +55,7 @@ export function PetitionWidget({ petitions }: { petitions: Petition[] }) {
               <span className="line-clamp-1 flex-1 text-[13px] font-medium text-ink">
                 {petition.title}
               </span>
-              <span className="shrink-0 text-[11px] text-[#8A877E]">
+              <span className="shrink-0 text-[11px] text-[#767268]">
                 {petition.agreeCount.toLocaleString("ko-KR")}명
               </span>
             </a>
@@ -63,7 +63,7 @@ export function PetitionWidget({ petitions }: { petitions: Petition[] }) {
               title={petition.title}
               url={petition.linkUrl}
               label="🔗"
-              className="shrink-0 rounded-full p-1.5 text-xs text-[#8A877E] hover:bg-pg-tint"
+              className="shrink-0 rounded-full p-1.5 text-xs text-[#767268] hover:bg-pg-tint"
             />
           </li>
         ))}
@@ -72,7 +72,7 @@ export function PetitionWidget({ petitions }: { petitions: Petition[] }) {
         <button
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
-          className="block w-full border-t border-line py-2 text-center text-xs font-bold text-[#8A877E] hover:bg-pg-tint"
+          className="block w-full border-t border-line py-2 text-center text-xs font-bold text-[#767268] hover:bg-pg-tint"
         >
           {expanded ? "접기 ▲" : `더보기 (${petitions.length - COLLAPSED_COUNT}) ▼`}
         </button>

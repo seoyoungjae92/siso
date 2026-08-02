@@ -29,7 +29,7 @@ function CardMeta({ pair, hideVotes }: { pair: TopicPair; hideVotes: boolean }) 
   }
 
   return (
-    <div className="mt-2 flex items-center gap-3 text-[11px] text-[#8A877E]">
+    <div className="mt-2 flex items-center gap-3 text-[11px] text-[#767268]">
       {showVoteCount && (
         <span className="flex items-center gap-1">
           <VoteStampIcon />

@@ -180,7 +180,7 @@ export function MobileTabs({
               key={t}
               type="button"
               onClick={() => setIndex(i)}
-              className={`relative py-2.5 pb-3.5 text-[11px] font-extrabold ${active ? config.text : "text-[#A09D94]"}`}
+              className={`relative py-2.5 pb-3.5 text-[11px] font-extrabold ${active ? config.text : "text-[#767268]"}`}
             >
               {active && (
                 <span className={`absolute inset-x-[20%] top-0 h-[3px] rounded-b ${config.bar}`} />

@@ -25,7 +25,7 @@ export function NewsletterForm() {
 
   if (submitted) {
     return (
-      <p className="text-[11px] text-[#8A877E]">
+      <p className="text-[11px] text-[#767268]">
         확인 메일을 보냈어요. 메일함에서 링크를 눌러 구독을 완료해주세요.
       </p>
     );

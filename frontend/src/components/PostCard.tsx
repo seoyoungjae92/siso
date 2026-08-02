@@ -21,12 +21,12 @@ export function PostCard({ post, side }: { post: PostSummary; side: Side }) {
           <span className="h-1 w-1 rounded-full bg-current" />
           {post.sourceName}
         </span>
-        <time className="text-[11px] font-medium text-[#A09D94]">
+        <time className="text-[11px] font-medium text-[#767268]">
           {formatRelativeTime(post.publishedAt ?? post.collectedAt)}
         </time>
       </div>
       <h3 className="mb-1 line-clamp-2 text-sm font-bold tracking-tight">{post.title}</h3>
-      <div className="mt-2 text-[11px] text-[#A09D94]">
+      <div className="mt-2 text-[11px] text-[#767268]">
         <a href={post.originUrl} target="_blank" rel="noopener noreferrer">
           원문 보기 ↗
         </a>

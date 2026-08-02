@@ -45,7 +45,7 @@ export function CommentForm({
   return (
     <form onSubmit={handleSubmit} className="mb-3">
       {!parentId && (
-        <p className="mb-1.5 text-[11px] text-[#8A877E]">
+        <p className="mb-1.5 text-[11px] text-[#767268]">
           욕설·비속어, 인신공격성 표현은 작성이 제한되며 신고 누적 시 운영자
           검토 후 가려질 수 있습니다.
         </p>
@@ -58,7 +58,7 @@ export function CommentForm({
         maxLength={BODY_MAX_LENGTH}
         className="w-full rounded-[10px] border border-line p-2.5 text-sm"
       />
-      <p className="mt-1 text-right text-[11px] text-[#8A877E]">
+      <p className="mt-1 text-right text-[11px] text-[#767268]">
         {body.length}/{BODY_MAX_LENGTH}
       </p>
       <div className="mt-1.5 flex items-center justify-between">

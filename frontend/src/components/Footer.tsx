@@ -4,7 +4,7 @@ export function Footer() {
   const appName = "시소";
 
   return (
-    <footer className="border-t border-line px-7 py-5 text-xs text-[#8A877E]">
+    <footer className="border-t border-line px-7 py-5 text-xs text-[#767268]">
       <nav className="mb-2 flex flex-wrap gap-x-4 gap-y-1">
         <Link href="/terms" className="font-semibold text-[#6B6960] hover:underline">
           이용약관

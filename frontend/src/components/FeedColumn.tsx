@@ -89,7 +89,7 @@ export function FeedColumn({
     <section className={`min-h-full px-[18px] py-5 ${bg}`}>
       <div className="mb-3.5 flex items-baseline gap-2">
         <h2 className={`text-[15px] font-extrabold tracking-tight ${heading}`}>{title}</h2>
-        <span className="text-xs text-[#8A877E]">자동 수집</span>
+        <span className="text-xs text-[#767268]">자동 수집</span>
       </div>
 
       {posts.length === 0 && (
@@ -106,7 +106,7 @@ export function FeedColumn({
       {hasMore && (
         <div ref={sentinelRef} className="flex h-6 items-center justify-center">
           {isPending && (
-            <span className="text-xs text-[#8A877E]" role="status">
+            <span className="text-xs text-[#767268]" role="status">
               불러오는 중...
             </span>
           )}

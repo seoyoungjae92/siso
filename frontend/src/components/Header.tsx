@@ -33,9 +33,9 @@ export function Header() {
       <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight sm:gap-2.5 sm:text-xl">
         <SeesawLogo />
         {appName}
-        <small className="hidden text-[11px] font-medium text-[#8A877E] sm:inline">같은 주제, 다른 시선</small>
+        <small className="hidden text-[11px] font-medium text-[#767268] sm:inline">같은 주제, 다른 시선</small>
       </Link>
-      <nav className="flex items-center gap-2 text-[11px] font-semibold whitespace-nowrap text-[#8A877E] sm:gap-3">
+      <nav className="flex items-center gap-2 text-[11px] font-semibold whitespace-nowrap text-[#767268] sm:gap-3">
         <Link href="/feedback" className="hover:text-[#6B6960] hover:underline">
           <span className="sm:hidden">제보</span>
           <span className="hidden sm:inline">제보·건의하기</span>

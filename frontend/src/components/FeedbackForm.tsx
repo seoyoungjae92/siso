@@ -38,7 +38,7 @@ export function FeedbackForm() {
     return (
       <div className="rounded-xl border border-line bg-white p-6 text-center">
         <p className="text-[15px] font-bold text-ink">전달됐습니다. 감사합니다!</p>
-        <p className="mt-1 text-[13px] text-[#8A877E]">남겨주신 내용은 운영자가 확인합니다.</p>
+        <p className="mt-1 text-[13px] text-[#767268]">남겨주신 내용은 운영자가 확인합니다.</p>
         <button
           type="button"
           onClick={() => setSubmitted(false)}
