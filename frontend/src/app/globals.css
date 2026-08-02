@@ -31,6 +31,12 @@ body {
   color: var(--ink);
 }
 
+/* Chrome/Safari는 <a>와 달리 <button>엔 기본으로 포인터 커서를 안 준다 —
+   컴포넌트마다 cursor-pointer를 붙이는 대신 전역으로 한 번에 맞춘다. */
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 /* 자동 새로고침으로 새 글이 목록 맨 위에 붙을 때 살짝 슬라이드+페이드로
    나타나게 하는 애니메이션 — 아래 기존 카드들은 자연스러운 DOM 리플로우로
    밀려 내려간다 */
