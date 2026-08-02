@@ -14,6 +14,24 @@ const STANCE_CONFIG: { value: Stance; label: string }[] = [
   { value: "right", label: "우에 공감" },
 ];
 
+// 투표 전에도 세 버튼이 다 똑같은 회색이라 구분이 안 됐음 — 사이트 전반의
+// 좌(파랑)/중립(보라)/우(빨강) 색 언어를 그대로 가져와 평소에도 옅은
+// 톤으로, 선택했을 때는 꽉 찬 색으로 표시한다.
+const STANCE_STYLE: Record<Stance, { idle: string; active: string }> = {
+  left: {
+    idle: "border-left-blue/25 bg-blue-tint text-left-blue",
+    active: "border-left-blue bg-left-blue text-white",
+  },
+  neutral: {
+    idle: "border-playground/25 bg-pg-tint text-playground",
+    active: "border-playground bg-playground text-white",
+  },
+  right: {
+    idle: "border-right-red/25 bg-red-tint text-right-red",
+    active: "border-right-red bg-right-red text-white",
+  },
+};
+
 export function VoteWidget({ pairId, pair }: { pairId: string; pair: TopicPairDetail }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +58,8 @@ export function VoteWidget({ pairId, pair }: { pairId: string; pair: TopicPairDe
             onClick={() => handleVote(option.value)}
             className={`flex-1 rounded-full border px-2 py-1.5 text-xs font-bold disabled:opacity-50 ${
               pair.myStance === option.value
-                ? "border-playground bg-pg-tint text-playground"
-                : "border-line text-[#8A877E]"
+                ? STANCE_STYLE[option.value].active
+                : STANCE_STYLE[option.value].idle
             }`}
           >
             {option.label}
