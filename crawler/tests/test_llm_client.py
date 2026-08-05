@@ -29,6 +29,20 @@ def _synthesizer() -> OpenRouterTopicSynthesizer:
     return OpenRouterTopicSynthesizer(api_key="test-key")
 
 
+_SAFE_CHECK_CONTENT = '{"violates": false, "reason": "문제 없음"}'
+
+
+def _sequence_post(*contents: str):
+    """synthesize()는 이제 본 합성 호출 뒤에 법적 안전성 검사 호출을 한
+    번 더 한다 — 성공 경로 테스트는 두 응답을 순서대로 흘려보내야 한다."""
+    responses = iter(_openrouter_response(c) for c in contents)
+
+    def fake_post(*args, **kwargs):
+        return next(responses)
+
+    return fake_post
+
+
 def test_openrouter_app_title_is_ascii_safe():
     # httpx는 HTTP 헤더 값을 ascii로만 인코딩한다 — 실제로 X-Title에
     # APP_NAME 환경변수(로컬 기본값이 "시소"처럼 한글)를 그대로 넣었다가
@@ -39,10 +53,14 @@ def test_openrouter_app_title_is_ascii_safe():
 
 def test_synthesize_sends_ascii_safe_title_header(monkeypatch):
     captured = {}
+    inner = _sequence_post(
+        '{"no_clear_issue": false, "title": "제목", "left_stance": "좌", "right_stance": "우"}',
+        _SAFE_CHECK_CONTENT,
+    )
 
     def fake_post(*args, **kwargs):
-        captured["headers"] = kwargs["headers"]
-        return _openrouter_response('{"no_clear_issue": false, "title": "제목", "left_stance": "좌", "right_stance": "우"}')
+        captured.setdefault("headers", kwargs["headers"])
+        return inner(*args, **kwargs)
 
     monkeypatch.setattr(httpx, "post", fake_post)
     monkeypatch.setenv("APP_NAME", "시소")
@@ -55,7 +73,7 @@ def test_synthesize_sends_ascii_safe_title_header(monkeypatch):
 
 def test_synthesize_returns_topic_on_valid_response(monkeypatch):
     content = '{"no_clear_issue": false, "title": "제목", "left_stance": "좌 입장", "right_stance": "우 입장"}'
-    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
+    monkeypatch.setattr(httpx, "post", _sequence_post(content, _SAFE_CHECK_CONTENT))
 
     result = _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
@@ -137,7 +155,7 @@ def test_synthesize_allows_some_non_korean_characters(monkeypatch):
         ' "left_stance": "EU GDPR 수준의 강한 규제가 필요하다는 입장이다.",'
         ' "right_stance": "과도한 규제는 스타트업 성장을 막는다는 반론이다."}'
     )
-    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
+    monkeypatch.setattr(httpx, "post", _sequence_post(content, _SAFE_CHECK_CONTENT))
 
     result = _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
@@ -146,10 +164,14 @@ def test_synthesize_allows_some_non_korean_characters(monkeypatch):
 
 def test_synthesize_numbers_multiple_posts_per_side_in_prompt(monkeypatch):
     captured = {}
+    inner = _sequence_post(
+        '{"no_clear_issue": false, "title": "제목", "left_stance": "좌", "right_stance": "우"}',
+        _SAFE_CHECK_CONTENT,
+    )
 
     def fake_post(*args, **kwargs):
-        captured["body"] = kwargs["json"]
-        return _openrouter_response('{"no_clear_issue": false, "title": "제목", "left_stance": "좌", "right_stance": "우"}')
+        captured.setdefault("body", kwargs["json"])
+        return inner(*args, **kwargs)
 
     monkeypatch.setattr(httpx, "post", fake_post)
 
@@ -170,13 +192,40 @@ def test_synthesize_truncates_overlong_response_fields(monkeypatch):
         ' "left_stance": "' + "나" * 600 + '",'
         ' "right_stance": "' + "다" * 600 + '"}'
     )
-    monkeypatch.setattr(httpx, "post", lambda *a, **k: _openrouter_response(content))
+    monkeypatch.setattr(httpx, "post", _sequence_post(content, _SAFE_CHECK_CONTENT))
 
     result = _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
     assert len(result.title) == 200
     assert len(result.left_stance) == 500
     assert len(result.right_stance) == 500
+
+
+def test_synthesize_fails_when_legal_safety_check_flags_violation(monkeypatch):
+    content = '{"no_clear_issue": false, "title": "제목", "left_stance": "좌", "right_stance": "우"}'
+    unsafe = '{"violates": true, "reason": "내란 옹호 발언 포함"}'
+    monkeypatch.setattr(httpx, "post", _sequence_post(content, unsafe))
+
+    with pytest.raises(SynthesisFailed):
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
+
+
+def test_synthesize_fails_when_legal_safety_check_itself_errors(monkeypatch):
+    # 검사 호출 자체가 실패해도(네트워크 오류 등) 안전하게 버린다 —
+    # 검사 못 한 걸 그냥 통과시키는 것보다 항상 안전한 쪽.
+    content = '{"no_clear_issue": false, "title": "제목", "left_stance": "좌", "right_stance": "우"}'
+    responses = iter([_openrouter_response(content)])
+
+    def fake_post(*args, **kwargs):
+        try:
+            return next(responses)
+        except StopIteration:
+            raise httpx.ConnectError("safety check unreachable")
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    with pytest.raises(SynthesisFailed):
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
 
 
 def test_synthesize_fails_when_model_reports_no_clear_issue(monkeypatch):

@@ -47,6 +47,16 @@ SYSTEM_PROMPT = """너는 한국 정치 커뮤니티 좌/우 게시글을 보고
   공론화된 의혹·논란의 존재 자체를 전달하는 것은 허용된다 — 의혹이
   제기됐다는 사실과 그 의혹의 내용이 참이라고 단정하는 것을 구분해라.
   전자는 요약해도 되고, 후자만 금지 대상이다.
+- 형법 제87조(내란)에 해당하는 행위(예: 위헌적 계엄 선포 등)를 정당화·
+  옹호하거나 그럴 필요성·정당성을 주장하는 내용 — 형법 제90조 2항은
+  내란을 "선동 또는 선전"(그 정당성을 널리 알리는 행위)한 자도 처벌
+  대상으로 규정한다. 예를 들어 "국가 안보 위기 상황에서는 계엄 선포가
+  정당하고 필요한 조치였다"처럼 계엄·내란이 옳았다/필요했다는 취지의
+  주장이 원문에 있다면, 그 주장을 절대로 요약에 옮기지 마라. "~라는
+  입장이다"/"~라는 주장이 있다"처럼 귀속시켜 전달하는 것도 여기서는
+  안전하지 않다(다른 항목과 달리 예외 없음) — 주장 내용 자체를 우리
+  사이트에 게시하는 것이 문제이므로, 누구의 의견인지와 무관하게 무조건
+  no_clear_issue로 처리해라.
 
 [1단계: 쟁점 판단 — 0단계를 통과했으면 이것부터 확인해라]
 좌/우 게시글들이 실제로 같은 구체적인 사건·정책·발언을 다루고 있고, 그에
@@ -158,6 +168,96 @@ class SynthesisFailed(Exception):
     진행."""
 
 
+# 합성 자체는 저렴한 모델(crawl_settings.synthesis_model, 어드민 설정)로
+# 하되, 5·18 왜곡/명예훼손/내란 옹호 같은 법적 위험 콘텐츠 검사는 별도로
+# 더 성능 좋은 모델로 한 번 더 확인한다 — 실측 결과 SYSTEM_PROMPT의 0단계
+# 규칙만으로는 저렴한 모델(gemini-2.5-flash-lite)이 "국가 안보 위기
+# 상황에서는 계엄 선포가 정당하고 필요한 조치였다" 같은 명백한 내란 옹호
+# 사례를 반복적으로(3/3) 놓쳤음(2026-08-05 실측) — 같은 케이스를
+# gemini-2.5-flash/claude-sonnet-5/gpt-5-mini는 전부 정확히 잡아냄. 법적
+# 리스크는 비용보다 신뢰성이 우선이라 이 검사만 고정된 상위 모델을 쓰고,
+# 어드민 설정(synthesis_model)으로 낮출 수 없게 분리해뒀다.
+LEGAL_SAFETY_MODEL = "google/gemini-2.5-flash"
+
+LEGAL_SAFETY_CHECK_PROMPT = """너는 한국 정치 콘텐츠의 법적 안전성을 검토하는
+감사관이야. 아래 합성된 주제(제목 + 좌/우 시각 요약)를 보고 다음 세 가지 중
+하나라도 해당하는지 판단해라:
+
+1. 5·18민주화운동의 발생 사실을 부정하거나 북한군 개입설 등으로 왜곡·비방하는
+   주장을 사실처럼(또는 어느 한쪽의 정당한 견해인 것처럼) 담고 있다.
+2. 실존 인물(정치인 등)에 대한 근거 없는 혐의·비리·범죄 등을 이미 확정된
+   사실인 것처럼 단정하고 있다 — "의혹이 제기됐다"/"주장한다"처럼 귀속되어
+   전달되는 것은 해당 안 됨, 귀속 없이 단정하는 경우만 해당.
+3. 형법 제87조(내란)에 해당하는 행위(위헌적 계엄 선포 등)를 정당화·옹호하거나
+   그 필요성·정당성을 주장하는 내용을 담고 있다 — 이건 "~라는 입장이다"처럼
+   귀속시켜 전달해도 해당됨(주장 내용 자체가 문제이므로 예외 없음).
+
+반드시 JSON으로만 답해라. 다른 텍스트를 덧붙이지 마라."""
+
+LEGAL_SAFETY_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "violates": {"type": "boolean"},
+        "reason": {"type": "string"},
+    },
+    "required": ["violates", "reason"],
+    "additionalProperties": False,
+}
+
+
+class LegalSafetyCheckSchema(pydantic.BaseModel):
+    violates: bool
+    reason: str
+
+
+def _check_legal_safety(api_key: str, title: str, left_stance: str, right_stance: str) -> None:
+    """위반 시 SynthesisFailed를 던진다. 이 검사 자체가 실패(API 에러 등)해도
+    안전하게 SynthesisFailed로 처리한다 — 검사가 안 됐는데 그냥 통과시키는
+    쪽보다, 이번 사이클엔 버리고 다음 사이클에 재시도하는 쪽이 항상 안전하다."""
+    user_prompt = f"제목: {title}\n[좌] {left_stance}\n[우] {right_stance}"
+    try:
+        response = httpx.post(
+            OPENROUTER_URL,
+            timeout=TIMEOUT_SECONDS,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://github.com/seoyoungjae92/siso",
+                "X-Title": OPENROUTER_APP_TITLE,
+            },
+            json={
+                "model": LEGAL_SAFETY_MODEL,
+                "max_tokens": MAX_TOKENS,
+                "messages": [
+                    {"role": "system", "content": LEGAL_SAFETY_CHECK_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "legal_safety_check",
+                        "strict": True,
+                        "schema": LEGAL_SAFETY_RESPONSE_SCHEMA,
+                    },
+                },
+                "provider": {"require_parameters": True},
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        choice = data["choices"][0]
+        if choice["finish_reason"] != "stop":
+            raise SynthesisFailed(f"법적 안전성 검사 응답 비정상 종료: {choice['finish_reason']}")
+        parsed = LegalSafetyCheckSchema.model_validate_json(choice["message"]["content"])
+    except SynthesisFailed:
+        raise
+    except (httpx.HTTPError, KeyError, IndexError, ValueError, pydantic.ValidationError) as exc:
+        raise SynthesisFailed(f"법적 안전성 검사 실패: {exc}") from exc
+
+    if parsed.violates:
+        raise SynthesisFailed(f"법적 안전성 검사에서 위반 판정: {parsed.reason}")
+
+
 class TopicSynthesizer(Protocol):
     def synthesize(
         self, left_posts: list[tuple[str, str]], right_posts: list[tuple[str, str]]
@@ -245,11 +345,13 @@ class OpenRouterTopicSynthesizer:
         if _has_disallowed_script(combined):
             raise SynthesisFailed("응답에 한글/영문 외 문자 체계(러시아어·아랍어 등)가 섞여있음")
 
-        return SynthesizedTopic(
-            title=parsed.title.strip()[:200],
-            left_stance=parsed.left_stance.strip()[:500],
-            right_stance=parsed.right_stance.strip()[:500],
-        )
+        title = parsed.title.strip()[:200]
+        left_stance = parsed.left_stance.strip()[:500]
+        right_stance = parsed.right_stance.strip()[:500]
+
+        _check_legal_safety(self._api_key, title, left_stance, right_stance)
+
+        return SynthesizedTopic(title=title, left_stance=left_stance, right_stance=right_stance)
 
 
 def build_topic_synthesizer(api_key: str | None, model: str | None = None) -> TopicSynthesizer | None:
