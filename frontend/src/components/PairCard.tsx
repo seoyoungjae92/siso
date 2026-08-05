@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BoxingGlovesIcon } from "@/components/BoxingGlovesIcon";
 import { VoteStampIcon } from "@/components/VoteStampIcon";
 import { calculateVotePercentages, type TopicPair } from "@/lib/pairs";
 
@@ -57,7 +58,10 @@ export function PairCard({
     >
       {large && (
         <div className="flex items-center justify-between bg-playground px-4 py-2.5 text-white">
-          <b className="text-[13px] tracking-wide">🔥 오늘의 링</b>
+          <b className="flex items-center gap-1.5 text-[13px] tracking-wide">
+            <BoxingGlovesIcon />
+            오늘의 링
+          </b>
         </div>
       )}
       <div className="p-4">
