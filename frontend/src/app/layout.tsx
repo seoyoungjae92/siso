@@ -1,5 +1,6 @@
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
+import Script from "next/script";
 
 import { BackToTopButton } from "@/components/BackToTopButton";
 import { Footer } from "@/components/Footer";
@@ -51,6 +52,14 @@ export default function RootLayout({
           rel="stylesheet"
           as="style"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css"
+        />
+        {/* 애드센스 사이트 소유 확인 겸 광고 로딩 스크립트 — 심사 중에도
+            필요하고, 승인되면 그대로 광고 서빙에도 쓰임(별도 코드 불필요) */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6044926397054590"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
         />
       </head>
       <body className="min-h-full flex flex-col font-sans">
