@@ -9,6 +9,7 @@ export type TopicPair = {
   leftVotes: number;
   rightVotes: number;
   neutralVotes: number;
+  voteCount: number;
   commentCount: number;
 };
 

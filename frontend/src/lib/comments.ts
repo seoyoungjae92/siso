@@ -10,6 +10,7 @@ export type TopicPairDetail = {
   leftVotes: number;
   rightVotes: number;
   neutralVotes: number;
+  voteCount: number;
   commentCount: number;
   myStance: "left" | "right" | "neutral" | null;
 };

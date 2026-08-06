@@ -26,6 +26,14 @@ public interface VoteRepository extends JpaRepository<Vote, Long> {
             + "WHERE v.pair.id IN :pairIds AND v.anonId = au.anonId GROUP BY v.pair.id, v.stance")
     List<WeightedStanceCountByPair> sumWeightedByPairIdsGroupByStance(@Param("pairIds") List<Long> pairIds);
 
+    // "N명 투표" 표시용 — 신뢰도 가중치 합(sumWeighted*)은 퍼센트 막대 계산
+    // 전용이라 실제 투표자 수와 다르다(예: 투표자 2명인데 가중치 합이
+    // 0.89라 반올림하면 "1명"으로 잘못 보임, 2026-08-06 실측). 화면에
+    // 보여줄 인원수는 항상 이 단순 COUNT를 써야 한다 — comment 쪽과 동일한
+    // 배치 패턴, 단일 조회도 List.of(id)로 통일해서 쿼리 하나로 관리한다.
+    @Query("SELECT v.pair.id AS pairId, COUNT(v) AS total FROM Vote v WHERE v.pair.id IN :pairIds GROUP BY v.pair.id")
+    List<VoteCountByPair> countByPairIds(@Param("pairIds") List<Long> pairIds);
+
     interface WeightedStanceCount {
         String getStance();
 
@@ -38,5 +46,11 @@ public interface VoteRepository extends JpaRepository<Vote, Long> {
         String getStance();
 
         double getTotal();
+    }
+
+    interface VoteCountByPair {
+        Long getPairId();
+
+        long getTotal();
     }
 }
