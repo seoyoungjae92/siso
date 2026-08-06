@@ -11,6 +11,7 @@ public record TopicPairDto(
         double leftVotes,
         double rightVotes,
         double neutralVotes,
+        long voteCount,
         long commentCount,
         String myStance) {
 
@@ -19,6 +20,7 @@ public record TopicPairDto(
             double leftVotes,
             double rightVotes,
             double neutralVotes,
+            long voteCount,
             long commentCount,
             String myStance) {
         return new TopicPairDto(
@@ -30,6 +32,7 @@ public record TopicPairDto(
                 leftVotes,
                 rightVotes,
                 neutralVotes,
+                voteCount,
                 commentCount,
                 myStance);
     }

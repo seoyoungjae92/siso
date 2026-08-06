@@ -84,6 +84,7 @@ public class PairService {
 
         List<Long> pairIds = pairs.getContent().stream().map(TopicPair::getId).toList();
         Map<Long, Map<String, Double>> talliesByPairId = new HashMap<>();
+        Map<Long, Long> voteCountsByPairId = new HashMap<>();
         Map<Long, Long> commentCountsByPairId = new HashMap<>();
         if (!pairIds.isEmpty()) {
             if (!electionMode) {
@@ -91,6 +92,9 @@ public class PairService {
                     talliesByPairId
                             .computeIfAbsent(row.getPairId(), key -> new HashMap<>())
                             .put(row.getStance(), row.getTotal());
+                }
+                for (VoteRepository.VoteCountByPair row : voteRepository.countByPairIds(pairIds)) {
+                    voteCountsByPairId.put(row.getPairId(), row.getTotal());
                 }
             }
             for (CommentRepository.CommentCountByPair row : commentRepository.countVisibleByPairIds(pairIds)) {
@@ -105,6 +109,7 @@ public class PairService {
                     tally.getOrDefault("left", 0.0),
                     tally.getOrDefault("right", 0.0),
                     tally.getOrDefault("neutral", 0.0),
+                    voteCountsByPairId.getOrDefault(pair.getId(), 0L),
                     commentCountsByPairId.getOrDefault(pair.getId(), 0L),
                     null);
         });
@@ -125,10 +130,15 @@ public class PairService {
 
         boolean electionMode = electionSettingsRepository.findById(SETTINGS_ID).orElseThrow().isEnabled();
         Map<String, Double> tally = new HashMap<>();
+        long voteCount = 0L;
         if (!electionMode) {
             for (VoteRepository.WeightedStanceCount row : voteRepository.sumWeightedByPairIdGroupByStance(pair.getId())) {
                 tally.put(row.getStance(), row.getTotal());
             }
+            voteCount = voteRepository.countByPairIds(List.of(pair.getId())).stream()
+                    .findFirst()
+                    .map(VoteRepository.VoteCountByPair::getTotal)
+                    .orElse(0L);
         }
 
         long commentCount = commentRepository.countVisibleByPairIds(List.of(pair.getId())).stream()
@@ -141,6 +151,7 @@ public class PairService {
                 tally.getOrDefault("left", 0.0),
                 tally.getOrDefault("right", 0.0),
                 tally.getOrDefault("neutral", 0.0),
+                voteCount,
                 commentCount,
                 null);
     }
@@ -152,10 +163,15 @@ public class PairService {
 
         boolean electionMode = electionSettingsRepository.findById(SETTINGS_ID).orElseThrow().isEnabled();
         Map<String, Double> tally = new HashMap<>();
+        long voteCount = 0L;
         if (!electionMode) {
             for (VoteRepository.WeightedStanceCount row : voteRepository.sumWeightedByPairIdGroupByStance(id)) {
                 tally.put(row.getStance(), row.getTotal());
             }
+            voteCount = voteRepository.countByPairIds(List.of(id)).stream()
+                    .findFirst()
+                    .map(VoteRepository.VoteCountByPair::getTotal)
+                    .orElse(0L);
         }
 
         String myStance = viewerAnonId == null
@@ -172,6 +188,7 @@ public class PairService {
                 tally.getOrDefault("left", 0.0),
                 tally.getOrDefault("right", 0.0),
                 tally.getOrDefault("neutral", 0.0),
+                voteCount,
                 commentCount,
                 myStance);
     }

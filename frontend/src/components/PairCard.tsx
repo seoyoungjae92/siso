@@ -21,9 +21,7 @@ function MiniVoteBar({ pair }: { pair: TopicPair }) {
 }
 
 function CardMeta({ pair, hideVotes }: { pair: TopicPair; hideVotes: boolean }) {
-  const { total } = calculateVotePercentages(pair);
-  const voteCount = Math.round(total);
-  const showVoteCount = !hideVotes && voteCount > 0;
+  const showVoteCount = !hideVotes && pair.voteCount > 0;
 
   if (!showVoteCount && pair.commentCount === 0) {
     return null;
@@ -34,7 +32,7 @@ function CardMeta({ pair, hideVotes }: { pair: TopicPair; hideVotes: boolean }) 
       {showVoteCount && (
         <span className="flex items-center gap-1">
           <VoteStampIcon />
-          {voteCount}명 투표
+          {pair.voteCount}명 투표
         </span>
       )}
       {pair.commentCount > 0 && <span>💬 {pair.commentCount}</span>}

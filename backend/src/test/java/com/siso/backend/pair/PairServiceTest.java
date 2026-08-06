@@ -225,7 +225,9 @@ class PairServiceTest {
         assertThat(result.getContent().get(0).leftVotes()).isEqualTo(0.0);
         assertThat(result.getContent().get(0).rightVotes()).isEqualTo(0.0);
         assertThat(result.getContent().get(0).neutralVotes()).isEqualTo(0.0);
+        assertThat(result.getContent().get(0).voteCount()).isEqualTo(0L);
         verify(voteRepository, Mockito.never()).sumWeightedByPairIdsGroupByStance(any());
+        verify(voteRepository, Mockito.never()).countByPairIds(any());
     }
 
     @Test
@@ -256,6 +258,37 @@ class PairServiceTest {
     }
 
     @Test
+    void getPairs_includesRawVoteCountPerPair() {
+        // 신뢰도 가중치 합(leftVotes+rightVotes+neutralVotes)과 실제 투표자
+        // 수는 다른 값이다 — "N명 투표" 표시는 반드시 이 raw count를 써야
+        // 한다(2026-08-06 실측: 가중치 합을 반올림해 표시하다가 실제
+        // 투표자 수와 다르게 보이는 문제가 있었음).
+        stubDisplayWindowDays(7);
+        PairService pairService = newService();
+        Pageable pageable = PageRequest.of(0, 20);
+
+        TopicPair pairA = mock(TopicPair.class);
+        when(pairA.getId()).thenReturn(100L);
+        TopicPair pairB = mock(TopicPair.class);
+        when(pairB.getId()).thenReturn(200L);
+
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
+                        eq("active"), any(OffsetDateTime.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(pairA, pairB)));
+        when(voteRepository.sumWeightedByPairIdsGroupByStance(List.of(100L, 200L))).thenReturn(List.of());
+
+        VoteRepository.VoteCountByPair countA = mock(VoteRepository.VoteCountByPair.class);
+        when(countA.getPairId()).thenReturn(100L);
+        when(countA.getTotal()).thenReturn(2L);
+        when(voteRepository.countByPairIds(List.of(100L, 200L))).thenReturn(List.of(countA));
+
+        Page<TopicPairDto> result = pairService.getPairs(pageable);
+
+        assertThat(result.getContent().get(0).voteCount()).isEqualTo(2L);
+        assertThat(result.getContent().get(1).voteCount()).isEqualTo(0L);
+    }
+
+    @Test
     void getPair_pendingSynthesis_returnsNotFound() {
         when(topicPairRepository.findByIdAndStatusAndTitleIsNotNull(1L, "active")).thenReturn(Optional.empty());
         PairService pairService = newService();
@@ -275,6 +308,10 @@ class PairServiceTest {
         when(voteRepository.sumWeightedByPairIdGroupByStance(1L)).thenReturn(List.of(leftCount));
         when(voteRepository.findByPair_IdAndAnonId(1L, ANON_A)).thenReturn(Optional.empty());
 
+        VoteRepository.VoteCountByPair voteCount = mock(VoteRepository.VoteCountByPair.class);
+        when(voteCount.getTotal()).thenReturn(2L);
+        when(voteRepository.countByPairIds(List.of(1L))).thenReturn(List.of(voteCount));
+
         CommentRepository.CommentCountByPair count = mock(CommentRepository.CommentCountByPair.class);
         when(count.getTotal()).thenReturn(5L);
         when(commentRepository.countVisibleByPairIds(List.of(1L))).thenReturn(List.of(count));
@@ -283,6 +320,10 @@ class PairServiceTest {
 
         assertThat(dto.leftVotes()).isEqualTo(1.8);
         assertThat(dto.rightVotes()).isEqualTo(0.0);
+        // "N명 투표" 표시는 가중치 합이 아니라 실제 투표자 수(raw count)를
+        // 써야 한다 — 가중치 합(1.8)을 반올림하면 실제 투표자 수(2명)와
+        // 다르게 보이는 문제가 있었다(2026-08-06 실측).
+        assertThat(dto.voteCount()).isEqualTo(2L);
         assertThat(dto.commentCount()).isEqualTo(5L);
     }
 
@@ -298,7 +339,9 @@ class PairServiceTest {
         assertThat(dto.leftVotes()).isEqualTo(0.0);
         assertThat(dto.rightVotes()).isEqualTo(0.0);
         assertThat(dto.neutralVotes()).isEqualTo(0.0);
+        assertThat(dto.voteCount()).isEqualTo(0L);
         verify(voteRepository, Mockito.never()).sumWeightedByPairIdGroupByStance(any());
+        verify(voteRepository, Mockito.never()).countByPairIds(any());
     }
 
     @Test
@@ -314,6 +357,10 @@ class PairServiceTest {
         when(leftCount.getTotal()).thenReturn(4.0);
         when(voteRepository.sumWeightedByPairIdGroupByStance(100L)).thenReturn(List.of(leftCount));
 
+        VoteRepository.VoteCountByPair voteCount = mock(VoteRepository.VoteCountByPair.class);
+        when(voteCount.getTotal()).thenReturn(6L);
+        when(voteRepository.countByPairIds(List.of(100L))).thenReturn(List.of(voteCount));
+
         CommentRepository.CommentCountByPair count = mock(CommentRepository.CommentCountByPair.class);
         when(count.getTotal()).thenReturn(7L);
         when(commentRepository.countVisibleByPairIds(List.of(100L))).thenReturn(List.of(count));
@@ -322,6 +369,7 @@ class PairServiceTest {
 
         assertThat(dto.id()).isEqualTo(100L);
         assertThat(dto.leftVotes()).isEqualTo(4.0);
+        assertThat(dto.voteCount()).isEqualTo(6L);
         assertThat(dto.commentCount()).isEqualTo(7L);
     }
 
