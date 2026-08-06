@@ -61,6 +61,15 @@ export default function RootLayout({
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
+        {/* reCAPTCHA v3 — 사이트 키 미설정 시(계정 발급 전) 스크립트 자체를
+            안 실어서 CommentForm의 grecaptcha 호출도 자연히 스킵된다 */}
+        {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY && (
+          <Script
+            async
+            src={`https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`}
+            strategy="afterInteractive"
+          />
+        )}
       </head>
       <body className="min-h-full flex flex-col font-sans">
         <Header />

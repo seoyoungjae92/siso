@@ -6,11 +6,13 @@ import com.siso.backend.abuse.TrustScoreService;
 import com.siso.backend.anon.AnonUserRepository;
 import com.siso.backend.anon.IpHasher;
 import com.siso.backend.moderation.ProfanityFilter;
+import com.siso.backend.moderation.RecaptchaVerifier;
 import com.siso.backend.pair.TopicPair;
 import com.siso.backend.pair.TopicPairRepository;
 import com.siso.backend.ratelimit.RateLimiter;
 import com.siso.backend.settings.AbuseSettings;
 import com.siso.backend.settings.AbuseSettingsRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -79,6 +81,16 @@ class CommentServiceTest {
     @Mock
     private SpikeDetector spikeDetector;
 
+    @Mock
+    private RecaptchaVerifier recaptchaVerifier;
+
+    @BeforeEach
+    void stubRecaptchaPassesByDefault() {
+        // 대부분의 테스트는 reCAPTCHA와 무관한 로직을 검증하므로 기본
+        // 통과로 스텁 — 검증 자체를 테스트하는 케이스만 별도로 오버라이드.
+        Mockito.lenient().when(recaptchaVerifier.verify(Mockito.any())).thenReturn(true);
+    }
+
     private CommentService newService() {
         return new CommentService(
                 commentRepository,
@@ -91,7 +103,8 @@ class CommentServiceTest {
                 abuseSettingsRepository,
                 duplicateCommentGuard,
                 trustScoreService,
-                spikeDetector);
+                spikeDetector,
+                recaptchaVerifier);
     }
 
     private void stubAbuseSettings() {
@@ -119,7 +132,7 @@ class CommentServiceTest {
         when(anonUserRepository.findById(ANON_A)).thenReturn(Optional.empty());
         when(ipHasher.hash(any())).thenReturn("hashed-ip");
 
-        CommentDto dto = service.create(1L, ANON_A, "127.0.0.1", null, "본문", "left");
+        CommentDto dto = service.create(1L, ANON_A, "127.0.0.1", null, "본문", "left", "token");
 
         assertThat(dto.parentId()).isNull();
         assertThat(dto.body()).isEqualTo("본문");
@@ -133,10 +146,21 @@ class CommentServiceTest {
         doThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS))
                 .when(rateLimiter).checkOrThrow("comment", ANON_A);
 
-        assertThatThrownBy(() -> service.create(1L, ANON_A, "127.0.0.1", null, "본문", null))
+        assertThatThrownBy(() -> service.create(1L, ANON_A, "127.0.0.1", null, "본문", null, "token"))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    void create_failsRecaptchaVerification_isRejected() {
+        CommentService service = newService();
+        when(recaptchaVerifier.verify("bad-token")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.create(1L, ANON_A, "127.0.0.1", null, "본문", null, "bad-token"))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
@@ -144,7 +168,7 @@ class CommentServiceTest {
         CommentService service = newService();
         when(profanityFilter.containsBannedWord("나쁜말")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(1L, ANON_A, "127.0.0.1", null, "나쁜말", null))
+        assertThatThrownBy(() -> service.create(1L, ANON_A, "127.0.0.1", null, "나쁜말", null, "token"))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
@@ -158,7 +182,7 @@ class CommentServiceTest {
                 eq(ANON_A), eq("반복 댓글"), any(OffsetDateTime.class), anyInt(), anyInt(), anyDouble()))
                 .thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(1L, ANON_A, "127.0.0.1", null, "반복 댓글", null))
+        assertThatThrownBy(() -> service.create(1L, ANON_A, "127.0.0.1", null, "반복 댓글", null, "token"))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
@@ -177,7 +201,7 @@ class CommentServiceTest {
         when(anonUserRepository.findById(ANON_B)).thenReturn(Optional.empty());
         when(ipHasher.hash(any())).thenReturn("hashed-ip");
 
-        CommentDto dto = service.create(1L, ANON_B, "127.0.0.1", 10L, "대댓글", null);
+        CommentDto dto = service.create(1L, ANON_B, "127.0.0.1", 10L, "대댓글", null, "token");
 
         assertThat(dto.parentId()).isEqualTo(10L);
         assertThat(dto.selfReply()).isFalse();
@@ -196,7 +220,7 @@ class CommentServiceTest {
         when(anonUserRepository.findById(ANON_A)).thenReturn(Optional.empty());
         when(ipHasher.hash(any())).thenReturn("hashed-ip");
 
-        CommentDto dto = service.create(1L, ANON_A, "127.0.0.1", 10L, "셀프 대댓글", null);
+        CommentDto dto = service.create(1L, ANON_A, "127.0.0.1", 10L, "셀프 대댓글", null, "token");
 
         assertThat(dto.selfReply()).isTrue();
     }
@@ -214,7 +238,7 @@ class CommentServiceTest {
         when(topicPairRepository.findById(1L)).thenReturn(Optional.of(pair));
         when(commentRepository.findById(11L)).thenReturn(Optional.of(reply));
 
-        assertThatThrownBy(() -> service.create(1L, ANON_C, "127.0.0.1", 11L, "대대댓글", null))
+        assertThatThrownBy(() -> service.create(1L, ANON_C, "127.0.0.1", 11L, "대대댓글", null, "token"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("depth");
     }

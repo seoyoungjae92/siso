@@ -22,6 +22,7 @@ export async function postComment(
   body: string,
   parentId?: number,
   stance?: string,
+  recaptchaToken?: string,
 ) {
   const anonHeaders = await getSignedAnonHeaders();
   if (!anonHeaders) {
@@ -37,7 +38,7 @@ export async function postComment(
       "Content-Type": "application/json",
       ...anonHeaders,
     },
-    body: JSON.stringify({ body, parentId, stance }),
+    body: JSON.stringify({ body, parentId, stance, recaptchaToken }),
   });
 
   if (!res.ok) {
