@@ -126,14 +126,14 @@ class PairServiceTest {
         stubDisplayWindowDays(7);
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
-        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                         eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of()));
 
         Page<TopicPairDto> result = pairService.getPairs(pageable);
 
         verify(topicPairRepository)
-                .findByStatusAndTitleIsNotNullAndCreatedAtAfter(eq("active"), any(OffsetDateTime.class), eq(pageable));
+                .findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(eq("active"), any(OffsetDateTime.class), eq(pageable));
         assertThat(result.getContent()).isEmpty();
     }
 
@@ -150,7 +150,7 @@ class PairServiceTest {
         ReflectionTestUtils.setField(pair, "rightStance", "우 입장 요약");
         ReflectionTestUtils.setField(pair, "createdAt", OffsetDateTime.parse("2026-07-22T00:00:00Z"));
 
-        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                         eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(pair)));
 
@@ -180,7 +180,7 @@ class PairServiceTest {
         TopicPair pairB = mock(TopicPair.class);
         when(pairB.getId()).thenReturn(200L);
 
-        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                         eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(pairA, pairB)));
 
@@ -216,7 +216,7 @@ class PairServiceTest {
 
         TopicPair pair = mock(TopicPair.class);
         when(pair.getId()).thenReturn(100L);
-        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                         eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(pair)));
 
@@ -239,7 +239,7 @@ class PairServiceTest {
         TopicPair pairB = mock(TopicPair.class);
         when(pairB.getId()).thenReturn(200L);
 
-        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                         eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(pairA, pairB)));
         when(voteRepository.sumWeightedByPairIdsGroupByStance(List.of(100L, 200L))).thenReturn(List.of());

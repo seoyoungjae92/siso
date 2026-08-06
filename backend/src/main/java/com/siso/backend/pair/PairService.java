@@ -74,7 +74,7 @@ public class PairService {
     public Page<TopicPairDto> getPairs(Pageable pageable) {
         int displayWindowDays = crawlSettingsRepository.findById(SETTINGS_ID).orElseThrow().getDisplayWindowDays();
         OffsetDateTime since = OffsetDateTime.now().minusDays(displayWindowDays);
-        Page<TopicPair> pairs = topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfter(
+        Page<TopicPair> pairs = topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                 ACTIVE_STATUS, since, pageable);
 
         // D10: 선거 모드 중엔 공직선거법상 여론조사 결과 공표 리스크를 피하기
