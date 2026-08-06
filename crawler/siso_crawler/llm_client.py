@@ -76,6 +76,11 @@ SYSTEM_PROMPT = """너는 한국 정치 커뮤니티 좌/우 게시글을 보고
   사실을 전하는 글들도 마찬가지다 — 좌/우가 같은 결과를 비슷한 톤으로
   (둘 다 "근소한 승리"나 "이변"이라고만 언급) 전달할 뿐 그 이상의 다른
   해석·평가·전망이 없다면 이것도 명확한 쟁점 차이가 없는 것으로 본다.
+  특정 인물의 실언·부적절한 발언 논란도 흔한 함정이다 — 좌/우 커뮤니티
+  모두 "그 발언은 잘못됐다, 사과·징계가 필요하다"처럼 이념과 무관하게
+  동일한 상식적 비판만 하고 있다면, 발언 당사자가 어느 진영 소속인지와
+  무관하게 명확한 쟁점 차이가 없는 것으로 본다 — 좌/우 진영 자체가
+  아니라 그 발언에 대한 상식적 판단이 논란의 본질이기 때문이다.
 - 한 진영에 게시글이 여러 건 주어졌는데 그 중 실제로 관련된 글이 하나도
   없다(일부만 무관하면 그 글은 무시하고 관련된 글만으로 판단해라).
 판단이 애매하면 억지로 답을 지어내지 말고 no_clear_issue를 선택해라 —
@@ -169,15 +174,23 @@ class SynthesisFailed(Exception):
 
 
 # 합성 자체는 저렴한 모델(crawl_settings.synthesis_model, 어드민 설정)로
-# 하되, 5·18 왜곡/명예훼손/내란 옹호 같은 법적 위험 콘텐츠 검사는 별도로
-# 더 성능 좋은 모델로 한 번 더 확인한다 — 실측 결과 SYSTEM_PROMPT의 0단계
-# 규칙만으로는 저렴한 모델(gemini-2.5-flash-lite)이 "국가 안보 위기
-# 상황에서는 계엄 선포가 정당하고 필요한 조치였다" 같은 명백한 내란 옹호
-# 사례를 반복적으로(3/3) 놓쳤음(2026-08-05 실측) — 같은 케이스를
-# gemini-2.5-flash/claude-sonnet-5/gpt-5-mini는 전부 정확히 잡아냄. 법적
-# 리스크는 비용보다 신뢰성이 우선이라 이 검사만 고정된 상위 모델을 쓰고,
+# 하되, 법적 위험 콘텐츠 검사와 좌/우 입장 실질 대비 검사는 별도로 더
+# 성능 좋은 모델로 한 번 더 확인한다 — 실측 결과 SYSTEM_PROMPT 규칙만으로는
+# 저렴한 모델(gemini-2.5-flash-lite)이 "국가 안보 위기 상황에서는 계엄
+# 선포가 정당하고 필요한 조치였다" 같은 명백한 내란 옹호 사례를
+# 반복적으로(3/3) 놓쳤음(2026-08-05 실측). 좌/우 입장이 사실상 같은
+# 내용(예: "돌려차기" 발언 논란처럼 양쪽 다 "부적절하다, 징계해야 한다"는
+# 상식적 비판만 하는 경우)을 no_clear_issue로 걸러내는 것도 같은 모델로
+# 3번 중 2번 놓침(2026-08-06 실측) — 다만 이건 상위 모델(gemini-2.5-flash/
+# claude-sonnet-4.5)로도 똑같이 놓쳐서 단순 모델 성능 문제가 아니라, "좌/우
+# 입장을 동시에 작성하면서 스스로 대비 여부까지 판단"하는 과제 자체가
+# 모델 크기와 무관하게 어려운 것으로 보임 — 반면 이미 작성된 두 입장문을
+# 놓고 "이 둘이 실질적으로 다른가"만 좁게 물으면 저렴한 모델도 정확히
+# 판단함(같은 실측). 그래서 법적 검사와 동일하게 "생성 후 별도 검사"
+# 구조를 재사용해 좌/우 입장 대비 여부도 2차 검사로 뺐다. 리스크는
+# 비용보다 신뢰성이 우선이라 이 검사들만 고정된 상위 모델을 쓰고,
 # 어드민 설정(synthesis_model)으로 낮출 수 없게 분리해뒀다.
-LEGAL_SAFETY_MODEL = "google/gemini-2.5-flash"
+SECOND_PASS_VERIFICATION_MODEL = "google/gemini-2.5-flash"
 
 LEGAL_SAFETY_CHECK_PROMPT = """너는 한국 정치 콘텐츠의 법적 안전성을 검토하는
 감사관이야. 아래 합성된 주제(제목 + 좌/우 시각 요약)를 보고 다음 세 가지 중
@@ -226,7 +239,7 @@ def _check_legal_safety(api_key: str, title: str, left_stance: str, right_stance
                 "X-Title": OPENROUTER_APP_TITLE,
             },
             json={
-                "model": LEGAL_SAFETY_MODEL,
+                "model": SECOND_PASS_VERIFICATION_MODEL,
                 "max_tokens": MAX_TOKENS,
                 "messages": [
                     {"role": "system", "content": LEGAL_SAFETY_CHECK_PROMPT},
@@ -256,6 +269,79 @@ def _check_legal_safety(api_key: str, title: str, left_stance: str, right_stance
 
     if parsed.violates:
         raise SynthesisFailed(f"법적 안전성 검사에서 위반 판정: {parsed.reason}")
+
+
+STANCE_DIVERGENCE_CHECK_PROMPT = """너는 한국 정치 콘텐츠의 품질을 검토하는
+감사관이야. 아래는 한 주제에 대한 좌 성향/우 성향 커뮤니티 입장 요약이다.
+두 요약이 실제로 서로 대비되는(찬성 vs 반대, 옹호 vs 비판 등) 입장 차이를
+담고 있는지, 아니면 표현만 다를 뿐 사실상 같은 결론·평가·태도를 말하고
+있는지 판단해라. 예를 들어 둘 다 "이 발언은 부적절하다, 징계해야 한다"처럼
+같은 상식적 비판만 하고 있다면 실질적 대비가 없는 것이다.
+
+반드시 JSON으로만 답해라. 다른 텍스트를 덧붙이지 마라."""
+
+STANCE_DIVERGENCE_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "diverges": {"type": "boolean"},
+        "reason": {"type": "string"},
+    },
+    "required": ["diverges", "reason"],
+    "additionalProperties": False,
+}
+
+
+class StanceDivergenceCheckSchema(pydantic.BaseModel):
+    diverges: bool
+    reason: str
+
+
+def _check_stance_divergence(api_key: str, left_stance: str, right_stance: str) -> None:
+    """좌/우 입장이 실질적으로 다르지 않으면 SynthesisFailed를 던진다. 이
+    검사 자체가 실패(API 에러 등)해도 안전하게 SynthesisFailed로 처리한다 —
+    _check_legal_safety와 동일한 fail-closed 원칙."""
+    user_prompt = f"[좌 입장]\n{left_stance}\n\n[우 입장]\n{right_stance}"
+    try:
+        response = httpx.post(
+            OPENROUTER_URL,
+            timeout=TIMEOUT_SECONDS,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://github.com/seoyoungjae92/siso",
+                "X-Title": OPENROUTER_APP_TITLE,
+            },
+            json={
+                "model": SECOND_PASS_VERIFICATION_MODEL,
+                "max_tokens": MAX_TOKENS,
+                "messages": [
+                    {"role": "system", "content": STANCE_DIVERGENCE_CHECK_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "stance_divergence_check",
+                        "strict": True,
+                        "schema": STANCE_DIVERGENCE_RESPONSE_SCHEMA,
+                    },
+                },
+                "provider": {"require_parameters": True},
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        choice = data["choices"][0]
+        if choice["finish_reason"] != "stop":
+            raise SynthesisFailed(f"입장 대비 검사 응답 비정상 종료: {choice['finish_reason']}")
+        parsed = StanceDivergenceCheckSchema.model_validate_json(choice["message"]["content"])
+    except SynthesisFailed:
+        raise
+    except (httpx.HTTPError, KeyError, IndexError, ValueError, pydantic.ValidationError) as exc:
+        raise SynthesisFailed(f"입장 대비 검사 실패: {exc}") from exc
+
+    if not parsed.diverges:
+        raise SynthesisFailed(f"좌/우 입장에 실질적 대비가 없음: {parsed.reason}")
 
 
 class TopicSynthesizer(Protocol):
@@ -349,6 +435,7 @@ class OpenRouterTopicSynthesizer:
         left_stance = parsed.left_stance.strip()[:500]
         right_stance = parsed.right_stance.strip()[:500]
 
+        _check_stance_divergence(self._api_key, left_stance, right_stance)
         _check_legal_safety(self._api_key, title, left_stance, right_stance)
 
         return SynthesizedTopic(title=title, left_stance=left_stance, right_stance=right_stance)
