@@ -8,6 +8,7 @@ import com.siso.backend.anon.AnonUserRepository;
 import com.siso.backend.anon.IpHasher;
 import com.siso.backend.anon.NicknameGenerator;
 import com.siso.backend.moderation.ProfanityFilter;
+import com.siso.backend.moderation.RecaptchaVerifier;
 import com.siso.backend.pair.TopicPair;
 import com.siso.backend.pair.TopicPairRepository;
 import com.siso.backend.ratelimit.RateLimiter;
@@ -47,6 +48,7 @@ public class CommentService {
     private final DuplicateCommentGuard duplicateCommentGuard;
     private final TrustScoreService trustScoreService;
     private final SpikeDetector spikeDetector;
+    private final RecaptchaVerifier recaptchaVerifier;
 
     public CommentService(
             CommentRepository commentRepository,
@@ -59,7 +61,8 @@ public class CommentService {
             AbuseSettingsRepository abuseSettingsRepository,
             DuplicateCommentGuard duplicateCommentGuard,
             TrustScoreService trustScoreService,
-            SpikeDetector spikeDetector) {
+            SpikeDetector spikeDetector,
+            RecaptchaVerifier recaptchaVerifier) {
         this.commentRepository = commentRepository;
         this.reactionRepository = reactionRepository;
         this.topicPairRepository = topicPairRepository;
@@ -71,6 +74,7 @@ public class CommentService {
         this.duplicateCommentGuard = duplicateCommentGuard;
         this.trustScoreService = trustScoreService;
         this.spikeDetector = spikeDetector;
+        this.recaptchaVerifier = recaptchaVerifier;
     }
 
     @Transactional(readOnly = true)
@@ -121,8 +125,19 @@ public class CommentService {
 
     @Transactional
     public CommentDto create(
-            Long pairId, UUID anonId, String remoteAddr, Long parentId, String body, String stance) {
+            Long pairId,
+            UUID anonId,
+            String remoteAddr,
+            Long parentId,
+            String body,
+            String stance,
+            String recaptchaToken) {
         rateLimiter.checkOrThrow("comment", anonId);
+
+        if (!recaptchaVerifier.verify(recaptchaToken)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "자동화된 요청으로 판단되어 작성할 수 없습니다");
+        }
 
         if (profanityFilter.containsBannedWord(body)) {
             throw new ResponseStatusException(

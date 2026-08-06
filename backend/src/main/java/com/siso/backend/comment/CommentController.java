@@ -53,7 +53,8 @@ public class CommentController {
                 ClientIp.resolve(servletRequest),
                 request.parentId(),
                 request.body(),
-                request.stance());
+                request.stance(),
+                request.recaptchaToken());
     }
 
     @PostMapping("/api/comments/{commentId}/reactions")

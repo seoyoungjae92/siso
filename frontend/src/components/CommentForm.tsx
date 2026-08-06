@@ -4,7 +4,31 @@ import { useState, useTransition } from "react";
 
 import { postComment } from "@/app/pairs/[id]/actions";
 
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (callback: () => void) => void;
+      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+    };
+  }
+}
+
 const BODY_MAX_LENGTH = 2000;
+
+// 사이트 키 미설정(reCAPTCHA 계정 발급 전)이면 undefined — 이때는 스크립트
+// 자체가 로드 안 되므로(layout.tsx) 토큰 없이 그대로 제출한다.
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+
+function getRecaptchaToken(): Promise<string | undefined> {
+  if (!RECAPTCHA_SITE_KEY || !window.grecaptcha) {
+    return Promise.resolve(undefined);
+  }
+  return new Promise((resolve) => {
+    window.grecaptcha!.ready(() => {
+      window.grecaptcha!.execute(RECAPTCHA_SITE_KEY, { action: "comment" }).then(resolve);
+    });
+  });
+}
 
 const STANCE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "선택 안 함" },
@@ -31,7 +55,8 @@ export function CommentForm({
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await postComment(pairId, body, parentId, stance || undefined);
+      const recaptchaToken = await getRecaptchaToken();
+      const result = await postComment(pairId, body, parentId, stance || undefined, recaptchaToken);
       if (!result.ok) {
         setError(result.error ?? "오류가 발생했습니다.");
         return;
