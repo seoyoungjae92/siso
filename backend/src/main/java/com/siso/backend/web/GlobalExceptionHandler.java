@@ -1,5 +1,6 @@
 package com.siso.backend.web;
 
+import io.sentry.Sentry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -42,6 +43,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpected(Exception ex) {
         log.error("처리되지 않은 예외", ex);
+        // 이 핸들러가 예외를 여기서 완전히 처리(응답 반환)해버리기 때문에,
+        // Sentry의 자동 예외 캡처(SentryExceptionResolver)는 이 예외를
+        // 아예 못 본다 — 직접 호출해서 리포팅해야 실제 버그를 놓치지 않는다.
+        // DSN 미설정 시 Sentry.captureException은 안전하게 아무 일도 안 함.
+        Sentry.captureException(ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("message", "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
     }
