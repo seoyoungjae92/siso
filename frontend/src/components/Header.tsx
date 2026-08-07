@@ -36,6 +36,10 @@ export function Header() {
         <small className="hidden text-[11px] font-medium text-[#767268] sm:inline">같은 주제, 다른 시선</small>
       </Link>
       <nav className="flex items-center gap-2 text-[11px] font-semibold whitespace-nowrap text-[#767268] sm:gap-3">
+        <Link href="/about" className="hover:text-[#6B6960] hover:underline">
+          <span className="sm:hidden">소개</span>
+          <span className="hidden sm:inline">서비스 소개</span>
+        </Link>
         <Link href="/feedback" className="hover:text-[#6B6960] hover:underline">
           <span className="sm:hidden">제보</span>
           <span className="hidden sm:inline">제보·건의하기</span>
