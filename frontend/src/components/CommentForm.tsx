@@ -7,8 +7,10 @@ import { postComment } from "@/app/pairs/[id]/actions";
 declare global {
   interface Window {
     grecaptcha?: {
-      ready: (callback: () => void) => void;
-      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+      enterprise: {
+        ready: (callback: () => void) => void;
+        execute: (siteKey: string, options: { action: string }) => Promise<string>;
+      };
     };
   }
 }
@@ -24,8 +26,8 @@ function getRecaptchaToken(): Promise<string | undefined> {
     return Promise.resolve(undefined);
   }
   return new Promise((resolve) => {
-    window.grecaptcha!.ready(() => {
-      window.grecaptcha!.execute(RECAPTCHA_SITE_KEY, { action: "comment" }).then(resolve);
+    window.grecaptcha!.enterprise.ready(() => {
+      window.grecaptcha!.enterprise.execute(RECAPTCHA_SITE_KEY, { action: "comment" }).then(resolve);
     });
   });
 }
