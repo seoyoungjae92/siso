@@ -6,6 +6,9 @@ export function Footer() {
   return (
     <footer className="border-t border-line px-7 py-5 text-xs text-[#767268]">
       <nav className="mb-2 flex flex-wrap gap-x-4 gap-y-1">
+        <Link href="/about" className="font-semibold text-[#6B6960] hover:underline">
+          서비스 소개
+        </Link>
         <Link href="/terms" className="font-semibold text-[#6B6960] hover:underline">
           이용약관
         </Link>
