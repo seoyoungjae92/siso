@@ -114,6 +114,22 @@ export function CommentForm({
         </button>
       </div>
       {error && <p className="mt-1 text-xs text-right-red">{error}</p>}
+      {/* 배지를 CSS로 숨긴 대신(globals.css) 구글 정책상 필요한 고지 문구 —
+          사이트 키 없으면(reCAPTCHA 자체가 꺼져있으면) 표시 안 하고, 답글
+          입력창마다 반복 노출되지 않도록 최상위 댓글 입력창에만 표시 */}
+      {!parentId && RECAPTCHA_SITE_KEY && (
+        <p className="mt-1.5 text-[10px] text-[#767268]">
+          이 사이트는 reCAPTCHA로 보호되며 Google{" "}
+          <a href="https://policies.google.com/privacy" className="underline" target="_blank" rel="noreferrer">
+            개인정보처리방침
+          </a>
+          과{" "}
+          <a href="https://policies.google.com/terms" className="underline" target="_blank" rel="noreferrer">
+            서비스 약관
+          </a>
+          이 적용됩니다.
+        </p>
+      )}
     </form>
   );
 }

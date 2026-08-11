@@ -54,3 +54,10 @@ button:not(:disabled) {
 .animate-new-item {
   animation: new-item-appear 0.4s ease-out;
 }
+
+/* 구글 reCAPTCHA 배지(모바일에서 화면 위를 떠다니는 아이콘)를 숨김 — 대신
+   CommentForm에 필수 고지 문구를 노출해야 함(구글 정책상 배지를 숨기려면
+   "이 사이트는 reCAPTCHA로 보호됩니다" 문구를 사용자에게 보이게 둬야 함). */
+.grecaptcha-badge {
+  visibility: hidden;
+}
