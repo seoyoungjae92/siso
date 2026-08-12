@@ -9,7 +9,6 @@ import com.siso.backend.comment.CommentRepository;
 import com.siso.backend.ratelimit.RateLimiter;
 import com.siso.backend.settings.AbuseSettings;
 import com.siso.backend.settings.AbuseSettingsRepository;
-import com.siso.backend.settings.CrawlSettings;
 import com.siso.backend.settings.CrawlSettingsRepository;
 import com.siso.backend.settings.ElectionSettings;
 import com.siso.backend.settings.ElectionSettingsRepository;
@@ -104,10 +103,15 @@ class PairServiceTest {
         Mockito.lenient().when(electionSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
     }
 
-    private void stubDisplayWindowDays(int days) {
-        CrawlSettings settings = mock(CrawlSettings.class);
-        when(settings.getDisplayWindowDays()).thenReturn(days);
-        when(crawlSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
+    // getPairs/getFeaturedPair는 display_window_days와 election 모드를
+    // 하나의 쿼리로 같이 조회한다(2026-08-12, DB 왕복 절약) — 두 값을
+    // 같이 스텁한다.
+    private void stubDisplayWindowAndElectionMode(int days, boolean electionEnabled) {
+        CrawlSettingsRepository.DisplayWindowAndElectionMode settings =
+                mock(CrawlSettingsRepository.DisplayWindowAndElectionMode.class);
+        Mockito.lenient().when(settings.getDisplayWindowDays()).thenReturn(days);
+        Mockito.lenient().when(settings.getElectionEnabled()).thenReturn(electionEnabled);
+        when(crawlSettingsRepository.findDisplayWindowAndElectionMode()).thenReturn(settings);
     }
 
     private void stubAbuseSettings() {
@@ -123,7 +127,7 @@ class PairServiceTest {
 
     @Test
     void getPairs_queriesActiveStatusWithSynthesizedTitleWithinDisplayWindow() {
-        stubDisplayWindowDays(7);
+        stubDisplayWindowAndElectionMode(7, false);
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
         when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
@@ -139,7 +143,7 @@ class PairServiceTest {
 
     @Test
     void getPairs_mapsTopicPairToDto() {
-        stubDisplayWindowDays(7);
+        stubDisplayWindowAndElectionMode(7, false);
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
 
@@ -154,7 +158,7 @@ class PairServiceTest {
                         eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(pair)));
 
-        when(voteRepository.sumWeightedByPairIdsGroupByStance(List.of(100L))).thenReturn(List.of());
+        when(voteRepository.countByPairIdsGroupByStance(List.of(100L))).thenReturn(List.of());
 
         Page<TopicPairDto> result = pairService.getPairs(pageable);
 
@@ -170,8 +174,8 @@ class PairServiceTest {
     }
 
     @Test
-    void getPairs_includesTrustWeightedVoteTallyPerPair() {
-        stubDisplayWindowDays(7);
+    void getPairs_includesVoteTallyPerPair() {
+        stubDisplayWindowAndElectionMode(7, false);
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
 
@@ -184,33 +188,34 @@ class PairServiceTest {
                         eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(pairA, pairB)));
 
-        VoteRepository.WeightedStanceCountByPair rowA = mock(VoteRepository.WeightedStanceCountByPair.class);
+        VoteRepository.StanceCountByPair rowA = mock(VoteRepository.StanceCountByPair.class);
         when(rowA.getPairId()).thenReturn(100L);
         when(rowA.getStance()).thenReturn("left");
-        when(rowA.getTotal()).thenReturn(2.5);
+        when(rowA.getTotal()).thenReturn(2.0);
 
-        VoteRepository.WeightedStanceCountByPair rowB = mock(VoteRepository.WeightedStanceCountByPair.class);
+        VoteRepository.StanceCountByPair rowB = mock(VoteRepository.StanceCountByPair.class);
         when(rowB.getPairId()).thenReturn(200L);
         when(rowB.getStance()).thenReturn("right");
-        when(rowB.getTotal()).thenReturn(1.2);
+        when(rowB.getTotal()).thenReturn(1.0);
 
-        when(voteRepository.sumWeightedByPairIdsGroupByStance(List.of(100L, 200L))).thenReturn(List.of(rowA, rowB));
+        when(voteRepository.countByPairIdsGroupByStance(List.of(100L, 200L))).thenReturn(List.of(rowA, rowB));
 
         Page<TopicPairDto> result = pairService.getPairs(pageable);
 
         TopicPairDto dtoA = result.getContent().get(0);
-        assertThat(dtoA.leftVotes()).isEqualTo(2.5);
+        assertThat(dtoA.leftVotes()).isEqualTo(2.0);
         assertThat(dtoA.rightVotes()).isEqualTo(0.0);
+        assertThat(dtoA.voteCount()).isEqualTo(2L);
 
         TopicPairDto dtoB = result.getContent().get(1);
-        assertThat(dtoB.rightVotes()).isEqualTo(1.2);
+        assertThat(dtoB.rightVotes()).isEqualTo(1.0);
         assertThat(dtoB.leftVotes()).isEqualTo(0.0);
+        assertThat(dtoB.voteCount()).isEqualTo(1L);
     }
 
     @Test
     void getPairs_electionModeEnabled_hidesVoteTallyEvenWhenVotesExist() {
-        stubDisplayWindowDays(7);
-        stubElectionMode(true);
+        stubDisplayWindowAndElectionMode(7, true);
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
 
@@ -226,13 +231,12 @@ class PairServiceTest {
         assertThat(result.getContent().get(0).rightVotes()).isEqualTo(0.0);
         assertThat(result.getContent().get(0).neutralVotes()).isEqualTo(0.0);
         assertThat(result.getContent().get(0).voteCount()).isEqualTo(0L);
-        verify(voteRepository, Mockito.never()).sumWeightedByPairIdsGroupByStance(any());
-        verify(voteRepository, Mockito.never()).countByPairIds(any());
+        verify(voteRepository, Mockito.never()).countByPairIdsGroupByStance(any());
     }
 
     @Test
     void getPairs_includesVisibleCommentCountPerPair() {
-        stubDisplayWindowDays(7);
+        stubDisplayWindowAndElectionMode(7, false);
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
 
@@ -244,7 +248,7 @@ class PairServiceTest {
         when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                         eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(pairA, pairB)));
-        when(voteRepository.sumWeightedByPairIdsGroupByStance(List.of(100L, 200L))).thenReturn(List.of());
+        when(voteRepository.countByPairIdsGroupByStance(List.of(100L, 200L))).thenReturn(List.of());
 
         CommentRepository.CommentCountByPair countA = mock(CommentRepository.CommentCountByPair.class);
         when(countA.getPairId()).thenReturn(100L);
@@ -258,12 +262,11 @@ class PairServiceTest {
     }
 
     @Test
-    void getPairs_includesRawVoteCountPerPair() {
-        // 신뢰도 가중치 합(leftVotes+rightVotes+neutralVotes)과 실제 투표자
-        // 수는 다른 값이다 — "N명 투표" 표시는 반드시 이 raw count를 써야
-        // 한다(2026-08-06 실측: 가중치 합을 반올림해 표시하다가 실제
-        // 투표자 수와 다르게 보이는 문제가 있었음).
-        stubDisplayWindowDays(7);
+    void getPairs_voteCountIsSumOfStanceCountsAcrossMultipleVoters() {
+        // voteCount는 이제 진영별 raw count(countByPairIdsGroupByStance)를
+        // 합산해서 만든다 — 별도의 총계 쿼리가 없다(2026-08-12, DB 왕복
+        // 절약을 위해 통합).
+        stubDisplayWindowAndElectionMode(7, false);
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
 
@@ -275,12 +278,18 @@ class PairServiceTest {
         when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                         eq("active"), any(OffsetDateTime.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(pairA, pairB)));
-        when(voteRepository.sumWeightedByPairIdsGroupByStance(List.of(100L, 200L))).thenReturn(List.of());
 
-        VoteRepository.VoteCountByPair countA = mock(VoteRepository.VoteCountByPair.class);
-        when(countA.getPairId()).thenReturn(100L);
-        when(countA.getTotal()).thenReturn(2L);
-        when(voteRepository.countByPairIds(List.of(100L, 200L))).thenReturn(List.of(countA));
+        VoteRepository.StanceCountByPair leftRow = mock(VoteRepository.StanceCountByPair.class);
+        when(leftRow.getPairId()).thenReturn(100L);
+        when(leftRow.getStance()).thenReturn("left");
+        when(leftRow.getTotal()).thenReturn(1.0);
+
+        VoteRepository.StanceCountByPair rightRow = mock(VoteRepository.StanceCountByPair.class);
+        when(rightRow.getPairId()).thenReturn(100L);
+        when(rightRow.getStance()).thenReturn("right");
+        when(rightRow.getTotal()).thenReturn(1.0);
+
+        when(voteRepository.countByPairIdsGroupByStance(List.of(100L, 200L))).thenReturn(List.of(leftRow, rightRow));
 
         Page<TopicPairDto> result = pairService.getPairs(pageable);
 
@@ -298,19 +307,15 @@ class PairServiceTest {
     }
 
     @Test
-    void getPair_returnsTrustWeightedVoteTally() {
+    void getPair_returnsVoteTally() {
         TopicPair pair = mock(TopicPair.class);
         when(topicPairRepository.findByIdAndStatusAndTitleIsNotNull(1L, "active")).thenReturn(Optional.of(pair));
 
-        VoteRepository.WeightedStanceCount leftCount = mock(VoteRepository.WeightedStanceCount.class);
+        VoteRepository.StanceCount leftCount = mock(VoteRepository.StanceCount.class);
         when(leftCount.getStance()).thenReturn("left");
-        when(leftCount.getTotal()).thenReturn(1.8);
-        when(voteRepository.sumWeightedByPairIdGroupByStance(1L)).thenReturn(List.of(leftCount));
+        when(leftCount.getTotal()).thenReturn(2.0);
+        when(voteRepository.countByPairIdGroupByStance(1L)).thenReturn(List.of(leftCount));
         when(voteRepository.findByPair_IdAndAnonId(1L, ANON_A)).thenReturn(Optional.empty());
-
-        VoteRepository.VoteCountByPair voteCount = mock(VoteRepository.VoteCountByPair.class);
-        when(voteCount.getTotal()).thenReturn(2L);
-        when(voteRepository.countByPairIds(List.of(1L))).thenReturn(List.of(voteCount));
 
         CommentRepository.CommentCountByPair count = mock(CommentRepository.CommentCountByPair.class);
         when(count.getTotal()).thenReturn(5L);
@@ -318,11 +323,10 @@ class PairServiceTest {
 
         TopicPairDto dto = newService().getPair(1L, ANON_A);
 
-        assertThat(dto.leftVotes()).isEqualTo(1.8);
+        assertThat(dto.leftVotes()).isEqualTo(2.0);
         assertThat(dto.rightVotes()).isEqualTo(0.0);
-        // "N명 투표" 표시는 가중치 합이 아니라 실제 투표자 수(raw count)를
-        // 써야 한다 — 가중치 합(1.8)을 반올림하면 실제 투표자 수(2명)와
-        // 다르게 보이는 문제가 있었다(2026-08-06 실측).
+        // voteCount는 진영별 raw count의 합으로 만들어진다(가중치 없음,
+        // 2026-08-12 결정) — 별도 총계 쿼리 없이 이 결과에서 바로 나온다.
         assertThat(dto.voteCount()).isEqualTo(2L);
         assertThat(dto.commentCount()).isEqualTo(5L);
     }
@@ -340,26 +344,24 @@ class PairServiceTest {
         assertThat(dto.rightVotes()).isEqualTo(0.0);
         assertThat(dto.neutralVotes()).isEqualTo(0.0);
         assertThat(dto.voteCount()).isEqualTo(0L);
-        verify(voteRepository, Mockito.never()).sumWeightedByPairIdGroupByStance(any());
-        verify(voteRepository, Mockito.never()).countByPairIds(any());
+        verify(voteRepository, Mockito.never()).countByPairIdGroupByStance(any());
     }
 
     @Test
     void getFeaturedPair_returnsTopEngagementPairMappedToDto() {
-        stubDisplayWindowDays(7);
+        stubDisplayWindowAndElectionMode(7, false);
         TopicPair pair = mock(TopicPair.class);
         when(pair.getId()).thenReturn(100L);
         when(topicPairRepository.findTopEngagementSince(any(OffsetDateTime.class), eq(PageRequest.of(0, 1))))
                 .thenReturn(List.of(pair));
 
-        VoteRepository.WeightedStanceCount leftCount = mock(VoteRepository.WeightedStanceCount.class);
+        VoteRepository.StanceCount leftCount = mock(VoteRepository.StanceCount.class);
         when(leftCount.getStance()).thenReturn("left");
         when(leftCount.getTotal()).thenReturn(4.0);
-        when(voteRepository.sumWeightedByPairIdGroupByStance(100L)).thenReturn(List.of(leftCount));
-
-        VoteRepository.VoteCountByPair voteCount = mock(VoteRepository.VoteCountByPair.class);
-        when(voteCount.getTotal()).thenReturn(6L);
-        when(voteRepository.countByPairIds(List.of(100L))).thenReturn(List.of(voteCount));
+        VoteRepository.StanceCount rightCount = mock(VoteRepository.StanceCount.class);
+        when(rightCount.getStance()).thenReturn("right");
+        when(rightCount.getTotal()).thenReturn(2.0);
+        when(voteRepository.countByPairIdGroupByStance(100L)).thenReturn(List.of(leftCount, rightCount));
 
         CommentRepository.CommentCountByPair count = mock(CommentRepository.CommentCountByPair.class);
         when(count.getTotal()).thenReturn(7L);
@@ -375,7 +377,7 @@ class PairServiceTest {
 
     @Test
     void getFeaturedPair_noneWithinDisplayWindow_returnsNotFound() {
-        stubDisplayWindowDays(7);
+        stubDisplayWindowAndElectionMode(7, false);
         when(topicPairRepository.findTopEngagementSince(any(OffsetDateTime.class), eq(PageRequest.of(0, 1))))
                 .thenReturn(List.of());
 
