@@ -72,15 +72,16 @@ public class PairService {
 
     @Transactional(readOnly = true)
     public Page<TopicPairDto> getPairs(Pageable pageable) {
-        int displayWindowDays = crawlSettingsRepository.findById(SETTINGS_ID).orElseThrow().getDisplayWindowDays();
-        OffsetDateTime since = OffsetDateTime.now().minusDays(displayWindowDays);
+        CrawlSettingsRepository.DisplayWindowAndElectionMode settings =
+                crawlSettingsRepository.findDisplayWindowAndElectionMode();
+        OffsetDateTime since = OffsetDateTime.now().minusDays(settings.getDisplayWindowDays());
         Page<TopicPair> pairs = topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                 ACTIVE_STATUS, since, pageable);
 
         // D10: 선거 모드 중엔 공직선거법상 여론조사 결과 공표 리스크를 피하기
         // 위해 API 응답 자체에서 득표 집계를 감춘다(프론트 렌더링만 가리는 걸로는
         // curl/스크립트로 그대로 노출됨 — 실측으로 확인된 갭).
-        boolean electionMode = electionSettingsRepository.findById(SETTINGS_ID).orElseThrow().isEnabled();
+        boolean electionMode = settings.getElectionEnabled();
 
         List<Long> pairIds = pairs.getContent().stream().map(TopicPair::getId).toList();
         Map<Long, Map<String, Double>> talliesByPairId = new HashMap<>();
@@ -88,13 +89,11 @@ public class PairService {
         Map<Long, Long> commentCountsByPairId = new HashMap<>();
         if (!pairIds.isEmpty()) {
             if (!electionMode) {
-                for (VoteRepository.WeightedStanceCountByPair row : voteRepository.sumWeightedByPairIdsGroupByStance(pairIds)) {
+                for (VoteRepository.StanceCountByPair row : voteRepository.countByPairIdsGroupByStance(pairIds)) {
                     talliesByPairId
                             .computeIfAbsent(row.getPairId(), key -> new HashMap<>())
                             .put(row.getStance(), row.getTotal());
-                }
-                for (VoteRepository.VoteCountByPair row : voteRepository.countByPairIds(pairIds)) {
-                    voteCountsByPairId.put(row.getPairId(), row.getTotal());
+                    voteCountsByPairId.merge(row.getPairId(), (long) row.getTotal(), Long::sum);
                 }
             }
             for (CommentRepository.CommentCountByPair row : commentRepository.countVisibleByPairIds(pairIds)) {
@@ -120,25 +119,23 @@ public class PairService {
     // findTopEngagementSince와 동일한 단순 랭킹 기준을 그대로 재사용한다.
     @Transactional(readOnly = true)
     public TopicPairDto getFeaturedPair() {
-        int displayWindowDays = crawlSettingsRepository.findById(SETTINGS_ID).orElseThrow().getDisplayWindowDays();
-        OffsetDateTime since = OffsetDateTime.now().minusDays(displayWindowDays);
+        CrawlSettingsRepository.DisplayWindowAndElectionMode settings =
+                crawlSettingsRepository.findDisplayWindowAndElectionMode();
+        OffsetDateTime since = OffsetDateTime.now().minusDays(settings.getDisplayWindowDays());
         List<TopicPair> top = topicPairRepository.findTopEngagementSince(since, PageRequest.of(0, 1));
         if (top.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "no featured pair");
         }
         TopicPair pair = top.get(0);
 
-        boolean electionMode = electionSettingsRepository.findById(SETTINGS_ID).orElseThrow().isEnabled();
+        boolean electionMode = settings.getElectionEnabled();
         Map<String, Double> tally = new HashMap<>();
         long voteCount = 0L;
         if (!electionMode) {
-            for (VoteRepository.WeightedStanceCount row : voteRepository.sumWeightedByPairIdGroupByStance(pair.getId())) {
+            for (VoteRepository.StanceCount row : voteRepository.countByPairIdGroupByStance(pair.getId())) {
                 tally.put(row.getStance(), row.getTotal());
+                voteCount += (long) row.getTotal();
             }
-            voteCount = voteRepository.countByPairIds(List.of(pair.getId())).stream()
-                    .findFirst()
-                    .map(VoteRepository.VoteCountByPair::getTotal)
-                    .orElse(0L);
         }
 
         long commentCount = commentRepository.countVisibleByPairIds(List.of(pair.getId())).stream()
@@ -165,13 +162,10 @@ public class PairService {
         Map<String, Double> tally = new HashMap<>();
         long voteCount = 0L;
         if (!electionMode) {
-            for (VoteRepository.WeightedStanceCount row : voteRepository.sumWeightedByPairIdGroupByStance(id)) {
+            for (VoteRepository.StanceCount row : voteRepository.countByPairIdGroupByStance(id)) {
                 tally.put(row.getStance(), row.getTotal());
+                voteCount += (long) row.getTotal();
             }
-            voteCount = voteRepository.countByPairIds(List.of(id)).stream()
-                    .findFirst()
-                    .map(VoteRepository.VoteCountByPair::getTotal)
-                    .orElse(0L);
         }
 
         String myStance = viewerAnonId == null
