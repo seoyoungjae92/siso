@@ -10,6 +10,9 @@
   --blue-tint: #eef3fa;
   --red-tint: #fbf0f1;
   --pg-tint: #f5eff6;
+  /* WCAG AA 통과용으로 확정된 보조 텍스트 회색(2026-08-04, 18개 파일
+     하드코딩 #767268) — 토큰으로 안 뽑혀있어서 여기 추가. */
+  --muted: #767268;
 }
 
 @theme inline {
@@ -22,6 +25,7 @@
   --color-blue-tint: var(--blue-tint);
   --color-red-tint: var(--red-tint);
   --color-pg-tint: var(--pg-tint);
+  --color-muted: var(--muted);
   --font-sans: "Pretendard Variable", Pretendard, -apple-system,
     "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
 }
