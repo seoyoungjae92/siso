@@ -33,6 +33,13 @@ public class PairService {
     private static final Set<String> STANCES = Set.of("left", "right", "neutral");
     private static final short SETTINGS_ID = 1;
 
+    // display_window_days 창 안에 이 개수를 못 채우면(소스 정리 등으로 최근
+    // 주제가 일시적으로 적어진 경우) 창을 무시하고 전체 활성 주제에서 채운다
+    // — 목록이 텅 비어 보이는 것보다 약간 오래된 주제가 섞이는 게 낫다는
+    // 판단(2026-08-14).
+    private static final int MIN_VISIBLE_PAIRS = 5;
+    private static final OffsetDateTime NO_WINDOW = OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, java.time.ZoneOffset.UTC);
+
     private final TopicPairRepository topicPairRepository;
     private final VoteRepository voteRepository;
     private final CommentRepository commentRepository;
@@ -77,6 +84,10 @@ public class PairService {
         OffsetDateTime since = OffsetDateTime.now().minusDays(settings.getDisplayWindowDays());
         Page<TopicPair> pairs = topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                 ACTIVE_STATUS, since, pageable);
+        if (pairs.getTotalElements() < MIN_VISIBLE_PAIRS) {
+            pairs = topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
+                    ACTIVE_STATUS, NO_WINDOW, pageable);
+        }
 
         // D10: 선거 모드 중엔 공직선거법상 여론조사 결과 공표 리스크를 피하기
         // 위해 API 응답 자체에서 득표 집계를 감춘다(프론트 렌더링만 가리는 걸로는
@@ -123,6 +134,9 @@ public class PairService {
                 crawlSettingsRepository.findDisplayWindowAndElectionMode();
         OffsetDateTime since = OffsetDateTime.now().minusDays(settings.getDisplayWindowDays());
         List<TopicPair> top = topicPairRepository.findTopEngagementSince(since, PageRequest.of(0, 1));
+        if (top.isEmpty()) {
+            top = topicPairRepository.findTopEngagementSince(NO_WINDOW, PageRequest.of(0, 1));
+        }
         if (top.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "no featured pair");
         }

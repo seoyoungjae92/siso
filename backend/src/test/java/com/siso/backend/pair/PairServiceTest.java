@@ -130,15 +130,49 @@ class PairServiceTest {
         stubDisplayWindowAndElectionMode(7, false);
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
+        // 최소 노출 개수(5) fallback이 안 걸리도록 총 개수는 5로 둔 채
+        // 이 페이지 콘텐츠만 비워둔다(예: 마지막 페이지 조회 시나리오).
         when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                         eq("active"), any(OffsetDateTime.class), eq(pageable)))
-                .thenReturn(new PageImpl<>(List.of()));
+                .thenReturn(new PageImpl<>(List.of(), pageable, 5));
 
         Page<TopicPairDto> result = pairService.getPairs(pageable);
 
         verify(topicPairRepository)
                 .findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(eq("active"), any(OffsetDateTime.class), eq(pageable));
         assertThat(result.getContent()).isEmpty();
+    }
+
+    @Test
+    void getPairs_fewerThanMinimumWithinDisplayWindow_fallsBackToAllActivePairs() {
+        stubDisplayWindowAndElectionMode(7, false);
+        PairService pairService = newService();
+        Pageable pageable = PageRequest.of(0, 20);
+
+        TopicPair recent = new TopicPair();
+        ReflectionTestUtils.setField(recent, "id", 1L);
+        ReflectionTestUtils.setField(recent, "title", "최근 주제");
+        ReflectionTestUtils.setField(recent, "createdAt", OffsetDateTime.now());
+
+        TopicPair older = new TopicPair();
+        ReflectionTestUtils.setField(older, "id", 2L);
+        ReflectionTestUtils.setField(older, "title", "오래된 주제");
+        ReflectionTestUtils.setField(older, "createdAt", OffsetDateTime.parse("2026-01-01T00:00:00Z"));
+
+        ArgumentCaptor<OffsetDateTime> sinceCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
+                        eq("active"), sinceCaptor.capture(), eq(pageable)))
+                // 창 안(최근)에서는 1건뿐 → fallback, 창 무시하면 2건
+                .thenReturn(new PageImpl<>(List.of(recent), pageable, 1))
+                .thenReturn(new PageImpl<>(List.of(recent, older), pageable, 2));
+        when(voteRepository.countByPairIdsGroupByStance(List.of(1L, 2L))).thenReturn(List.of());
+
+        Page<TopicPairDto> result = pairService.getPairs(pageable);
+
+        assertThat(result.getContent()).extracting(TopicPairDto::id).containsExactly(1L, 2L);
+        List<OffsetDateTime> sinceValues = sinceCaptor.getAllValues();
+        assertThat(sinceValues).hasSize(2);
+        assertThat(sinceValues.get(0)).isAfter(sinceValues.get(1)); // 두 번째 호출은 훨씬 더 과거로 창을 넓힘
     }
 
     @Test
@@ -383,6 +417,20 @@ class PairServiceTest {
 
         assertThatThrownBy(() -> newService().getFeaturedPair())
                 .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void getFeaturedPair_noneWithinDisplayWindowButOlderExists_fallsBackInsteadOfNotFound() {
+        stubDisplayWindowAndElectionMode(7, false);
+        TopicPair older = mock(TopicPair.class);
+        when(older.getId()).thenReturn(200L);
+        when(topicPairRepository.findTopEngagementSince(any(OffsetDateTime.class), eq(PageRequest.of(0, 1))))
+                .thenReturn(List.of())
+                .thenReturn(List.of(older));
+
+        TopicPairDto dto = newService().getFeaturedPair();
+
+        assertThat(dto.id()).isEqualTo(200L);
     }
 
     @Test
