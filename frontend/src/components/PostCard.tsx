@@ -11,20 +11,9 @@ const BADGE: Record<Side, string> = {
   right: "bg-red-tint text-right-red",
 };
 
-// 카드 색 바 — 좌/우 컬럼이 흰 카드만 쭉 나열돼 있으면 게시판처럼 밋밋해
-// 보여서(2026-08-13 디자인 리뷰), 이미 있는 배지 색과 동일한 진영색을
-// 카드 자체에도 살짝 얹었다. 완전한 대칭성 원칙(CLAUDE.md 1절)에 맞춰
-// 우측 컬럼은 테두리·정렬을 바깥쪽으로 거울 대칭(StanceCard와 동일 패턴).
-const ACCENT_BORDER: Record<Side, string> = {
-  left: "border-l-[3px] border-l-left-blue text-left",
-  right: "border-r-[3px] border-r-right-red text-right",
-};
-
 export function PostCard({ post, side }: { post: PostSummary; side: Side }) {
   return (
-    <article
-      className={`mb-2.5 rounded-[10px] border border-line bg-white p-3 transition-shadow hover:shadow-[0_4px_16px_rgba(27,27,34,.08)] ${ACCENT_BORDER[side]}`}
-    >
+    <article className="mb-2.5 rounded-[10px] border border-line bg-white p-3 transition-shadow hover:shadow-[0_4px_16px_rgba(27,27,34,.08)]">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span
           className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] font-bold ${BADGE[side]}`}
