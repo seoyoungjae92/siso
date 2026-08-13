@@ -2,7 +2,6 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { FeedColumn } from "@/components/FeedColumn";
 import { MobileTabs } from "@/components/MobileTabs";
 import { Playground } from "@/components/Playground";
-import { TaegeukDivider } from "@/components/TaegeukDivider";
 import { fetchElectionMode } from "@/lib/election";
 import { fetchFeaturedPair, fetchPairs } from "@/lib/pairs";
 import { fetchTopPetitions } from "@/lib/petitions";
@@ -21,9 +20,7 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col">
       <AutoRefresh />
-      <div className="relative hidden flex-1 grid-cols-[1fr_1.35fr_1fr] lg:grid">
-        <TaegeukDivider side="left" />
-        <TaegeukDivider side="right" />
+      <div className="hidden flex-1 grid-cols-[1fr_1.35fr_1fr] lg:grid">
         <FeedColumn side="left" posts={leftPosts.posts} hasMore={leftPosts.hasMore} />
         <section className="bg-pg-tint px-[18px] py-5">
           <div className="mb-3.5">
