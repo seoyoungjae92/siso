@@ -22,17 +22,23 @@ export default async function Home() {
       <AutoRefresh />
       <div className="hidden flex-1 grid-cols-[1fr_1.35fr_1fr] lg:grid">
         <FeedColumn side="left" posts={leftPosts.posts} hasMore={leftPosts.hasMore} />
-        <section className="bg-pg-tint px-[18px] py-5">
-          <div className="mb-3.5">
-            <h2 className="text-[15px] font-extrabold tracking-tight text-playground">놀이터</h2>
+        <section className="min-h-full">
+          <div className="border-b border-line bg-gradient-to-b from-pg-tint to-white px-[18px] py-5">
+            <span className="mb-2 inline-block rounded-full bg-playground px-2.5 py-0.5 text-[10.5px] font-extrabold tracking-wide text-white">
+              PLAYGROUND
+            </span>
+            <h2 className="text-[22px] font-extrabold tracking-tight text-playground">놀이터</h2>
+            <p className="mt-0.5 text-xs text-[#767268]">양쪽 시각을 합성한 오늘의 토론 주제</p>
           </div>
-          <Playground
-            pairs={pairs.pairs}
-            hasMore={pairs.hasMore}
-            featured={featured}
-            petitions={petitions}
-            hideVotes={electionMode}
-          />
+          <div className="px-[18px] py-5">
+            <Playground
+              pairs={pairs.pairs}
+              hasMore={pairs.hasMore}
+              featured={featured}
+              petitions={petitions}
+              hideVotes={electionMode}
+            />
+          </div>
         </section>
         <FeedColumn side="right" posts={rightPosts.posts} hasMore={rightPosts.hasMore} />
       </div>

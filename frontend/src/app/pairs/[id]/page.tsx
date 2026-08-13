@@ -69,9 +69,15 @@ export default async function PairDetailPage({
           🤖 AI가 좌·우 커뮤니티 원문을 분석해 합성한 주제입니다. 원문의 비속어·저품질 표현은
           순화되며, 원문에 없는 사실은 추가하지 않습니다.
         </p>
-        <div className="mb-4 grid grid-cols-2 gap-3">
+        <div className="relative mb-4 grid grid-cols-2 gap-3">
           <StanceCard side="left" text={pair.leftStance} />
           <StanceCard side="right" text={pair.rightStance} />
+          <span
+            aria-hidden="true"
+            className="absolute left-1/2 top-1/2 z-10 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-playground text-[11px] font-black tracking-wide text-white shadow-[0_6px_16px_rgba(110,61,116,.35),0_0_0_4px_var(--paper)]"
+          >
+            VS
+          </span>
         </div>
         {electionMode ? (
           <p className="mb-4 rounded-[10px] border border-line bg-[#F5F4F0] px-3 py-2.5 text-[12px] text-[#6B6960]">

@@ -105,15 +105,15 @@ export function Playground({
           선거 기간 중에는 투표 기능이 일시 중단됩니다.
         </p>
       )}
-      <div className="mb-2.5 flex items-center justify-end gap-3 text-[11px] text-[#767268]">
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-left-blue" />좌
+      <div className="mb-3.5 flex items-center gap-4 rounded-lg bg-paper px-3 py-2 text-[11px] font-semibold text-ink">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-left-blue" />좌 시각
         </span>
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-playground" />중립
         </span>
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-right-red" />우
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-right-red" />우 시각
         </span>
       </div>
       <div className={newIds.has(today.id) ? "animate-new-item" : ""}>
