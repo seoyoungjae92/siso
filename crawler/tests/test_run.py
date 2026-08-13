@@ -477,6 +477,39 @@ def test_run_ingest_cycle_ingests_without_touching_postprocess(sample_feed_bytes
     assert len(post_repo.inserted) == 2
 
 
+def test_run_ingest_cycle_continues_after_one_source_ingest_crash(sample_feed_bytes):
+    # fetch는 성공했는데 이후 처리(파싱/저장)에서 예외가 나는 소스가
+    # 있어도 이후 소스들은 계속 처리돼야 한다 — 예전엔 ingest_source
+    # 호출이 try/except 밖에 있어서, 글 하나 처리 중 예외가 나면 그
+    # 사이클에서 이후 소스 전부가 스킵됐다(2026-08-14 발견).
+    post_repo = FakePostRepository()
+    source_repo = FakeSourceRepository()
+    # crawl_type=html인데 등록된 HTML 파서가 없는 호스트라 parse_entries가
+    # ValueError를 던짐(ingest_source 내부, fetch 이후 단계).
+    broken = Source(
+        id=1,
+        name="broken-source",
+        side="left",
+        base_url="https://unregistered-host.test",
+        feed_url="https://unregistered-host.test/list",
+        crawl_type="html",
+        enabled=True,
+    )
+    healthy = source(2)
+
+    run_ingest_cycle(
+        sources=[broken, healthy],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        source_repo=source_repo,
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=lambda url: sample_feed_bytes,
+    )
+
+    assert len(post_repo.inserted) == 2  # healthy 소스의 글들만 저장됨
+    assert source_repo.failure_counts.get(1, 0) == 0  # fetch는 성공했으니 실패 카운트 안 늘어남
+
+
 def test_run_postprocess_cycle_runs_matching_without_ingest():
     # postprocess 단계가 sources/post_repo 없이도 독립적으로 동작해야
     # ingest와 분리된 별도 스케줄로 돌릴 수 있다.
