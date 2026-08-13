@@ -7,9 +7,24 @@ import { AdSlot } from "@/components/AdSlot";
 import { PostCard } from "@/components/PostCard";
 import type { PostSummary, Side } from "@/lib/posts";
 
-const COLUMN: Record<Side, { bg: string; heading: string; title: string }> = {
-  left: { bg: "bg-blue-tint", heading: "text-left-blue", title: "좌 성향 커뮤니티" },
-  right: { bg: "bg-red-tint", heading: "text-right-red", title: "우 성향 커뮤니티" },
+const COLUMN: Record<
+  Side,
+  { head: string; heading: string; tag: string; tagLabel: string; title: string }
+> = {
+  left: {
+    head: "bg-gradient-to-b from-blue-tint to-white",
+    heading: "text-left-blue",
+    tag: "bg-left-blue",
+    tagLabel: "LEFT",
+    title: "좌 성향 커뮤니티",
+  },
+  right: {
+    head: "bg-gradient-to-b from-red-tint to-white",
+    heading: "text-right-red",
+    tag: "bg-right-red",
+    tagLabel: "RIGHT",
+    title: "우 성향 커뮤니티",
+  },
 };
 
 const AD_EVERY = 5;
@@ -23,7 +38,7 @@ export function FeedColumn({
   posts: PostSummary[];
   hasMore: boolean;
 }) {
-  const { bg, heading, title } = COLUMN[side];
+  const { head, heading, tag, tagLabel, title } = COLUMN[side];
   const [posts, setPosts] = useState(initialPosts);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [newIds, setNewIds] = useState<Set<number>>(new Set());
@@ -83,35 +98,42 @@ export function FeedColumn({
   return (
     // min-h-full: 모바일 탭에서 이 section의 부모(overflow-y-auto 스크롤
     // 컨테이너)는 실측 뷰포트 높이를 갖는데, 게시글이 적으면 section이
-    // 내용만큼만 높이를 차지해 그 아래로 틴트 배경 없이 흰 여백이 보임 —
-    // 최소 부모 높이만큼은 채우도록 보정(데스크톱 grid에서는 이미 grid
-    // stretch로 채워지고 있어 영향 없음).
-    <section className={`min-h-full px-[18px] py-5 ${bg}`}>
-      <div className="mb-3.5 flex items-baseline gap-2">
-        <h2 className={`text-[15px] font-extrabold tracking-tight ${heading}`}>{title}</h2>
-        <span className="text-xs text-[#767268]">자동 수집</span>
+    // 내용만큼만 높이를 차지해 그 아래로 배경이 끊겨 보임 — 최소 부모
+    // 높이만큼은 채우도록 보정(데스크톱 grid에서는 이미 grid stretch로
+    // 채워지고 있어 영향 없음).
+    <section className="min-h-full">
+      <div className={`border-b border-line px-[18px] py-5 ${head}`}>
+        <span
+          className={`mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10.5px] font-extrabold tracking-wide text-white ${tag}`}
+        >
+          {tagLabel}
+        </span>
+        <h2 className={`text-[22px] font-extrabold tracking-tight ${heading}`}>{title}</h2>
+        <p className="mt-0.5 text-xs text-[#767268]">자동 수집</p>
       </div>
 
-      {posts.length === 0 && (
-        <p className="text-sm text-[#6B6960]">아직 수집된 글이 없습니다.</p>
-      )}
+      <div className="px-[18px] py-5">
+        {posts.length === 0 && (
+          <p className="text-sm text-[#6B6960]">아직 수집된 글이 없습니다.</p>
+        )}
 
-      {posts.map((post, index) => (
-        <div key={post.id} className={newIds.has(post.id) ? "animate-new-item" : ""}>
-          <PostCard post={post} side={side} />
-          {(index + 1) % AD_EVERY === 0 && <AdSlot position={`feed-${side}`} />}
-        </div>
-      ))}
+        {posts.map((post, index) => (
+          <div key={post.id} className={newIds.has(post.id) ? "animate-new-item" : ""}>
+            <PostCard post={post} side={side} />
+            {(index + 1) % AD_EVERY === 0 && <AdSlot position={`feed-${side}`} />}
+          </div>
+        ))}
 
-      {hasMore && (
-        <div ref={sentinelRef} className="flex h-6 items-center justify-center">
-          {isPending && (
-            <span className="text-xs text-[#767268]" role="status">
-              불러오는 중...
-            </span>
-          )}
-        </div>
-      )}
+        {hasMore && (
+          <div ref={sentinelRef} className="flex h-6 items-center justify-center">
+            {isPending && (
+              <span className="text-xs text-[#767268]" role="status">
+                불러오는 중...
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
