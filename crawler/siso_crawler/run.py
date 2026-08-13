@@ -65,9 +65,17 @@ def run_ingest_cycle(
 
         source_repo.record_success(source.id)
 
-        result = ingest_source(
-            source, raw_bytes, post_repo, summarizer=summarizer, political_classifier=political_classifier
-        )
+        try:
+            result = ingest_source(
+                source, raw_bytes, post_repo, summarizer=summarizer, political_classifier=political_classifier
+            )
+        except Exception as exc:  # noqa: BLE001 - 글 하나(파싱/저장) 문제로 이후 소스가 전부
+            # 못 도는 걸 막는다. fetch는 이미 성공했으니 소스 자체가 막힌 게
+            # 아니라 개별 글 처리 문제라 consecutive_failures는 건드리지
+            # 않는다(그 카운터는 "소스에 아예 접근 못 함" 전용).
+            logger.warning("소스 건너뜀(수집 처리 실패): %s — %s", source.name, exc)
+            continue
+
         logger.info(
             "%s: fetched=%d inserted=%d skipped_duplicate=%d skipped_non_political=%d",
             source.name,
