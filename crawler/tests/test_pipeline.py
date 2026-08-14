@@ -67,6 +67,36 @@ def test_ingest_source_dispatches_to_html_parser_by_crawl_type():
     assert all(p["source_id"] == html_source.id for p in repo.inserted)
 
 
+def test_ingest_source_logs_response_snippet_when_html_parse_yields_nothing(caplog):
+    html_source = Source(
+        id=2,
+        name="오늘의유머",
+        side="left",
+        base_url="https://www.todayhumor.co.kr",
+        feed_url="https://www.todayhumor.co.kr/board/list.php?table=bestofbest",
+        crawl_type="html",
+        enabled=True,
+    )
+    repo = FakePostRepository()
+
+    with caplog.at_level("WARNING"):
+        result = ingest_source(
+            html_source, "<html><body>차단된 접근입니다</body></html>".encode(), repo
+        )
+
+    assert result.fetched == 0
+    assert any("파싱 결과 0건" in record.message and "차단된 접근입니다" in record.message for record in caplog.records)
+
+
+def test_ingest_source_does_not_log_when_entries_found(sample_feed_bytes, caplog):
+    repo = FakePostRepository()
+
+    with caplog.at_level("WARNING"):
+        ingest_source(SOURCE, sample_feed_bytes, repo)
+
+    assert not any("파싱 결과 0건" in record.message for record in caplog.records)
+
+
 def test_ingest_source_passes_title_and_summarizer_through_to_summarize(sample_feed_bytes):
     repo = FakePostRepository()
     summarizer = FakePostSummarizer()
