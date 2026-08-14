@@ -9,6 +9,16 @@ USER_AGENT = "siso-crawler/0.1 (+contact: siso.contact.help@gmail.com)"
 DEFAULT_MIN_INTERVAL_SECONDS = 10.0
 TIMEOUT_SECONDS = 10.0
 
+# User-Agent만 있고 Accept류가 없는 요청은 일반 브라우저와 다르게 보여
+# 일부 사이트의 봇 탐지에 걸릴 수 있다(디시인사이드 4개 소스가 200 OK인데
+# 응답이 0바이트로 오는 현상, 2026-08-14 관찰) — 실제 브라우저가 보내는
+# 최소한의 헤더를 같이 보낸다. IP 기반 차단이면 이걸로도 안 풀릴 수 있음.
+REQUEST_HEADERS = {
+    "User-Agent": USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+}
+
 
 class CrawlNotAllowed(Exception):
     """robots.txt가 대상 URL 접근을 허용하지 않을 때 발생.
@@ -37,7 +47,7 @@ def fetch_robots_parser(url: str) -> tuple[RobotFileParser, float]:
     robots_url = urljoin(url, "/robots.txt")
     try:
         response = httpx.get(
-            robots_url, timeout=TIMEOUT_SECONDS, headers={"User-Agent": USER_AGENT}
+            robots_url, timeout=TIMEOUT_SECONDS, headers=REQUEST_HEADERS
         )
         if response.status_code != 404:
             response.raise_for_status()
@@ -72,7 +82,7 @@ def check_robots_allowed(target_url: str) -> float:
 
 def fetch_feed(url: str, timeout: float = TIMEOUT_SECONDS) -> bytes:
     response = httpx.get(
-        url, timeout=timeout, follow_redirects=True, headers={"User-Agent": USER_AGENT}
+        url, timeout=timeout, follow_redirects=True, headers=REQUEST_HEADERS
     )
     response.raise_for_status()
     return response.content
@@ -90,7 +100,7 @@ def check_dead_link(url: str, timeout: float = TIMEOUT_SECONDS) -> bool:
     호출부에서 True인 경우에만 수행."""
     try:
         response = httpx.head(
-            url, timeout=timeout, follow_redirects=True, headers={"User-Agent": USER_AGENT}
+            url, timeout=timeout, follow_redirects=True, headers=REQUEST_HEADERS
         )
     except httpx.HTTPError:
         return False
@@ -98,7 +108,7 @@ def check_dead_link(url: str, timeout: float = TIMEOUT_SECONDS) -> bool:
     if response.status_code in _HEAD_NOT_SUPPORTED_STATUS_CODES:
         try:
             response = httpx.get(
-                url, timeout=timeout, follow_redirects=True, headers={"User-Agent": USER_AGENT}
+                url, timeout=timeout, follow_redirects=True, headers=REQUEST_HEADERS
             )
         except httpx.HTTPError:
             return False
