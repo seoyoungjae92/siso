@@ -52,7 +52,22 @@ def ingest_source(
     political_classifier: PostPoliticalClassifier | None = None,
 ) -> IngestResult:
     result = IngestResult()
-    for entry in parse_entries(source, raw_bytes):
+    entries = parse_entries(source, raw_bytes)
+
+    if not entries and source.crawl_type == "html":
+        # 200 OK를 받았어도(fetch 자체는 성공 처리돼 consecutive_failures가
+        # 안 늘어남) 파싱 결과가 0건이면 원인 파악용으로 응답 앞부분을
+        # 남긴다 — 봇 차단 안내 페이지 등 목록과 다른 내용을 받았을 때
+        # 진단할 방법이 전혀 없었음(2026-08-14, 디시인사이드 4개 소스
+        # 전부 20시간 넘게 0건 발생 사례로 발견).
+        logger.warning(
+            "%s: 파싱 결과 0건(응답 %d바이트) — 앞부분: %r",
+            source.name,
+            len(raw_bytes),
+            raw_bytes[:300].decode("utf-8", errors="replace"),
+        )
+
+    for entry in entries:
         result.fetched += 1
         if not entry.link:
             continue
