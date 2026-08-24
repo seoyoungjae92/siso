@@ -76,6 +76,7 @@ class FakeMatchingRepository:
         self.link_check_candidates = link_check_candidates or []
         self.pairs_missing_synthesis = pairs_missing_synthesis or []
         self.synthesized_pairs: list[tuple[int, str, str, str]] = []
+        self.rollback_calls = 0
 
     def find_posts_missing_embedding(self, limit: int) -> list[tuple[int, str, str]]:
         return self.pending_embeddings[:limit]
@@ -117,6 +118,9 @@ class FakeMatchingRepository:
 
     def update_pair_synthesis(self, pair_id: int, title: str, left_stance: str, right_stance: str) -> None:
         self.synthesized_pairs.append((pair_id, title, left_stance, right_stance))
+
+    def rollback(self) -> None:
+        self.rollback_calls += 1
 
 
 class FakeTopicSynthesizer:
