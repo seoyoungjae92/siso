@@ -524,3 +524,27 @@ def test_run_postprocess_cycle_runs_matching_without_ingest():
 
     assert 1 in matching_repo.updated_embeddings
     assert matching_repo.created_pairs == [([10], [20], 0.8)]
+
+
+def test_run_postprocess_cycle_rolls_back_after_stage_failure_so_later_stages_still_run(monkeypatch):
+    # Postgres는 트랜잭션 안 쿼리 하나가 에러 나면 명시적 롤백 전까지 이후
+    # 모든 쿼리를 거부한다 — 정리(prune)가 실패했을 때 rollback()을 안
+    # 부르면 그 뒤 데드링크 정리·주제 합성까지 도미노로 실패하던 실제
+    # 버그(2026-08-14) 재현 방지용 회귀 테스트.
+    def raise_error(*args, **kwargs):
+        raise RuntimeError("statement timeout")
+
+    monkeypatch.setattr("siso_crawler.run.prune_stale_candidates", raise_error)
+
+    matching_repo = FakeMatchingRepository(
+        pairs_missing_synthesis=[(1, [("좌 제목", "좌 요약")], [("우 제목", "우 요약")])],
+    )
+    embedder = FakeEmbeddingProvider()
+    synthesizer = FakeTopicSynthesizer(
+        results={("좌 제목", "우 제목"): SynthesizedTopic(title="합성 제목", left_stance="좌 입장", right_stance="우 입장")}
+    )
+
+    run_postprocess_cycle(SETTINGS, matching_repo, embedder, topic_synthesizer=synthesizer)
+
+    assert matching_repo.rollback_calls == 1  # prune 실패 직후 롤백됨
+    assert matching_repo.synthesized_pairs == [(1, "합성 제목", "좌 입장", "우 입장")]  # 이후 합성 단계는 정상 실행

@@ -30,6 +30,8 @@ class MatchingRepository(Protocol):
 
     def update_pair_synthesis(self, pair_id: int, title: str, left_stance: str, right_stance: str) -> None: ...
 
+    def rollback(self) -> None: ...
+
 
 class PsycopgMatchingRepository:
     def __init__(self, conn):
@@ -37,6 +39,14 @@ class PsycopgMatchingRepository:
 
         register_vector(conn)
         self._conn = conn
+
+    def rollback(self) -> None:
+        # postprocess 단계(매칭/정리/데드링크/합성)가 커넥션 하나를 공유하는데,
+        # Postgres는 트랜잭션 안 쿼리 하나가 에러 나면 명시적으로 롤백하기
+        # 전까지 이후 모든 쿼리를 "current transaction is aborted"로 거부한다
+        # — 정리(prune)가 타임아웃 나면 그 뒤 데드링크 정리·주제 합성까지
+        # 도미노로 실패하던 버그(2026-08-14, 17시간 연속 합성 실패로 발견).
+        self._conn.rollback()
 
     def find_posts_missing_embedding(self, limit: int) -> list[tuple[int, str, str]]:
         with self._conn.cursor() as cur:

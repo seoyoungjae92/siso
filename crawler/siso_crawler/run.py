@@ -100,11 +100,21 @@ def run_postprocess_cycle(
     # 단계라 하나가 실패해도 나머지를 막을 이유가 없다 — 예전엔 여기
     # 하나만 죽어도 사이클 전체가 중단돼서, 그날 데드링크 정리처럼
     # 멀쩡히 돌 수 있었던 단계까지 못 도는 문제가 있었음.
+    #
+    # 이 네 단계는 커넥션 하나를 공유해서 도는데, Postgres는 트랜잭션
+    # 안에서 쿼리 하나가 에러 나면 명시적으로 롤백하기 전까지 그 이후
+    # 모든 쿼리를 거부한다("current transaction is aborted") — 그래서
+    # except에서 로그만 남기고 넘어가는 것만으론 부족하고, 반드시
+    # rollback()까지 해줘야 다음 단계가 같은 커넥션으로 정상 동작한다
+    # (2026-08-14, 정리(prune) 타임아웃 이후 데드링크·합성까지 매
+    # 사이클 도미노로 실패하던 버그로 발견 — 몇 주간 주제 합성이 사실상
+    # 멈춰있었음).
     try:
         embedded = embed_pending_posts(matching_repo, embedder)
         logger.info("임베딩 계산: %d건", embedded)
     except Exception as exc:  # noqa: BLE001 - 한 단계 실패로 나머지 단계가 멈추면 안 됨
         logger.warning("임베딩 계산 실패: %s", exc)
+        matching_repo.rollback()
 
     try:
         matched = match_pending_posts(
@@ -116,6 +126,7 @@ def run_postprocess_cycle(
         logger.info("매칭: %d쌍 생성", matched)
     except Exception as exc:  # noqa: BLE001
         logger.warning("매칭 실패: %s", exc)
+        matching_repo.rollback()
 
     try:
         pruned = prune_stale_candidates(
@@ -129,6 +140,7 @@ def run_postprocess_cycle(
         logger.info("정리(prune): %d건 삭제", pruned)
     except Exception as exc:  # noqa: BLE001
         logger.warning("정리(prune) 실패: %s", exc)
+        matching_repo.rollback()
 
     try:
         deleted = scan_dead_links(
@@ -141,6 +153,7 @@ def run_postprocess_cycle(
         logger.info("데드링크 정리: %d건 삭제", deleted)
     except Exception as exc:  # noqa: BLE001
         logger.warning("데드링크 정리 실패: %s", exc)
+        matching_repo.rollback()
 
     if topic_synthesizer is not None:
         try:
@@ -150,6 +163,7 @@ def run_postprocess_cycle(
             logger.info("주제 합성: %d건", synthesized)
         except Exception as exc:  # noqa: BLE001
             logger.warning("주제 합성 실패: %s", exc)
+            matching_repo.rollback()
     else:
         logger.info("주제 합성 건너뜀 (OPENROUTER_API_KEY 미설정)")
 
