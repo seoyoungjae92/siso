@@ -1,5 +1,10 @@
 from typing import Protocol
 
+# count_similar_posts는 "min_cluster_size(기본 3) 넘는지"만 알면 되므로,
+# 가장 가까운 이웃 이 개수만 HNSW 인덱스로 훑으면 충분하다 — 여유를 넉넉히
+# 둬서 어떤 min_cluster_size 값에도 안전하게 정답을 낸다.
+_SIMILAR_POSTS_SCAN_CAP = 50
+
 
 class MatchingRepository(Protocol):
     def find_posts_missing_embedding(self, limit: int) -> list[tuple[int, str, str]]: ...
@@ -134,17 +139,35 @@ class PsycopgMatchingRepository:
     def count_similar_posts(self, post_id: int, threshold: float) -> int:
         """post_id 자신을 제외하고, 좌/우 구분 없이 유사도 임계값 이상인
         다른 글의 개수. 클러스터 크기 판정("자기 포함 N개") 시 호출부에서
-        +1 해서 사용한다."""
+        +1 해서 사용한다.
+
+        기존엔 posts 테이블 전체를 자기조인해 모든 행의 벡터 거리를
+        계산했다(WHERE절 거리 필터는 HNSW 인덱스를 못 씀) — posts가
+        커지면서 이 호출이 정리(prune) 후보 하나당 한 번씩 나가 매
+        사이클 statement timeout으로 이어졌다(2026-08-14/31 이틀에
+        걸쳐 발견). embedding을 먼저 뽑아 파라미터로 바인딩한 뒤
+        `ORDER BY ... LIMIT`으로 물어보면 HNSW 인덱스를 타서 가장 가까운
+        이웃 몇 개만 훑는다 — min_cluster_size 판정엔 그 정도면 충분."""
         with self._conn.cursor() as cur:
+            cur.execute("SELECT embedding FROM posts WHERE id = %s", (post_id,))
+            row = cur.fetchone()
+            if row is None or row[0] is None:
+                return 0
+            embedding = row[0]
+
             cur.execute(
                 """
                 SELECT COUNT(*)
-                FROM posts p1
-                JOIN posts p2 ON p2.id != p1.id AND p2.embedding IS NOT NULL
-                WHERE p1.id = %s
-                  AND (1 - (p1.embedding <=> p2.embedding)) >= %s
+                FROM (
+                    SELECT embedding <=> %s AS distance
+                    FROM posts
+                    WHERE id != %s AND embedding IS NOT NULL
+                    ORDER BY embedding <=> %s
+                    LIMIT %s
+                ) nearest
+                WHERE (1 - distance) >= %s
                 """,
-                (post_id, threshold),
+                (embedding, post_id, embedding, _SIMILAR_POSTS_SCAN_CAP, threshold),
             )
             return cur.fetchone()[0]
 
