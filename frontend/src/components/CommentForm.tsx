@@ -39,6 +39,28 @@ const STANCE_OPTIONS: { value: string; label: string }[] = [
   { value: "right", label: "우" },
 ];
 
+// VoteWidget과 동일한 색 언어(좌=파랑/중립=보라/우=빨강, 평소엔 옅은 톤,
+// 선택 시 꽉 찬 색)를 여기도 재사용 — 브라우저 기본 라디오 버튼이 화면
+// 전체 톤과 안 어울려서 촌스러워 보인다는 피드백으로 교체(2026-09-03).
+const STANCE_STYLE: Record<string, { idle: string; active: string }> = {
+  "": {
+    idle: "border-line text-[#767268]",
+    active: "border-line bg-line text-ink",
+  },
+  left: {
+    idle: "border-left-blue/25 text-left-blue",
+    active: "border-left-blue bg-left-blue text-white",
+  },
+  neutral: {
+    idle: "border-playground/25 text-playground",
+    active: "border-playground bg-playground text-white",
+  },
+  right: {
+    idle: "border-right-red/25 text-right-red",
+    active: "border-right-red bg-right-red text-white",
+  },
+};
+
 export function CommentForm({
   pairId,
   parentId,
@@ -90,18 +112,22 @@ export function CommentForm({
       </p>
       <div className="mt-1.5 flex items-center justify-between">
         {!parentId && (
-          <div className="flex gap-2 text-xs">
+          <div className="flex gap-1.5" role="radiogroup" aria-label="입장 태그 선택">
             {STANCE_OPTIONS.map((option) => (
-              <label key={option.value} className="flex items-center gap-1">
-                <input
-                  type="radio"
-                  name={`stance-${parentId ?? "top"}`}
-                  value={option.value}
-                  checked={stance === option.value}
-                  onChange={() => setStance(option.value)}
-                />
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={stance === option.value}
+                onClick={() => setStance(option.value)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                  stance === option.value
+                    ? STANCE_STYLE[option.value].active
+                    : STANCE_STYLE[option.value].idle
+                }`}
+              >
                 {option.label}
-              </label>
+              </button>
             ))}
           </div>
         )}
