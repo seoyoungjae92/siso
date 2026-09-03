@@ -197,6 +197,13 @@ def parse_ruliweb_board(html: bytes) -> list[RawEntry]:
         if link is None:
             continue
 
+        # 제목 링크 안에 댓글 수 "(2)"가 <span class="num_reply">로 같이
+        # 들어있어서 get_text()로 그대로 뽑으면 "제목(2)"처럼 붙어버림 —
+        # 제목만 남기려면 먼저 떼어내야 함.
+        reply_count_span = link.select_one("span.num_reply")
+        if reply_count_span is not None:
+            reply_count_span.decompose()
+
         time_td = row.select_one("td.time")
         published_at = _parse_ruliweb_time(time_td.get_text(strip=True)) if time_td is not None else None
 
