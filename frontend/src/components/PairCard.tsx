@@ -1,8 +1,32 @@
 import Link from "next/link";
 
 import { BoxingGlovesIcon } from "@/components/BoxingGlovesIcon";
+import { ACCENT } from "@/components/PostCard";
 import { VoteStampIcon } from "@/components/VoteStampIcon";
 import { calculateVotePercentages, type TopicPair } from "@/lib/pairs";
+
+// 상세 페이지(StanceCard)와 같은 거울 대칭 규칙 — 좌는 왼쪽 테두리+좌
+// 정렬, 우는 오른쪽 테두리+우 정렬. 목록에서도 클릭 전에 실제 합성
+// 내용을 보여주기 위한 2줄 미리보기(애드센스 "낮은 가치 콘텐츠" 반려
+// 이후 추가 — 이전엔 제목만 보여 홈이 링크 목록처럼 얇게 보였음).
+function StancePreview({ pair }: { pair: TopicPair }) {
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      <p
+        className={`line-clamp-2 border-l-2 border-l-left-blue pl-2 text-left text-[12px] leading-snug text-[#6B6960]`}
+      >
+        <span className={`mr-1 font-bold ${ACCENT.left}`}>좌</span>
+        {pair.leftStance}
+      </p>
+      <p
+        className={`line-clamp-2 border-r-2 border-r-right-red pr-2 text-right text-[12px] leading-snug text-[#6B6960]`}
+      >
+        {pair.rightStance}
+        <span className={`ml-1 font-bold ${ACCENT.right}`}>우</span>
+      </p>
+    </div>
+  );
+}
 
 function MiniVoteBar({ pair }: { pair: TopicPair }) {
   const { leftPct, neutralPct, rightPct, total } = calculateVotePercentages(pair);
@@ -12,7 +36,7 @@ function MiniVoteBar({ pair }: { pair: TopicPair }) {
   }
 
   return (
-    <div className="flex h-1.5 w-full overflow-hidden rounded-full">
+    <div className="mt-3 flex h-1.5 w-full overflow-hidden rounded-full">
       <span className="block h-full bg-left-blue" style={{ width: `${leftPct}%` }} />
       <span className="block h-full bg-playground" style={{ width: `${neutralPct}%` }} />
       <span className="block h-full bg-right-red" style={{ width: `${rightPct}%` }} />
@@ -84,6 +108,7 @@ export function PairCard({
             </span>
           )}
         </h4>
+        <StancePreview pair={pair} />
         {!hideVotes && <MiniVoteBar pair={pair} />}
         <CardMeta pair={pair} hideVotes={hideVotes} />
       </div>
