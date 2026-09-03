@@ -35,6 +35,53 @@ def test_ingest_source_inserts_all_new_entries(sample_feed_bytes):
     assert all(p["source_id"] == SOURCE.id for p in repo.inserted)
 
 
+def test_ingest_source_uses_fetch_detail_text_for_summary_when_provided(sample_feed_bytes):
+    # 목록 파서는 항상 summary=""를 주므로, 상세 파서가 있는 사이트면
+    # fetch_detail_text로 받아온 본문이 요약에 실제로 쓰여야 한다.
+    calls: list[str] = []
+
+    def fetch_detail_text(url: str) -> str:
+        calls.append(url)
+        return f"본문: {url}"
+
+    repo = FakePostRepository()
+
+    result = ingest_source(SOURCE, sample_feed_bytes, repo, fetch_detail_text=fetch_detail_text)
+
+    assert result.inserted == 2
+    assert calls == [
+        "https://example-community.test/posts/1",
+        "https://example-community.test/posts/2",
+    ]
+    assert repo.inserted[0]["summary"] == "본문: https://example-community.test/posts/1"
+
+
+def test_ingest_source_falls_back_to_entry_summary_when_fetch_detail_text_yields_nothing(
+    sample_feed_bytes,
+):
+    # RSS 소스는 feedparser가 이미 실제 요약을 주는데, fetch_detail_text가
+    # 이 사이트엔 상세 파서가 없어 빈 문자열을 돌려주는 경우(2026-09
+    # 발견 — 무조건 덮어쓰면 RSS 소스의 기존 요약이 사라지는 회귀였음).
+    repo = FakePostRepository()
+
+    result = ingest_source(SOURCE, sample_feed_bytes, repo, fetch_detail_text=lambda url: "")
+
+    assert result.inserted == 2
+    assert repo.inserted[0]["summary"] != ""
+
+
+def test_ingest_source_without_fetch_detail_text_keeps_entry_summary(sample_feed_bytes):
+    # fetch_detail_text 미지정(상세 파서 없는 사이트)이면 지금까지처럼
+    # entry.summary(RSS면 피드에 있는 description, HTML 파서면 항상 빈
+    # 문자열)를 그대로 쓴다 — fetch_detail_text 쪽 값이 섞이면 안 됨.
+    repo = FakePostRepository()
+
+    result = ingest_source(SOURCE, sample_feed_bytes, repo)
+
+    assert result.inserted == 2
+    assert not repo.inserted[0]["summary"].startswith("본문:")
+
+
 def test_ingest_source_skips_existing_duplicates(sample_feed_bytes):
     existing_hash = hash_url("https://example-community.test/posts/1")
     repo = FakePostRepository(existing_hashes={existing_hash})

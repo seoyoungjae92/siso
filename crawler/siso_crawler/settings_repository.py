@@ -18,6 +18,7 @@ class CrawlSettings:
     source_failure_threshold: int = 5
     cohort_similarity_threshold: float = 0.5
     synthesis_min_posts_per_side: int = 1
+    detail_fetch_limit: int = 20
 
 
 class SettingsRepository(Protocol):
@@ -44,7 +45,8 @@ class PsycopgSettingsRepository:
                            min_cluster_size, grace_period_hours, display_window_days,
                            synthesis_limit, synthesis_model, dead_link_scan_limit,
                            prune_scan_limit, source_failure_threshold,
-                           cohort_similarity_threshold, synthesis_min_posts_per_side
+                           cohort_similarity_threshold, synthesis_min_posts_per_side,
+                           detail_fetch_limit
                     FROM crawl_settings WHERE id = 1
                     """
                 )

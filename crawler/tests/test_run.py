@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from siso_crawler.fetch import CrawlNotAllowed
 from siso_crawler.llm_client import SynthesizedTopic
 from siso_crawler.models import Source
@@ -14,6 +16,8 @@ from .fakes import (
     FakeTopicSynthesizer,
     fake_fetch_robots_parser,
 )
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 SETTINGS = CrawlSettings(
     match_similarity_threshold=0.6,
@@ -508,6 +512,83 @@ def test_run_ingest_cycle_continues_after_one_source_ingest_crash(sample_feed_by
 
     assert len(post_repo.inserted) == 2  # healthy 소스의 글들만 저장됨
     assert source_repo.failure_counts.get(1, 0) == 0  # fetch는 성공했으니 실패 카운트 안 늘어남
+
+
+def _dcinside_source(feed_url="https://gall.dcinside.com/mgallery/board/lists/?id=bosu"):
+    return Source(
+        id=1,
+        name="디시인사이드(보정갤)",
+        side="right",
+        base_url="https://gall.dcinside.com",
+        feed_url=feed_url,
+        crawl_type="html",
+        enabled=True,
+    )
+
+
+def test_run_ingest_cycle_fetches_detail_text_for_registered_detail_parser():
+    # 목록 파서는 항상 summary=""를 주므로(제목만 있음), 상세 파서가 있는
+    # 디시인사이드 같은 사이트는 각 글의 상세 페이지를 따로 가져와 그
+    # 본문으로 요약을 채워야 한다.
+    list_html = (FIXTURES_DIR / "dcinside_bosu_list.html").read_bytes()
+    detail_html = '<div class="write_div"><p>실제 본문 내용입니다.</p></div>'.encode()
+
+    def fetch_feed(url):
+        return list_html if "board/lists" in url else detail_html
+
+    post_repo = FakePostRepository()
+
+    run_ingest_cycle(
+        sources=[_dcinside_source()],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        source_repo=FakeSourceRepository(),
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=fetch_feed,
+    )
+
+    assert len(post_repo.inserted) == 3
+    assert all(p["summary"] == "실제 본문 내용입니다." for p in post_repo.inserted)
+
+
+def test_run_ingest_cycle_stops_fetching_detail_text_once_limit_reached():
+    # 새 글이 몰리면 상세 페이지 요청도 같이 몰려 사이트에 부담을 주고
+    # 사이클도 느려지므로, 사이클당 상한(detail_fetch_limit)을 넘으면
+    # 그 이후 글은 지금까지처럼 제목만으로(빈 요약) 처리돼야 한다.
+    list_html = (FIXTURES_DIR / "dcinside_bosu_list.html").read_bytes()
+    detail_html = '<div class="write_div"><p>본문</p></div>'.encode()
+    detail_fetch_count = 0
+
+    def fetch_feed(url):
+        nonlocal detail_fetch_count
+        if "board/lists" in url:
+            return list_html
+        detail_fetch_count += 1
+        return detail_html
+
+    settings = CrawlSettings(
+        match_similarity_threshold=0.6,
+        prune_similarity_threshold=0.5,
+        min_cluster_size=3,
+        grace_period_hours=48,
+        display_window_days=7,
+        detail_fetch_limit=1,
+    )
+    post_repo = FakePostRepository()
+
+    run_ingest_cycle(
+        sources=[_dcinside_source()],
+        settings=settings,
+        post_repo=post_repo,
+        source_repo=FakeSourceRepository(),
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=fetch_feed,
+    )
+
+    assert detail_fetch_count == 1  # fixture엔 글 3개가 있지만 상한 1건에서 멈춤
+    summaries = [p["summary"] for p in post_repo.inserted]
+    assert summaries.count("본문") == 1
+    assert summaries.count("") == 2
 
 
 def test_run_postprocess_cycle_runs_matching_without_ingest():

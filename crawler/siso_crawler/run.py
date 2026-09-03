@@ -12,6 +12,7 @@ from .fetch import check_dead_link as _check_dead_link
 from .fetch import check_robots_allowed as _check_robots_allowed
 from .fetch import fetch_feed as _fetch_feed
 from .fetch import fetch_robots_parser as _fetch_robots_parser
+from .html_parsers import get_detail_parser
 from .linkcheck import scan_dead_links
 from .llm_client import (
     build_post_political_classifier,
@@ -30,6 +31,33 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 
+def _build_detail_fetcher(check_robots_allowed, fetch_feed, limit: int):
+    """상세 페이지 파서가 등록된 사이트(html_parsers.get_detail_parser)의
+    글만, 사이클당 최대 limit건까지 본문을 가져온다 — 목록 페이지 파서는
+    항상 summary=""를 주므로(제목만 있음) 이걸로 실제 내용을 채운다.
+    사이트당 robots.txt 재확인 포함(다른 URL이니 재확인 필요) + 실패 시
+    빈 문자열로 안전하게 폴백(그 글은 지금까지처럼 제목만으로 처리됨).
+    limit을 두는 이유는 새 글이 몰리는 사이클에 상세 페이지 요청까지
+    쏟아지면 사이트에 부담이 크고 사이클 자체도 너무 느려지기 때문."""
+    remaining = limit
+
+    def fetch_detail_text(url: str) -> str:
+        nonlocal remaining
+        parser = get_detail_parser(url)
+        if parser is None or remaining <= 0:
+            return ""
+        remaining -= 1
+        try:
+            check_robots_allowed(url)
+            raw = fetch_feed(url)
+            return parser(raw)
+        except Exception as exc:  # noqa: BLE001 - 상세 페이지 하나 실패로 글 저장 자체가 막히면 안 됨
+            logger.warning("상세 페이지 가져오기 실패(제목만으로 처리): %s — %s", url, exc)
+            return ""
+
+    return fetch_detail_text
+
+
 def run_ingest_cycle(
     sources: list[Source],
     settings: CrawlSettings,
@@ -46,6 +74,8 @@ def run_ingest_cycle(
     한 번도 못 도는 문제가 실제로 발생함(2026-08-01, 우측 소스 전부
     미도달). `sources`를 호출부에서 미리 side로 걸러서 넘기면(main()의
     CRAWL_SIDE) 좌/우를 별도 프로세스/스케줄로 분리해 돌릴 수 있다."""
+    fetch_detail_text = _build_detail_fetcher(check_robots_allowed, fetch_feed, settings.detail_fetch_limit)
+
     for source in sources:
         if not source.feed_url:
             logger.info("소스 건너뜀(feed_url 없음): %s", source.name)
@@ -67,7 +97,12 @@ def run_ingest_cycle(
 
         try:
             result = ingest_source(
-                source, raw_bytes, post_repo, summarizer=summarizer, political_classifier=political_classifier
+                source,
+                raw_bytes,
+                post_repo,
+                summarizer=summarizer,
+                political_classifier=political_classifier,
+                fetch_detail_text=fetch_detail_text,
             )
         except Exception as exc:  # noqa: BLE001 - 글 하나(파싱/저장) 문제로 이후 소스가 전부
             # 못 도는 걸 막는다. fetch는 이미 성공했으니 소스 자체가 막힌 게

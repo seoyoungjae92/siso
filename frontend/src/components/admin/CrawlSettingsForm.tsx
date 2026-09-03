@@ -77,6 +77,12 @@ const NUMBER_FIELDS: {
     step: "1",
     hint: "1=지금과 동일(변경 없음). 올리면 그 순간부터 좌·우 각각 이 개수 이상 모여야 새 주제가 뜸",
   },
+  {
+    key: "detailFetchLimit",
+    label: "상세 페이지 본문 수집 사이클당 처리 개수",
+    step: "1",
+    hint: "상세 페이지 파서가 있는 사이트(디시인사이드 등)에서, 새 글마다 본문을 추가로 가져올 때 사이클당 상한 — 너무 높으면 사이클이 느려지고 사이트에 요청이 몰림",
+  },
 ];
 
 export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
@@ -93,6 +99,7 @@ export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
     sourceFailureThreshold: initial.sourceFailureThreshold,
     cohortSimilarityThreshold: initial.cohortSimilarityThreshold,
     synthesisMinPostsPerSide: initial.synthesisMinPostsPerSide,
+    detailFetchLimit: initial.detailFetchLimit,
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from .dedupe import hash_url
@@ -50,6 +51,7 @@ def ingest_source(
     repo: PostRepository,
     summarizer: PostSummarizer | None = None,
     political_classifier: PostPoliticalClassifier | None = None,
+    fetch_detail_text: Callable[[str], str] | None = None,
 ) -> IngestResult:
     result = IngestResult()
     entries = parse_entries(source, raw_bytes)
@@ -77,7 +79,13 @@ def ingest_source(
             result.skipped_duplicate += 1
             continue
 
-        summarized = summarize(entry.summary, title=entry.title, summarizer=summarizer)
+        # 목록 페이지 파서는 항상 summary=""를 준다(제목만 있음) — 상세
+        # 페이지 파서가 등록된 사이트면 여기서 본문을 따로 가져와 그걸로
+        # 요약을 만든다. 실패해도(사이트 미지원/네트워크 에러/레이트리밋
+        # 상한) 빈 문자열이 오므로, 그럴 땐 entry.summary로 폴백한다(RSS
+        # 소스는 feedparser가 이미 실제 요약을 주므로 그걸 덮어쓰면 안 됨).
+        raw_body = (fetch_detail_text(entry.link) if fetch_detail_text is not None else "") or entry.summary
+        summarized = summarize(raw_body, title=entry.title, summarizer=summarizer)
 
         # LLM 순화는 API 장애·레이트리밋이면 조용히 원문으로 폴백하므로,
         # 그 경우에도 항상 도는 로컬 사전 필터를 최후 방어선으로 둔다

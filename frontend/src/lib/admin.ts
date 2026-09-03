@@ -122,6 +122,7 @@ export type CrawlSettings = {
   sourceFailureThreshold: number;
   cohortSimilarityThreshold: number;
   synthesisMinPostsPerSide: number;
+  detailFetchLimit: number;
   updatedAt: string;
 };
 

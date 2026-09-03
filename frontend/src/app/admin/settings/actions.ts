@@ -30,6 +30,7 @@ export type CrawlSettingsInput = {
   sourceFailureThreshold: number;
   cohortSimilarityThreshold: number;
   synthesisMinPostsPerSide: number;
+  detailFetchLimit: number;
 };
 
 export async function postUpdateCrawlSettings(input: CrawlSettingsInput) {

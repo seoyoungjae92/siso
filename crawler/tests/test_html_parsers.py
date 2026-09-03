@@ -2,9 +2,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from siso_crawler.html_parsers import (
+    get_detail_parser,
     get_html_parser,
     parse_82cook_board,
     parse_clien_board,
+    parse_dcinside_detail,
     parse_dcinside_gallery,
     parse_ruliweb_board,
     parse_theqoo_board,
@@ -122,4 +124,22 @@ def test_get_html_parser_dispatches_by_host():
     assert get_html_parser("https://www.82cook.com/entiz/enti.php?bn=15") is parse_82cook_board
     assert get_html_parser("https://bbs.ruliweb.com/community/board/300148") is parse_ruliweb_board
     assert get_html_parser("https://theqoo.net/square/category/3836759081") is parse_theqoo_board
+
+
+def test_parse_dcinside_detail_extracts_body_text_without_scripts():
+    html = (FIXTURES_DIR / "dcinside_detail.html").read_bytes()
+
+    text = parse_dcinside_detail(html)
+
+    assert "보유세 강화로 조세정의를 실현해야 한다는 목소리가 커지고 있다." in text
+    assert "다주택자에 대한 세금 강화가 필요하다는 게 중론이다." in text
+    assert "console.log" not in text
+    assert "color: red" not in text
+
+
+def test_get_detail_parser_dispatches_by_host():
+    assert get_detail_parser("https://gall.dcinside.com/mgallery/board/view/?id=bosu&no=1") is (
+        parse_dcinside_detail
+    )
+    assert get_detail_parser("https://www.clien.net/service/board/park/1") is None
     assert get_html_parser("https://unknown-site.test/list") is None
