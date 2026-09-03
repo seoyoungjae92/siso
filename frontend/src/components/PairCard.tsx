@@ -1,28 +1,24 @@
 import Link from "next/link";
 
 import { BoxingGlovesIcon } from "@/components/BoxingGlovesIcon";
-import { ACCENT } from "@/components/PostCard";
 import { VoteStampIcon } from "@/components/VoteStampIcon";
 import { calculateVotePercentages, type TopicPair } from "@/lib/pairs";
 
 // 상세 페이지(StanceCard)와 같은 거울 대칭 규칙 — 좌는 왼쪽 테두리+좌
 // 정렬, 우는 오른쪽 테두리+우 정렬. 목록에서도 클릭 전에 실제 합성
 // 내용을 보여주기 위한 2줄 미리보기(애드센스 "낮은 가치 콘텐츠" 반려
-// 이후 추가 — 이전엔 제목만 보여 홈이 링크 목록처럼 얇게 보였음).
+// 이후 추가 — 이전엔 제목만 보여 홈이 링크 목록처럼 얇게 보였음). "좌"/"우"
+// 글자 라벨은 안 씀 — line-clamp-2로 잘리는 문단 끝에 라벨을 붙이면 긴
+// 글에서 잘려 안 보임(우측에서 실제 발견된 버그), 테두리/정렬 색만으로도
+// 구분되니 라벨 없이 감.
 function StancePreview({ pair }: { pair: TopicPair }) {
   return (
     <div className="mt-3 grid grid-cols-2 gap-2">
-      <p
-        className={`line-clamp-2 border-l-2 border-l-left-blue pl-2 text-left text-[12px] leading-snug text-[#6B6960]`}
-      >
-        <span className={`mr-1 font-bold ${ACCENT.left}`}>좌</span>
+      <p className="line-clamp-2 border-l-2 border-l-left-blue pl-2 text-left text-[12px] leading-snug text-[#6B6960]">
         {pair.leftStance}
       </p>
-      <p
-        className={`line-clamp-2 border-r-2 border-r-right-red pr-2 text-right text-[12px] leading-snug text-[#6B6960]`}
-      >
+      <p className="line-clamp-2 border-r-2 border-r-right-red pr-2 text-right text-[12px] leading-snug text-[#6B6960]">
         {pair.rightStance}
-        <span className={`ml-1 font-bold ${ACCENT.right}`}>우</span>
       </p>
     </div>
   );
