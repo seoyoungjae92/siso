@@ -1,4 +1,5 @@
 from siso_crawler.matching import (
+    delete_stale_posts,
     embed_pending_posts,
     match_pending_posts,
     prune_stale_candidates,
@@ -153,6 +154,35 @@ def test_prune_stale_candidates_respects_limit():
     )
 
     deleted = prune_stale_candidates(repo, grace_period_hours=48, min_cluster_size=3, limit=2)
+
+    assert deleted == 2
+    assert repo.deleted_posts == [1, 2]
+
+
+def test_delete_stale_posts_deletes_all_candidates():
+    # prune_stale_candidates(벡터 유사도로 "매칭 가능성" 판단)와 달리
+    # 단순 보관 기간 정책이라 벡터 계산 없이 후보를 그대로 지운다.
+    repo = FakeMatchingRepository(stale_post_ids=[1, 2, 3])
+
+    deleted = delete_stale_posts(repo, retention_days=10, limit=100)
+
+    assert deleted == 3
+    assert repo.deleted_posts == [1, 2, 3]
+
+
+def test_delete_stale_posts_skips_post_that_became_undeletable():
+    repo = FakeMatchingRepository(stale_post_ids=[1, 2], undeletable_posts={1})
+
+    deleted = delete_stale_posts(repo, retention_days=10, limit=100)
+
+    assert deleted == 1
+    assert repo.deleted_posts == [2]
+
+
+def test_delete_stale_posts_respects_limit():
+    repo = FakeMatchingRepository(stale_post_ids=[1, 2, 3])
+
+    deleted = delete_stale_posts(repo, retention_days=10, limit=2)
 
     assert deleted == 2
     assert repo.deleted_posts == [1, 2]

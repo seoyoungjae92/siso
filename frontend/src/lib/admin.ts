@@ -123,6 +123,8 @@ export type CrawlSettings = {
   cohortSimilarityThreshold: number;
   synthesisMinPostsPerSide: number;
   detailFetchLimit: number;
+  postRetentionDays: number;
+  stalePostScanLimit: number;
   updatedAt: string;
 };
 

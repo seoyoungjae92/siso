@@ -101,3 +101,17 @@ def prune_stale_candidates(
             deleted += 1
 
     return deleted
+
+
+def delete_stale_posts(repo: MatchingRepository, retention_days: int, limit: int) -> int:
+    """prune_stale_candidates와 별개의 단순 보관 기간 정책 — 매칭
+    가능성(벡터 유사도)과 무관하게, display_window_days가 지나 어차피
+    피드·플레이그라운드 어디에도 안 보이는 글을 그냥 지운다(2026-09,
+    DB 용량 점검 중 사용자 요청으로 추가 — 매칭 안 된 글이 쌓여
+    posts.embedding 인덱스가 DB 용량 대부분을 차지하고 있었음)."""
+    deleted = 0
+    for post_id in repo.find_stale_post_ids(retention_days, limit):
+        if repo.delete_post(post_id):
+            deleted += 1
+
+    return deleted

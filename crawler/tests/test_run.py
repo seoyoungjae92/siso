@@ -661,6 +661,17 @@ def test_run_postprocess_cycle_runs_matching_without_ingest():
     assert matching_repo.created_pairs == [([10], [20], 0.8)]
 
 
+def test_run_postprocess_cycle_deletes_stale_posts_past_retention():
+    # prune_stale_candidates(매칭 가능성 판단)와 별개로, 보관 기간이 지나
+    # 어차피 화면에 안 보이는 글도 매 사이클 지워야 한다.
+    matching_repo = FakeMatchingRepository(stale_post_ids=[7, 8])
+    embedder = FakeEmbeddingProvider()
+
+    run_postprocess_cycle(SETTINGS, matching_repo, embedder)
+
+    assert matching_repo.deleted_posts == [7, 8]
+
+
 def test_run_postprocess_cycle_rolls_back_after_stage_failure_so_later_stages_still_run(monkeypatch):
     # Postgres는 트랜잭션 안 쿼리 하나가 에러 나면 명시적 롤백 전까지 이후
     # 모든 쿼리를 거부한다 — 정리(prune)가 실패했을 때 rollback()을 안

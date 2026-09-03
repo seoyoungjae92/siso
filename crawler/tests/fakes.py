@@ -59,6 +59,7 @@ class FakeMatchingRepository:
         same_side_similar: dict[int, list[tuple[int, float]]] | None = None,
         similar_counts: dict[int, int] | None = None,
         prunable_posts: list[int] | None = None,
+        stale_post_ids: list[int] | None = None,
         undeletable_posts: set[int] | None = None,
         link_check_candidates: list[tuple[int, str]] | None = None,
         pairs_missing_synthesis: list[tuple[int, list[tuple[str, str]], list[tuple[str, str]]]] | None = None,
@@ -71,6 +72,7 @@ class FakeMatchingRepository:
         self.created_pairs: list[tuple[list[int], list[int], float]] = []
         self.similar_counts = similar_counts or {}
         self.prunable_posts = prunable_posts or []
+        self.stale_post_ids = stale_post_ids or []
         self.undeletable_posts = undeletable_posts or set()
         self.deleted_posts: list[int] = []
         self.link_check_candidates = link_check_candidates or []
@@ -101,6 +103,9 @@ class FakeMatchingRepository:
 
     def find_prunable_posts(self, grace_period_hours: int, match_similarity_threshold: float, limit: int) -> list[int]:
         return self.prunable_posts[:limit]
+
+    def find_stale_post_ids(self, retention_days: int, limit: int) -> list[int]:
+        return self.stale_post_ids[:limit]
 
     def delete_post(self, post_id: int) -> bool:
         if post_id in self.undeletable_posts:

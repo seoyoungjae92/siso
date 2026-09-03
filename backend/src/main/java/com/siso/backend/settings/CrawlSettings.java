@@ -53,6 +53,12 @@ public class CrawlSettings {
     @Column(name = "detail_fetch_limit", nullable = false)
     private int detailFetchLimit;
 
+    @Column(name = "post_retention_days", nullable = false)
+    private int postRetentionDays;
+
+    @Column(name = "stale_post_scan_limit", nullable = false)
+    private int stalePostScanLimit;
+
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
@@ -115,6 +121,14 @@ public class CrawlSettings {
         return detailFetchLimit;
     }
 
+    public int getPostRetentionDays() {
+        return postRetentionDays;
+    }
+
+    public int getStalePostScanLimit() {
+        return stalePostScanLimit;
+    }
+
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -133,6 +147,8 @@ public class CrawlSettings {
             float cohortSimilarityThreshold,
             int synthesisMinPostsPerSide,
             int detailFetchLimit,
+            int postRetentionDays,
+            int stalePostScanLimit,
             OffsetDateTime updatedAt) {
         this.matchSimilarityThreshold = matchSimilarityThreshold;
         this.pruneSimilarityThreshold = pruneSimilarityThreshold;
@@ -147,6 +163,8 @@ public class CrawlSettings {
         this.cohortSimilarityThreshold = cohortSimilarityThreshold;
         this.synthesisMinPostsPerSide = synthesisMinPostsPerSide;
         this.detailFetchLimit = detailFetchLimit;
+        this.postRetentionDays = postRetentionDays;
+        this.stalePostScanLimit = stalePostScanLimit;
         this.updatedAt = updatedAt;
     }
 }

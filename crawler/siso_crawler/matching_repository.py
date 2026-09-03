@@ -25,6 +25,8 @@ class MatchingRepository(Protocol):
         self, grace_period_hours: int, match_similarity_threshold: float, limit: int
     ) -> list[int]: ...
 
+    def find_stale_post_ids(self, retention_days: int, limit: int) -> list[int]: ...
+
     def delete_post(self, post_id: int) -> bool: ...
 
     def find_link_check_candidates(self, display_window_days: int, limit: int) -> list[tuple[int, str]]: ...
@@ -189,30 +191,45 @@ class PsycopgMatchingRepository:
         하나씩 만들어서(find_link_check_candidates와 동일한 문제 유형)
         limit으로 사이클당 처리량을 상한. 오래된 것부터 우선 처리하면
         나머지는 유예기간 통과분이 늘어나며 자연 회전한다."""
+        # "지금도 cross-side 매칭 후보가 될 수 있는 글은 제외" 조건이 예전엔
+        # posts 전체를 자기조인해 모든 상대 후보의 벡터 거리를 계산했다
+        # (WHERE절 거리 필터라 HNSW 인덱스를 못 씀) — count_similar_posts와
+        # 같은 유형의 문제로, limit(기본 100)건 후보 하나하나가 반대편
+        # 전체를 스캔해서 이 함수 자체가 매 사이클 statement timeout으로
+        # 이어지고 있었다(2026-09, DB 정리 도중 발견). 유예기간·미매칭
+        # 조건으로 먼저 후보를 limit건까지 좁힌 뒤(CTE), 그 후보들에
+        # 대해서만 LATERAL JOIN으로 "가장 가까운 반대편 글 1건"을 HNSW
+        # 인덱스로 찾는다 — 그 1건조차 임계값 미만이면 임계값 이상인 건
+        # 하나도 없다는 뜻이라 기존 NOT EXISTS와 결과가 동일하다.
         with self._conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT p.id
-                FROM posts p
-                JOIN sources s1 ON s1.id = p.source_id
-                WHERE p.collected_at < now() - (%s || ' hours')::interval
-                  AND p.embedding IS NOT NULL
-                  AND p.topic_pair_id IS NULL
-                  AND NOT EXISTS (
-                      SELECT 1 FROM comments c WHERE c.post_id = p.id
-                  )
-                  AND NOT EXISTS (
-                      SELECT 1
-                      FROM posts p2
-                      JOIN sources s2 ON s2.id = p2.source_id AND s2.side != s1.side
-                      WHERE p2.embedding IS NOT NULL
-                        AND p2.topic_pair_id IS NULL
-                        AND (1 - (p.embedding <=> p2.embedding)) >= %s
-                  )
-                ORDER BY p.collected_at ASC
-                LIMIT %s
+                WITH candidates AS (
+                    SELECT p.id, p.embedding, s1.side
+                    FROM posts p
+                    JOIN sources s1 ON s1.id = p.source_id
+                    WHERE p.collected_at < now() - (%s || ' hours')::interval
+                      AND p.embedding IS NOT NULL
+                      AND p.topic_pair_id IS NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM comments c WHERE c.post_id = p.id
+                      )
+                    ORDER BY p.collected_at ASC
+                    LIMIT %s
+                )
+                SELECT c.id
+                FROM candidates c
+                LEFT JOIN LATERAL (
+                    SELECT p2.embedding <=> c.embedding AS distance
+                    FROM posts p2
+                    JOIN sources s2 ON s2.id = p2.source_id AND s2.side != c.side
+                    WHERE p2.embedding IS NOT NULL AND p2.topic_pair_id IS NULL
+                    ORDER BY p2.embedding <=> c.embedding
+                    LIMIT 1
+                ) nearest ON true
+                WHERE nearest.distance IS NULL OR (1 - nearest.distance) < %s
                 """,
-                (grace_period_hours, match_similarity_threshold, limit),
+                (grace_period_hours, limit, match_similarity_threshold),
             )
             return [row[0] for row in cur.fetchall()]
 
@@ -245,6 +262,31 @@ class PsycopgMatchingRepository:
                 (display_window_days, limit),
             )
             return [(row[0], row[1]) for row in cur.fetchall()]
+
+    def find_stale_post_ids(self, retention_days: int, limit: int) -> list[int]:
+        """단순 보관 기간 정책 — display_window_days가 지나면 피드·
+        플레이그라운드 양쪽에서 이미 API 응답에도 안 잡히는 글이라
+        (PostService.java/PairService.java 둘 다 같은 기준 사용),
+        벡터 유사도 계산 없이 나이+미매칭+무댓글만으로 지운다.
+        find_prunable_posts(코호트를 못 채워 "영영 매칭 안 될 것 같은"
+        글을 벡터 유사도로 미리 판단)와는 별개 정책 — 이쪽은 매칭
+        가능성과 무관하게 그냥 오래돼서 어차피 안 보이는 글을 치운다."""
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT p.id
+                FROM posts p
+                WHERE p.collected_at < now() - (%s || ' days')::interval
+                  AND p.topic_pair_id IS NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM comments c WHERE c.post_id = p.id
+                  )
+                ORDER BY p.collected_at ASC
+                LIMIT %s
+                """,
+                (retention_days, limit),
+            )
+            return [row[0] for row in cur.fetchall()]
 
     def delete_post(self, post_id: int) -> bool:
         """조회~삭제 사이에 댓글/매칭이 새로 생겼을 수 있으므로 DELETE

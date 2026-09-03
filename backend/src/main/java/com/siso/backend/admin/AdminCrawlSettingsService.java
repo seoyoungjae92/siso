@@ -40,6 +40,8 @@ public class AdminCrawlSettingsService {
                 request.cohortSimilarityThreshold(),
                 request.synthesisMinPostsPerSide(),
                 request.detailFetchLimit(),
+                request.postRetentionDays(),
+                request.stalePostScanLimit(),
                 OffsetDateTime.now());
         return toDto(settings);
     }
@@ -63,6 +65,8 @@ public class AdminCrawlSettingsService {
                 settings.getCohortSimilarityThreshold(),
                 settings.getSynthesisMinPostsPerSide(),
                 settings.getDetailFetchLimit(),
+                settings.getPostRetentionDays(),
+                settings.getStalePostScanLimit(),
                 settings.getUpdatedAt());
     }
 }

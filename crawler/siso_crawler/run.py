@@ -18,7 +18,12 @@ from .llm_client import (
     build_post_political_classifier,
     build_topic_synthesizer,
 )
-from .matching import embed_pending_posts, match_pending_posts, prune_stale_candidates
+from .matching import (
+    delete_stale_posts,
+    embed_pending_posts,
+    match_pending_posts,
+    prune_stale_candidates,
+)
 from .matching_repository import PsycopgMatchingRepository
 from .models import Source
 from .pipeline import ingest_source
@@ -179,6 +184,17 @@ def run_postprocess_cycle(
         logger.info("정리(prune): %d건 삭제", pruned)
     except Exception as exc:  # noqa: BLE001
         logger.warning("정리(prune) 실패: %s", exc)
+        matching_repo.rollback()
+
+    try:
+        stale_deleted = delete_stale_posts(
+            matching_repo,
+            retention_days=settings.post_retention_days,
+            limit=settings.stale_post_scan_limit,
+        )
+        logger.info("보관 기간 정리: %d건 삭제", stale_deleted)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("보관 기간 정리 실패: %s", exc)
         matching_repo.rollback()
 
     try:
