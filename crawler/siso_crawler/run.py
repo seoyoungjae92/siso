@@ -74,8 +74,6 @@ def run_ingest_cycle(
     한 번도 못 도는 문제가 실제로 발생함(2026-08-01, 우측 소스 전부
     미도달). `sources`를 호출부에서 미리 side로 걸러서 넘기면(main()의
     CRAWL_SIDE) 좌/우를 별도 프로세스/스케줄로 분리해 돌릴 수 있다."""
-    fetch_detail_text = _build_detail_fetcher(check_robots_allowed, fetch_feed, settings.detail_fetch_limit)
-
     for source in sources:
         if not source.feed_url:
             logger.info("소스 건너뜀(feed_url 없음): %s", source.name)
@@ -94,6 +92,12 @@ def run_ingest_cycle(
             continue
 
         source_repo.record_success(source.id)
+
+        # 소스별로 독립된 예산 — 사이클 전체가 공유하는 예산이면 새 글이
+        # 많은 소스 하나가 먼저 다 써버려서 뒤에 처리되는 다른 소스는
+        # 이번 사이클에 상세 페이지를 아예 못 가져간다(2026-09, 디시인사이드
+        # 갤러리 8개 중 한 곳만 계속 요약이 채워지는 걸로 발견).
+        fetch_detail_text = _build_detail_fetcher(check_robots_allowed, fetch_feed, settings.detail_fetch_limit)
 
         try:
             result = ingest_source(
