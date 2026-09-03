@@ -13,5 +13,7 @@ public record CrawlSettingsRequest(
         int sourceFailureThreshold,
         float cohortSimilarityThreshold,
         int synthesisMinPostsPerSide,
-        int detailFetchLimit) {
+        int detailFetchLimit,
+        int postRetentionDays,
+        int stalePostScanLimit) {
 }

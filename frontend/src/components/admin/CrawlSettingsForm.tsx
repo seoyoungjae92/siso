@@ -83,6 +83,18 @@ const NUMBER_FIELDS: {
     step: "1",
     hint: "상세 페이지 파서가 있는 사이트(디시인사이드 등)에서, 새 글마다 본문을 추가로 가져올 때 사이클당 상한 — 너무 높으면 사이클이 느려지고 사이트에 요청이 몰림",
   },
+  {
+    key: "postRetentionDays",
+    label: "글 보관 기간(일)",
+    step: "1",
+    hint: "노출 기간(displayWindowDays)이 지나면 피드·플레이그라운드 어디에도 안 보이는 글이라, 이 기간이 지나면(주제에 안 묶이고 댓글도 없는 글만) 자동 삭제됨",
+  },
+  {
+    key: "stalePostScanLimit",
+    label: "글 보관 기간 정리 사이클당 처리 개수",
+    step: "1",
+    hint: "보관 기간 지난 글을 한 사이클에 최대 몇 건까지 지울지 상한",
+  },
 ];
 
 export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
@@ -100,6 +112,8 @@ export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
     cohortSimilarityThreshold: initial.cohortSimilarityThreshold,
     synthesisMinPostsPerSide: initial.synthesisMinPostsPerSide,
     detailFetchLimit: initial.detailFetchLimit,
+    postRetentionDays: initial.postRetentionDays,
+    stalePostScanLimit: initial.stalePostScanLimit,
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
