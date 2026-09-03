@@ -514,10 +514,10 @@ def test_run_ingest_cycle_continues_after_one_source_ingest_crash(sample_feed_by
     assert source_repo.failure_counts.get(1, 0) == 0  # fetch는 성공했으니 실패 카운트 안 늘어남
 
 
-def _dcinside_source(feed_url="https://gall.dcinside.com/mgallery/board/lists/?id=bosu"):
+def _dcinside_source(id_=1, name="디시인사이드(보정갤)", feed_url="https://gall.dcinside.com/mgallery/board/lists/?id=bosu"):
     return Source(
-        id=1,
-        name="디시인사이드(보정갤)",
+        id=id_,
+        name=name,
         side="right",
         base_url="https://gall.dcinside.com",
         feed_url=feed_url,
@@ -589,6 +589,60 @@ def test_run_ingest_cycle_stops_fetching_detail_text_once_limit_reached():
     summaries = [p["summary"] for p in post_repo.inserted]
     assert summaries.count("본문") == 1
     assert summaries.count("") == 2
+
+
+def test_run_ingest_cycle_gives_each_source_its_own_detail_fetch_budget():
+    # detail_fetch_limit이 사이클 전체가 공유하는 예산이면, 새 글이 많은
+    # 소스 하나가 먼저 다 써버려서 뒤에 처리되는 다른 소스는 이번
+    # 사이클에 상세 페이지를 아예 못 가져간다(2026-09, 디시인사이드
+    # 갤러리 8개 중 한 곳만 계속 요약이 채워지는 걸로 발견한 실제 버그).
+    # 소스별로 독립된 예산이어야 한다.
+    bosu_list_html = (FIXTURES_DIR / "dcinside_bosu_list.html").read_bytes()
+    # 두 번째 소스는 글 URL이 겹치면 중복 처리로 스킵되니(진짜 다른
+    # 갤러리처럼) id 파라미터를 바꿔 서로 다른 URL로 만든다.
+    ncp_list_html = bosu_list_html.replace(b"id=bosu", b"id=newconservativeparty")
+    detail_html = '<div class="write_div"><p>본문</p></div>'.encode()
+    detail_fetch_count = 0
+
+    def fetch_feed(url):
+        nonlocal detail_fetch_count
+        if "id=bosu" in url and "board/lists" in url:
+            return bosu_list_html
+        if "id=newconservativeparty" in url and "board/lists" in url:
+            return ncp_list_html
+        detail_fetch_count += 1
+        return detail_html
+
+    settings = CrawlSettings(
+        match_similarity_threshold=0.6,
+        prune_similarity_threshold=0.5,
+        min_cluster_size=3,
+        grace_period_hours=48,
+        display_window_days=7,
+        detail_fetch_limit=3,  # fixture 소스당 글 3개 = 소스 하나 몫만큼만 줘도 확인 가능
+    )
+    post_repo = FakePostRepository()
+    first = _dcinside_source(id_=1, name="디시인사이드(보정갤)", feed_url="https://gall.dcinside.com/mgallery/board/lists/?id=bosu")
+    second = _dcinside_source(
+        id_=2,
+        name="디시인사이드(국민의힘 비대위 갤러리)",
+        feed_url="https://gall.dcinside.com/mgallery/board/lists/?id=newconservativeparty",
+    )
+
+    run_ingest_cycle(
+        sources=[first, second],
+        settings=settings,
+        post_repo=post_repo,
+        source_repo=FakeSourceRepository(),
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=fetch_feed,
+    )
+
+    # 소스 둘 다 글 3개씩, 예산도 소스당 3 — 공유 예산이었다면 두 번째
+    # 소스는 0건만 가져갔을 것.
+    assert detail_fetch_count == 6
+    summaries = [p["summary"] for p in post_repo.inserted]
+    assert summaries.count("본문") == 6
 
 
 def test_run_postprocess_cycle_runs_matching_without_ingest():
