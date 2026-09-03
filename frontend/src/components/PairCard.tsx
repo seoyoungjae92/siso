@@ -10,14 +10,16 @@ import { calculateVotePercentages, type TopicPair } from "@/lib/pairs";
 // 이후 추가 — 이전엔 제목만 보여 홈이 링크 목록처럼 얇게 보였음). "좌"/"우"
 // 글자 라벨은 안 씀 — line-clamp-2로 잘리는 문단 끝에 라벨을 붙이면 긴
 // 글에서 잘려 안 보임(우측에서 실제 발견된 버그), 테두리/정렬 색만으로도
-// 구분되니 라벨 없이 감.
+// 구분되니 라벨 없이 감. 우측은 text-right라 line-clamp 말줄임(...)이
+// 항상 컨테이너 오른쪽 끝에 붙어서 나오는데(좌측은 자연스러운 줄바꿈
+// 위치라 안 그럼), pr-2로는 빨간 테두리 바와 겹쳐 보여 pr-3으로 여유를 둠.
 function StancePreview({ pair }: { pair: TopicPair }) {
   return (
     <div className="mt-3 grid grid-cols-2 gap-2">
       <p className="line-clamp-2 border-l-2 border-l-left-blue pl-2 text-left text-[12px] leading-snug text-[#6B6960]">
         {pair.leftStance}
       </p>
-      <p className="line-clamp-2 border-r-2 border-r-right-red pr-2 text-right text-[12px] leading-snug text-[#6B6960]">
+      <p className="line-clamp-2 border-r-2 border-r-right-red pr-3 text-right text-[12px] leading-snug text-[#6B6960]">
         {pair.rightStance}
       </p>
     </div>
