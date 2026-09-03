@@ -5,10 +5,13 @@ from siso_crawler.html_parsers import (
     get_detail_parser,
     get_html_parser,
     parse_82cook_board,
+    parse_82cook_detail,
     parse_clien_board,
+    parse_clien_detail,
     parse_dcinside_detail,
     parse_dcinside_gallery,
     parse_ruliweb_board,
+    parse_ruliweb_detail,
     parse_theqoo_board,
     parse_todayhumor_bestofbest,
 )
@@ -137,9 +140,45 @@ def test_parse_dcinside_detail_extracts_body_text_without_scripts():
     assert "color: red" not in text
 
 
+def test_parse_clien_detail_extracts_body_text_without_scripts():
+    html = (FIXTURES_DIR / "clien_detail.html").read_bytes()
+
+    text = parse_clien_detail(html)
+
+    assert "부동산 정책 관련 새로운 소식이 전해졌다." in text
+    assert "전문가들은 신중한 접근이 필요하다고 지적한다." in text
+    assert "console.log" not in text
+    assert "color: red" not in text
+
+
+def test_parse_82cook_detail_extracts_body_text_without_scripts():
+    html = (FIXTURES_DIR / "82cook_detail.html").read_bytes()
+
+    text = parse_82cook_detail(html)
+
+    assert "중개수수료 관련해서 답답한 경험을 공유합니다." in text
+    assert "제도 개선이 필요하다는 목소리가 많습니다." in text
+    assert "console.log" not in text
+    assert "color: red" not in text
+
+
+def test_parse_ruliweb_detail_extracts_body_text_without_scripts():
+    html = (FIXTURES_DIR / "ruliweb_detail.html").read_bytes()
+
+    text = parse_ruliweb_detail(html)
+
+    assert "정치권 발언을 두고 여론이 갈리고 있다." in text
+    assert "커뮤니티 반응도 엇갈리는 모습이다." in text
+    assert "console.log" not in text
+    assert "color: red" not in text
+
+
 def test_get_detail_parser_dispatches_by_host():
     assert get_detail_parser("https://gall.dcinside.com/mgallery/board/view/?id=bosu&no=1") is (
         parse_dcinside_detail
     )
-    assert get_detail_parser("https://www.clien.net/service/board/park/1") is None
+    assert get_detail_parser("https://www.clien.net/service/board/park/1") is parse_clien_detail
+    assert get_detail_parser("https://www.82cook.com/entiz/read.php?bn=15&num=1") is parse_82cook_detail
+    assert get_detail_parser("https://bbs.ruliweb.com/community/board/300148/read/1") is parse_ruliweb_detail
+    assert get_detail_parser("https://theqoo.net/square/1") is None
     assert get_html_parser("https://unknown-site.test/list") is None
