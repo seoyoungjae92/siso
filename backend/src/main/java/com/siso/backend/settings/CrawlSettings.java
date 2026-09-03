@@ -50,6 +50,9 @@ public class CrawlSettings {
     @Column(name = "synthesis_min_posts_per_side", nullable = false)
     private int synthesisMinPostsPerSide;
 
+    @Column(name = "detail_fetch_limit", nullable = false)
+    private int detailFetchLimit;
+
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
@@ -108,6 +111,10 @@ public class CrawlSettings {
         return synthesisMinPostsPerSide;
     }
 
+    public int getDetailFetchLimit() {
+        return detailFetchLimit;
+    }
+
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -125,6 +132,7 @@ public class CrawlSettings {
             int sourceFailureThreshold,
             float cohortSimilarityThreshold,
             int synthesisMinPostsPerSide,
+            int detailFetchLimit,
             OffsetDateTime updatedAt) {
         this.matchSimilarityThreshold = matchSimilarityThreshold;
         this.pruneSimilarityThreshold = pruneSimilarityThreshold;
@@ -138,6 +146,7 @@ public class CrawlSettings {
         this.sourceFailureThreshold = sourceFailureThreshold;
         this.cohortSimilarityThreshold = cohortSimilarityThreshold;
         this.synthesisMinPostsPerSide = synthesisMinPostsPerSide;
+        this.detailFetchLimit = detailFetchLimit;
         this.updatedAt = updatedAt;
     }
 }

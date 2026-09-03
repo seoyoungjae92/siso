@@ -276,3 +276,28 @@ def get_html_parser(url: str):
     파서를 찾는다. 사이트를 하나 늘릴 때마다 위 파서 함수 하나 + 이
     딕셔너리에 한 줄만 추가하면 됨(범용 셀렉터 설정 프레임워크는 안 씀)."""
     return _PARSERS_BY_HOST.get(urlparse(url).netloc)
+
+
+# 상세 페이지 본문 추출 — 목록 페이지 파서(위)와 별개로, 개별 글의 실제
+# 내용을 가져와 요약(summarize.py)에 실어보내기 위한 것. 목록 파서가
+# 없는 사이트와 마찬가지로, 상세 파서가 없는 사이트는 그냥 지금까지처럼
+# 제목만으로 처리된다(폴백, 코드 안 건드림).
+def _extract_text(soup_node) -> str:
+    for tag in soup_node.select("script, style"):
+        tag.decompose()
+    return soup_node.get_text(" ", strip=True)
+
+
+def parse_dcinside_detail(html: bytes) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    box = soup.select_one("div.write_div")
+    return _extract_text(box) if box is not None else ""
+
+
+_DETAIL_PARSERS_BY_HOST = {
+    "gall.dcinside.com": parse_dcinside_detail,
+}
+
+
+def get_detail_parser(url: str):
+    return _DETAIL_PARSERS_BY_HOST.get(urlparse(url).netloc)

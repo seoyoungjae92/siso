@@ -15,5 +15,6 @@ public record CrawlSettingsDto(
         int sourceFailureThreshold,
         float cohortSimilarityThreshold,
         int synthesisMinPostsPerSide,
+        int detailFetchLimit,
         OffsetDateTime updatedAt) {
 }

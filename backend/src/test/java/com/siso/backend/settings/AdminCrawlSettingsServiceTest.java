@@ -40,6 +40,7 @@ class AdminCrawlSettingsServiceTest {
         ReflectionTestUtils.setField(settings, "sourceFailureThreshold", 5);
         ReflectionTestUtils.setField(settings, "cohortSimilarityThreshold", 0.5f);
         ReflectionTestUtils.setField(settings, "synthesisMinPostsPerSide", 1);
+        ReflectionTestUtils.setField(settings, "detailFetchLimit", 20);
         ReflectionTestUtils.setField(settings, "updatedAt", OffsetDateTime.now());
         return settings;
     }
@@ -62,6 +63,7 @@ class AdminCrawlSettingsServiceTest {
         assertThat(dto.sourceFailureThreshold()).isEqualTo(5);
         assertThat(dto.cohortSimilarityThreshold()).isEqualTo(0.5f);
         assertThat(dto.synthesisMinPostsPerSide()).isEqualTo(1);
+        assertThat(dto.detailFetchLimit()).isEqualTo(20);
     }
 
     @Test
@@ -70,7 +72,7 @@ class AdminCrawlSettingsServiceTest {
         when(crawlSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
 
         CrawlSettingsRequest request =
-                new CrawlSettingsRequest(0.6f, 0.4f, 5, 72, 14, 20, "anthropic/claude-haiku-4.5", 50, 60, 7, 0.7f, 2);
+                new CrawlSettingsRequest(0.6f, 0.4f, 5, 72, 14, 20, "anthropic/claude-haiku-4.5", 50, 60, 7, 0.7f, 2, 30);
         CrawlSettingsDto dto = newService().update(request);
 
         assertThat(dto.matchSimilarityThreshold()).isEqualTo(0.6f);
@@ -85,5 +87,6 @@ class AdminCrawlSettingsServiceTest {
         assertThat(dto.sourceFailureThreshold()).isEqualTo(7);
         assertThat(dto.cohortSimilarityThreshold()).isEqualTo(0.7f);
         assertThat(dto.synthesisMinPostsPerSide()).isEqualTo(2);
+        assertThat(dto.detailFetchLimit()).isEqualTo(30);
     }
 }

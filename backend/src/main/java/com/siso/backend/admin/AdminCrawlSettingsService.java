@@ -39,6 +39,7 @@ public class AdminCrawlSettingsService {
                 request.sourceFailureThreshold(),
                 request.cohortSimilarityThreshold(),
                 request.synthesisMinPostsPerSide(),
+                request.detailFetchLimit(),
                 OffsetDateTime.now());
         return toDto(settings);
     }
@@ -61,6 +62,7 @@ public class AdminCrawlSettingsService {
                 settings.getSourceFailureThreshold(),
                 settings.getCohortSimilarityThreshold(),
                 settings.getSynthesisMinPostsPerSide(),
+                settings.getDetailFetchLimit(),
                 settings.getUpdatedAt());
     }
 }
