@@ -294,8 +294,29 @@ def parse_dcinside_detail(html: bytes) -> str:
     return _extract_text(box) if box is not None else ""
 
 
+def parse_clien_detail(html: bytes) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    box = soup.select_one("div.post_content")
+    return _extract_text(box) if box is not None else ""
+
+
+def parse_82cook_detail(html: bytes) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    box = soup.select_one("#articleBody")
+    return _extract_text(box) if box is not None else ""
+
+
+def parse_ruliweb_detail(html: bytes) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    box = soup.select_one("div.view_content")
+    return _extract_text(box) if box is not None else ""
+
+
 _DETAIL_PARSERS_BY_HOST = {
     "gall.dcinside.com": parse_dcinside_detail,
+    "www.clien.net": parse_clien_detail,
+    "www.82cook.com": parse_82cook_detail,
+    "bbs.ruliweb.com": parse_ruliweb_detail,
 }
 
 
