@@ -98,6 +98,18 @@ def test_parse_ruliweb_board_excludes_notice_and_ad_rows():
     assert first.published_at == f"{today}T17:13:00+09:00"
 
 
+def test_parse_ruliweb_board_strips_reply_count_from_title():
+    # 제목 링크 안에 댓글 수가 <span class="num_reply"> (1)</span>로 같이
+    # 들어있어서 그냥 get_text()하면 "제목(1)"처럼 붙어버리는 실제 버그
+    # (2026-09-03 사용자 발견) — 제목만 남아야 함.
+    html = (FIXTURES_DIR / "ruliweb_board_reply_count.html").read_bytes()
+
+    entries = parse_ruliweb_board(html)
+
+    assert len(entries) == 1
+    assert entries[0].title == "MC딩동 폭행사건"
+
+
 def test_parse_theqoo_board_excludes_notice_rows_and_handles_mixed_date_formats():
     html = (FIXTURES_DIR / "theqoo_politics_list.html").read_bytes()
 
