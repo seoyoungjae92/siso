@@ -190,6 +190,9 @@ class FakeSourceRepository:
         self.failure_counts: dict[int, int] = {}
         self.disabled: list[int] = []
         self.alerts: list[tuple[int, str, int]] = []
+        self.throttle_strikes: dict[int, int] = {}
+        self.throttle_calls: list[int] = []
+        self.clear_throttle_calls: list[int] = []
 
     def find_enabled(self) -> list:
         return [s for s in self.sources if s.enabled]
@@ -204,3 +207,13 @@ class FakeSourceRepository:
     def disable_and_alert(self, source_id: int, source_name: str, consecutive_failures: int) -> None:
         self.disabled.append(source_id)
         self.alerts.append((source_id, source_name, consecutive_failures))
+
+    def record_throttle(self, source_id: int) -> float:
+        self.throttle_calls.append(source_id)
+        strikes = self.throttle_strikes.get(source_id, 0) + 1
+        self.throttle_strikes[source_id] = strikes
+        return float(30 * 60 * (2 ** (strikes - 1)))
+
+    def clear_throttle(self, source_id: int) -> None:
+        self.clear_throttle_calls.append(source_id)
+        self.throttle_strikes[source_id] = 0

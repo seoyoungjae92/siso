@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass(frozen=True)
@@ -10,3 +11,4 @@ class Source:
     feed_url: str | None
     crawl_type: str
     enabled: bool
+    throttled_until: datetime | None = None
