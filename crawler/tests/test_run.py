@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from siso_crawler.fetch import CrawlNotAllowed
@@ -512,6 +513,86 @@ def test_run_ingest_cycle_continues_after_one_source_ingest_crash(sample_feed_by
 
     assert len(post_repo.inserted) == 2  # healthy 소스의 글들만 저장됨
     assert source_repo.failure_counts.get(1, 0) == 0  # fetch는 성공했으니 실패 카운트 안 늘어남
+
+
+def test_run_ingest_cycle_treats_200_ok_empty_response_as_throttle_and_backs_off():
+    # 디시인사이드에서 실제로 24시간 넘게 관측된 패턴(2026-09-04): 200
+    # OK인데 응답이 0바이트 — 그냥 "파싱 0건"으로 넘기면 사이클마다 같은
+    # 간격으로 계속 두드리게 되어 스로틀이 풀릴 기회가 없다. 감지 즉시
+    # record_throttle을 걸고 그 사이클은 건너뛰어야 한다.
+    post_repo = FakePostRepository()
+    source_repo = FakeSourceRepository()
+
+    run_ingest_cycle(
+        sources=[source(1)],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        source_repo=source_repo,
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=lambda url: b"",
+    )
+
+    assert post_repo.inserted == []
+    assert source_repo.throttle_calls == [1]
+    assert source_repo.clear_throttle_calls == []
+    # fetch 자체(HTTP 200)는 성공했으니 네트워크 실패 카운트는 안 늘어남
+    assert source_repo.failure_counts.get(1, 0) == 0
+
+
+def test_run_ingest_cycle_skips_source_still_in_throttle_cooldown(sample_feed_bytes):
+    source_repo = FakeSourceRepository()
+    post_repo = FakePostRepository()
+    cooling_down = Source(
+        id=1,
+        name="throttled-source",
+        side="left",
+        base_url="https://example-community.test",
+        feed_url="https://example-community.test/rss",
+        crawl_type="rss",
+        enabled=True,
+        throttled_until=datetime.now(timezone.utc) + timedelta(minutes=30),
+    )
+
+    def fail_if_called(url):
+        raise AssertionError("쿨다운 중인 소스는 fetch 자체를 시도하면 안 됨")
+
+    run_ingest_cycle(
+        sources=[cooling_down],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        source_repo=source_repo,
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=fail_if_called,
+    )
+
+    assert post_repo.inserted == []
+
+
+def test_run_ingest_cycle_fetches_source_once_throttle_cooldown_has_passed(sample_feed_bytes):
+    source_repo = FakeSourceRepository()
+    post_repo = FakePostRepository()
+    cooldown_passed = Source(
+        id=1,
+        name="recovered-source",
+        side="left",
+        base_url="https://example-community.test",
+        feed_url="https://example-community.test/rss",
+        crawl_type="rss",
+        enabled=True,
+        throttled_until=datetime.now(timezone.utc) - timedelta(minutes=1),
+    )
+
+    run_ingest_cycle(
+        sources=[cooldown_passed],
+        settings=SETTINGS,
+        post_repo=post_repo,
+        source_repo=source_repo,
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=lambda url: sample_feed_bytes,
+    )
+
+    assert len(post_repo.inserted) == 2
+    assert source_repo.clear_throttle_calls == [1]
 
 
 def _dcinside_source(id_=1, name="디시인사이드(보정갤)", feed_url="https://gall.dcinside.com/mgallery/board/lists/?id=bosu"):

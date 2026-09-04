@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from datetime import datetime, timezone
 
 import psycopg
 
@@ -84,6 +85,14 @@ def run_ingest_cycle(
             logger.info("소스 건너뜀(feed_url 없음): %s", source.name)
             continue
 
+        if source.throttled_until is not None and source.throttled_until > datetime.now(timezone.utc):
+            logger.info(
+                "소스 건너뜀(스로틀 쿨다운 중, %s까지): %s",
+                source.throttled_until.isoformat(),
+                source.name,
+            )
+            continue
+
         try:
             min_interval = check_robots_allowed(source.feed_url)
             raw_bytes = fetch_feed(source.feed_url)
@@ -97,6 +106,21 @@ def run_ingest_cycle(
             continue
 
         source_repo.record_success(source.id)
+
+        # 200 OK인데 본문이 0바이트 = 사이트 레이트리밋 스로틀(디시인사이드에서
+        # 반복 관측) — 파싱은 시도해봐야 항상 0건이니, 그 자리에서 바로
+        # 감지해서 지수 백오프를 걸고 이번 사이클은 건너뛴다. 그냥 "정상
+        # fetch, 파싱 0건"으로 넘기면 사이클마다 똑같은 간격으로 계속
+        # 두드리게 되어 스로틀이 풀릴 기회가 없다.
+        if len(raw_bytes) == 0:
+            cooldown_seconds = source_repo.record_throttle(source.id)
+            logger.warning(
+                "%s: 200 OK지만 응답 0바이트(스로틀 추정) — %.0f초 쿨다운",
+                source.name,
+                cooldown_seconds,
+            )
+            continue
+        source_repo.clear_throttle(source.id)
 
         # 소스별로 독립된 예산 — 사이클 전체가 공유하는 예산이면 새 글이
         # 많은 소스 하나가 먼저 다 써버려서 뒤에 처리되는 다른 소스는
