@@ -20,7 +20,13 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col">
       <AutoRefresh />
-      <div className="hidden flex-1 grid-cols-[1fr_1.35fr_1fr] lg:grid">
+      {/* 그리드 트랙 기본 최소 크기(auto)는 자식 콘텐츠의 min-content
+          너비를 따라간다 — 우측 배지(디시인사이드 갤러리명 등)가 좌측보다
+          길면 좁은 화면에서 1fr:1fr이어도 우측 트랙이 더 크게 밀림
+          (완전한 대칭성 원칙 위반, 실측: 1024px에서 좌 302px/우 346px).
+          minmax(0, ...)로 최소 크기를 0으로 눌러야 fr 비율이 항상 그대로
+          지켜진다. */}
+      <div className="hidden flex-1 grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_minmax(0,1fr)] lg:grid">
         <FeedColumn side="left" posts={leftPosts.posts} hasMore={leftPosts.hasMore} />
         <section className="min-h-full">
           <div className="border-b border-line bg-gradient-to-b from-pg-tint to-white px-[18px] py-5">
