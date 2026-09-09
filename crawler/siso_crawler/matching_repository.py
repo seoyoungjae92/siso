@@ -19,6 +19,12 @@ class MatchingRepository(Protocol):
 
     def create_pair(self, left_ids: list[int], right_ids: list[int], similarity: float) -> None: ...
 
+    def find_recent_similar_pair(
+        self, post_id: int, side: str, threshold: float, window_hours: int
+    ) -> tuple[int, float] | None: ...
+
+    def attach_to_existing_pair(self, pair_id: int, left_ids: list[int], right_ids: list[int]) -> None: ...
+
     def count_similar_posts(self, post_id: int, threshold: float) -> int: ...
 
     def find_prunable_posts(
@@ -132,6 +138,54 @@ class PsycopgMatchingRepository:
                 (similarity,),
             )
             pair_id = cur.fetchone()[0]
+            cur.execute(
+                "UPDATE posts SET topic_pair_id = %s WHERE id = ANY(%s)",
+                (pair_id, left_ids + right_ids),
+            )
+        self._conn.commit()
+
+    def find_recent_similar_pair(
+        self, post_id: int, side: str, threshold: float, window_hours: int
+    ) -> tuple[int, float] | None:
+        """post_id와 같은 side이면서, 최근 window_hours 이내 생성된 이미
+        합성 완료된 활성 주제에 묶인 글 중 가장 가까운 것 — 있으면 "이미
+        다루고 있는 같은 이야기"로 보고 새 주제를 또 만들지 않기 위한
+        중복 억제용(같은 이슈가 하루에도 여러 개의 별도 topic_pair로
+        쪼개지던 문제, 2026-08-02/2026-09 사용자 발견). 기존 주제의
+        제목/입장 요약은 절대 건드리지 않는다 — 이미 댓글/투표가 달렸을
+        수 있어 재작성하면 그 흐름이 깨진다(사용자 명시적 요구). 대상
+        후보군이 "최근 활성 주제에 묶인 글"뿐이라 이미 작아서, 인덱스
+        없이 거리 계산해도 count_similar_posts 같은 전체 스캔 문제가
+        생기지 않는다."""
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH candidates AS (
+                    SELECT p2.id, p2.embedding, p2.topic_pair_id
+                    FROM posts p2
+                    JOIN sources s2 ON s2.id = p2.source_id
+                    JOIN topic_pairs tp ON tp.id = p2.topic_pair_id
+                    WHERE s2.side = %s
+                      AND tp.status = 'active'
+                      AND tp.title IS NOT NULL
+                      AND tp.created_at > now() - (%s || ' hours')::interval
+                )
+                SELECT c.topic_pair_id, 1 - (p1.embedding <=> c.embedding) AS similarity
+                FROM posts p1, candidates c
+                WHERE p1.id = %s
+                ORDER BY p1.embedding <=> c.embedding
+                LIMIT 1
+                """,
+                (side, window_hours, post_id),
+            )
+            row = cur.fetchone()
+        if row is None:
+            return None
+        pair_id, similarity = row
+        return (pair_id, similarity) if similarity >= threshold else None
+
+    def attach_to_existing_pair(self, pair_id: int, left_ids: list[int], right_ids: list[int]) -> None:
+        with self._conn.cursor() as cur:
             cur.execute(
                 "UPDATE posts SET topic_pair_id = %s WHERE id = ANY(%s)",
                 (pair_id, left_ids + right_ids),

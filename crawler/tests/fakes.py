@@ -63,6 +63,7 @@ class FakeMatchingRepository:
         undeletable_posts: set[int] | None = None,
         link_check_candidates: list[tuple[int, str]] | None = None,
         pairs_missing_synthesis: list[tuple[int, list[tuple[str, str]], list[tuple[str, str]]]] | None = None,
+        recent_similar_pairs: dict[int, tuple[int, float]] | None = None,
     ):
         self.pending_embeddings = pending_embeddings or []
         self.unmatched_left = unmatched_left or []
@@ -70,6 +71,8 @@ class FakeMatchingRepository:
         self.same_side_similar = same_side_similar or {}
         self.updated_embeddings: dict[int, list[float]] = {}
         self.created_pairs: list[tuple[list[int], list[int], float]] = []
+        self.recent_similar_pairs = recent_similar_pairs or {}
+        self.attached_pairs: list[tuple[int, list[int], list[int]]] = []
         self.similar_counts = similar_counts or {}
         self.prunable_posts = prunable_posts or []
         self.stale_post_ids = stale_post_ids or []
@@ -97,6 +100,17 @@ class FakeMatchingRepository:
 
     def create_pair(self, left_ids: list[int], right_ids: list[int], similarity: float) -> None:
         self.created_pairs.append((left_ids, right_ids, similarity))
+
+    def find_recent_similar_pair(
+        self, post_id: int, side: str, threshold: float, window_hours: int
+    ) -> tuple[int, float] | None:
+        result = self.recent_similar_pairs.get(post_id)
+        if result is None or result[1] < threshold:
+            return None
+        return result
+
+    def attach_to_existing_pair(self, pair_id: int, left_ids: list[int], right_ids: list[int]) -> None:
+        self.attached_pairs.append((pair_id, left_ids, right_ids))
 
     def count_similar_posts(self, post_id: int, threshold: float) -> int:
         return self.similar_counts.get(post_id, 0)
