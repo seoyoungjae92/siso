@@ -26,6 +26,13 @@ MAX_COHORT_SIZE = 5
 # 실제 운영값은 crawl_settings.synthesis_min_posts_per_side에서 읽어온다.
 SYNTHESIS_MIN_POSTS_PER_SIDE_DEFAULT = 1
 
+# 새 코호트가 최근 이 시간 이내 만들어진 활성 주제와 같은 이야기로 보이면
+# (코호트 결속 임계값과 같은 기준 재사용) 새 topic_pair를 또 만들지 않고
+# 그 기존 주제로 조용히 흡수시킨다 — 같은 이슈가 하루에도 여러 개의 별도
+# 주제로 쪼개지던 중복 문제 완화(2026-09 사용자 발견). 너무 길면 며칠 전
+# "끝난" 이슈에 오늘 글이 억지로 흡수될 수 있어 하루 정도로 제한.
+DEDUP_LOOKBACK_HOURS = 24
+
 
 def embed_pending_posts(
     repo: MatchingRepository, embedder: EmbeddingProvider, limit: int = 50
@@ -78,8 +85,13 @@ def match_pending_posts(
         if len(right_ids) < min_posts_per_side:
             continue
 
-        repo.create_pair(left_ids, right_ids, similarity)
-        matched += 1
+        existing = repo.find_recent_similar_pair(post_id, "left", cohort_threshold, DEDUP_LOOKBACK_HOURS)
+        if existing is not None:
+            existing_pair_id, _ = existing
+            repo.attach_to_existing_pair(existing_pair_id, left_ids, right_ids)
+        else:
+            repo.create_pair(left_ids, right_ids, similarity)
+            matched += 1
         consumed.update(left_ids)
         consumed.update(right_ids)
 

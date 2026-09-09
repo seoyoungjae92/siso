@@ -84,6 +84,38 @@ def test_match_pending_posts_excludes_already_consumed_cohort_members():
     assert repo.created_pairs == [([10, 11], [20, 21], 0.8)]
 
 
+def test_match_pending_posts_attaches_to_existing_pair_instead_of_duplicating():
+    # 시드(10)의 좌측 코호트가 최근 활성 주제(pair_id=999)와 이미 같은
+    # 이야기로 판정될 만큼 유사하면, 새 topic_pair를 또 만들지 않고
+    # 기존 주제로 조용히 흡수시켜야 한다(같은 이슈가 하루에도 여러 개의
+    # 별도 주제로 쪼개지던 중복 문제 완화).
+    repo = FakeMatchingRepository(
+        unmatched_left=[10],
+        best_matches={10: (20, 0.8)},
+        recent_similar_pairs={10: (999, 0.75)},
+    )
+
+    matched = match_pending_posts(repo, threshold=0.6, cohort_threshold=0.6)
+
+    assert matched == 0  # 새로 "생성"된 주제는 없음
+    assert repo.created_pairs == []
+    assert repo.attached_pairs == [(999, [10], [20])]
+
+
+def test_match_pending_posts_creates_new_pair_when_no_recent_similar_pair():
+    repo = FakeMatchingRepository(
+        unmatched_left=[10],
+        best_matches={10: (20, 0.8)},
+        recent_similar_pairs={10: (999, 0.3)},  # 있지만 임계값 미만이라 다른 이야기로 봄
+    )
+
+    matched = match_pending_posts(repo, threshold=0.6, cohort_threshold=0.6)
+
+    assert matched == 1
+    assert repo.created_pairs == [([10], [20], 0.8)]
+    assert repo.attached_pairs == []
+
+
 def test_match_pending_posts_skips_below_threshold():
     repo = FakeMatchingRepository(
         unmatched_left=[10],
