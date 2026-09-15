@@ -19,9 +19,13 @@ PRUNE_SIMILARITY_THRESHOLD = 0.5
 # crawl_settings 테이블에서 읽어온다.
 COHORT_SIMILARITY_THRESHOLD = 0.5
 
-# 코호트 하나에 몇 건까지 붙일지 상한 — 무료 LLM 모델 컨텍스트/응답 길이
-# 문제(llm_client.py MAX_TOKENS 참고)로 넉넉하게 잡지 않는다.
-MAX_COHORT_SIZE = 5
+# 코호트 하나에 몇 건까지 붙일지 상한. 원래는 무료 LLM 모델 컨텍스트/응답
+# 길이 문제로 5였으나, 유료 고정 모델 전환 + 입장 요약 분량 축소(120~180자,
+# 2026-09) 이후로는 그 제약이 사라짐 — synthesis_min_posts_per_side를 6
+# 초과로 올리려면 이 상한도 같이 올려야 한다는 걸 알아채기 어려워서
+# 사용자가 직접 발견한 문제(2026-09-15, 7로 올렸는데도 주제가 전부 정확히
+# 6/6이던 것으로 드러남). 주제 생산량을 더 줄이기 위해 8로 상향.
+MAX_COHORT_SIZE = 8
 
 # 실제 운영값은 crawl_settings.synthesis_min_posts_per_side에서 읽어온다.
 SYNTHESIS_MIN_POSTS_PER_SIDE_DEFAULT = 1
