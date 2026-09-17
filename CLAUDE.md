@@ -922,3 +922,10 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
   고질적 문제는 근본 원인(커밋된 blob이 `.gitattributes`의 `eol=crlf`
   정규화를 한 번도 안 받아 raw CRLF로 박제돼 있었음)을 찾아 PR #193으로
   완전히 고침 — 더 이상 이 문제로 rebase가 막히지 않음.
+
+**Dependabot PR 14개 밀림(2026-09-17 기준, `gh pr list --state open`으로
+확인)** — 가장 오래된 건 PR #69(TypeScript 5.9.3→7.0.2, 프론트 빌드
+실패로 머지 보류 중, 7/25부터 방치). 19.4절이 우려했던 "탐지는
+자동화됐지만 리뷰·머지는 여전히 1인 운영자 몫"이 실제로 누적되고
+있는 상태 — 급한 건 없어 보이지만(대부분 patch/minor 버전업), 한 번에
+몰아서 리뷰·머지하는 시간을 잡을 것.
