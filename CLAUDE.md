@@ -840,3 +840,85 @@ admin_alerts (id, type, payload JSONB, resolved, created_at)
 7. 20.4(Resend 도메인 인증), 20.6(Sentry/UptimeRobot) 순으로 진행.
 8. 크롤러 서비스 메모리 1GB→2GB 상향 검토(OOM 추정 종료의 유력 원인,
    3-서비스 분리로 리스크는 줄었으나 여전히 미검토 상태).
+
+### 20.8 다른 PC로 작업 이전 (2026-09-17 기준 인수인계)
+
+> 사용자가 이 PC를 더 못 쓰게 돼서 다른 PC에서 이어가기 위해 작성.
+> 위 20.7절 "다음에 이어서 할 일"(2026-08-04 작성)은 이후 세션에서
+> 대부분 처리됨 — 이 절이 최신 상태. **로컬 메모리(`~/.claude/.../memory/`)는
+> 이 PC에만 있고 새 PC로 안 옮겨지니, 새 PC에서 이어갈 세션은 이 문서
+> (git에 커밋돼 있어 `git clone`하면 그대로 따라옴)를 우선 확인할 것.**
+
+**새 PC 셋업 체크리스트**:
+1. `git clone https://github.com/seoyoungjae92/siso.git` (또는 이미 클론된
+   경로가 있으면 `git pull`로 최신화).
+2. **gh CLI 계정 2개 등록 필요**: `seoyoungjae92`(개인, 레포 소유자 —
+   push/PR/merge용)와 `seoyoungjae-92`(회사/기본, 평상시 유지 상태).
+   `gh auth login --web`으로 개인 계정 추가 로그인 후, siso 작업 시작 전
+   `gh auth switch -u seoyoungjae92` → 작업 끝나면 `gh auth switch -u
+   seoyoungjae-92`로 복귀(매번 왕복, 사용자 재확인 불필요 — 이미 승인된
+   동작).
+3. **Railway CLI** (이번 세션에 새로 뚫은 진단 경로 — 예전엔 로그를 못
+   봤었음): `npx @railway/cli login`으로 브라우저 로그인, 그다음
+   `npx @railway/cli link --project triumphant-dream --environment
+   production --service <서비스명>`으로 링크해야 `railway logs`/`railway
+   status`가 그 서비스 걸 보여줌. 서비스 이름 4개(계정: seoyoungjae92
+   워크스페이스): `crawler-ingest-right`, `crawler-ingest-reft`(좌측
+   담당 — Railway 쪽 오타가 그대로 서비스명, 우리 실수 아님), `crawler-
+   postprocess`, `siso`(백엔드). 로그 확인 예시: `npx @railway/cli logs
+   -n 200 --filter "디시인사이드"`.
+4. **크롤러 로컬 venv**: 새 PC라면 `cd crawler && python3 -m venv .venv
+   && source .venv/bin/activate && pip install -r requirements.txt`.
+5. **시크릿(.env)**: gitignore돼서 레포에 없음. `crawler/.env`
+   (`CRAWLER_DATABASE_URL` 등), `frontend/.env.local`은 각 플랫폼
+   대시보드(Supabase/Railway/Vercel/OpenRouter)에서 값 확인 후 새로
+   만들어야 함.
+6. **DB 직접 접속(psql) 네트워크 이슈**: 회사망/사무실 네트워크에서
+   Supabase(Session Pooler, `aws-1-ap-south-1.pooler.supabase.com:5432`)
+   접속이 자주 타임아웃됨(이 세션에서도 반복 발생) — 안 되면 개인
+   네트워크/핫스팟으로 전환 요청할 것. 서비스 자체(Railway↔Supabase)는
+   이 문제와 무관하게 항상 정상.
+
+**진행 중/미해결 이슈 (다음 세션이 바로 이어받을 것)**:
+- 🔴 **주제 생산량 조정, 관찰 결과 아직 없음** — 2026-09-15에 사용자가
+  "오늘의 링 주제가 너무 많다(7일치 100건대), 주 10개 안팎이 목표"라고
+  해서 세 값을 크게 올림: `match_similarity_threshold` 0.5→**0.6**,
+  `cohort_similarity_threshold` 0.6→**0.75**,
+  `synthesis_min_posts_per_side` 6→**9**(코드 `MAX_COHORT_SIZE`도
+  5→8로 같이 올려야 했음, PR #208 — 안 그러면 6에서 물리적으로
+  못 넘어감). **다음 세션 시작하면 제일 먼저 최근 며칠간 실제 생성량
+  확인**(`SELECT count(*) FROM topic_pairs WHERE status='active' AND
+  title IS NOT NULL AND created_at > now() - interval '7 days'` 또는
+  날짜별 GROUP BY)하고 목표(주10개 안팎)에 가까운지 판단 — 너무
+  급감(하루 0~1개)했으면 완화, 여전히 많으면 더 조일 것. 정확히
+  맞추는 값은 이론적으로 예측 불가하다고 이미 사용자에게 안내함.
+- **디시인사이드 스로틀(200 OK + 빈 응답) 장기화** — PR #200으로 감지+
+  지수 백오프(strikes당 배로, 최대 6시간 쿨다운) 구현했고 정상 동작
+  중이지만, 이번 에피소드(2026-09-15~)가 이전(2026-08-14, 2026-09-03
+  각 ~24시간)보다 길게 안 풀리고 있음(로컬 fetch는 항상 200 OK 정상,
+  Railway IP에서만 막힘 — IP 평판 차단으로 추정, 코드 문제 아님).
+  6시간마다 자동 재시도하니 방치해도 되지만, 며칠째 계속 안 풀리면
+  `sources.throttle_strikes`/`throttled_until` 컬럼으로 상태 확인.
+- **82쿡 자동 비활성화 재발 가능성** — 2026-09-07~09-16 사이 9일간
+  `consecutive_failures=5`로 자동 꺼진 채 아무도 못 알아챈 채 방치됐던
+  적 있음(2026-09-16 발견, 재활성화하니 바로 정상 복구 — 원인은 로그
+  보존 기간이 짧아 못 찾음). `/admin/sources`나 `sources` 테이블의
+  `enabled`/`consecutive_failures`를 가끔 점검하는 습관이 필요 — 자동
+  비활성화는 알림(`admin_alerts`)만 남기고 자동 복구는 안 함.
+- 주제 레벨 중복 억제(PR #202, 2026-09-09 배포: 최근 24시간 내 유사
+  활성 주제 있으면 새로 안 만들고 흡수, 기존 주제 재작성은 안 함)와
+  좌우 입장 요약 길이 축소(PR #203, 2026-09-08: 400~500자 목표→
+  120~180자) 둘 다 배포 완료 + 라이브 검증까지 끝냈고, 위 임계값
+  상향과 함께 "오늘의 링 체감 개선" 효과를 종합적으로 재확인할 것.
+
+**이번 세션에서 새로 배운 진단 패턴 (다음에 막히면 이걸로 시작)**:
+- 소스별 상태는 DB `sources` 테이블에서 바로 확인:
+  `enabled, consecutive_failures, throttle_strikes, throttled_until`
+  + `posts` 조인으로 `MAX(collected_at)` — "크롤 안 된다" 계열 이슈는
+  거의 항상 여기서 시작.
+- Railway CLI(`npx @railway/cli`)로 실제 크롤러 로그를 직접 볼 수 있게
+  됨(위 3번 셋업 참고) — 예전엔 이게 안 돼서 추측에 의존했었음.
+- `backend/gradlew.bat`이 매 checkout/rebase마다 phantom diff를 내던
+  고질적 문제는 근본 원인(커밋된 blob이 `.gitattributes`의 `eol=crlf`
+  정규화를 한 번도 안 받아 raw CRLF로 박제돼 있었음)을 찾아 PR #193으로
+  완전히 고침 — 더 이상 이 문제로 rebase가 막히지 않음.
