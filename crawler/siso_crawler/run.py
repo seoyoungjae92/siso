@@ -113,8 +113,6 @@ def run_ingest_cycle(
             _record_failure_and_maybe_disable(source_repo, source, settings.source_failure_threshold)
             continue
 
-        source_repo.record_success(source.id)
-
         # 200 OK인데 본문이 0바이트 = 사이트 레이트리밋 스로틀(디시인사이드에서
         # 반복 관측) — 파싱은 시도해봐야 항상 0건이니, 그 자리에서 바로
         # 감지해서 지수 백오프를 걸고 이번 사이클은 건너뛴다. 그냥 "정상
@@ -153,6 +151,20 @@ def run_ingest_cycle(
             # 않는다(그 카운터는 "소스에 아예 접근 못 함" 전용).
             logger.warning("소스 건너뜀(수집 처리 실패): %s — %s", source.name, exc)
             continue
+
+        # 목록 페이지를 받았는데 글이 0건 = 봇 차단 안내 페이지 등 목록이 아닌
+        # 응답을 받은 것. 예전엔 fetch 성공만으로 record_success를 해서
+        # consecutive_failures가 0으로 유지된 채 며칠씩 조용히 수집이 멈춰
+        # 있었음(2026-09-19 종합 검토: 좌측 5개 소스가 enabled·실패 0인데
+        # 24시간 0건). 실패로 세어서 임계값에 도달하면 기존 자동 비활성화 +
+        # admin_alerts 경로를 타게 한다.
+        if result.fetched == 0:
+            logger.warning("소스 수집 0건(목록 파싱 결과 없음, 실패로 집계): %s", source.name)
+            _record_failure_and_maybe_disable(source_repo, source, settings.source_failure_threshold)
+            time.sleep(min_interval)
+            continue
+
+        source_repo.record_success(source.id)
 
         logger.info(
             "%s: fetched=%d inserted=%d skipped_duplicate=%d skipped_non_political=%d",

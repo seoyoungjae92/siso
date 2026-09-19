@@ -810,3 +810,50 @@ def test_run_postprocess_cycle_rolls_back_after_stage_failure_so_later_stages_st
 
     assert matching_repo.rollback_calls == 1  # prune 실패 직후 롤백됨
     assert matching_repo.synthesized_pairs == [(1, "합성 제목", "좌 입장", "우 입장")]  # 이후 합성 단계는 정상 실행
+
+
+def test_run_ingest_cycle_counts_zero_parsed_entries_as_failure_and_disables_at_threshold():
+    # 봇 차단 안내 페이지처럼 200 OK지만 목록이 아닌 응답은 fetch 성공으로
+    # 처리되면 consecutive_failures가 0으로 유지된 채 조용히 수집이 멈춘다
+    # (2026-09-19 종합 검토에서 좌측 5개 소스가 이 상태로 발견됨). 실패로
+    # 세어 임계값에서 자동 비활성화 + 알림 경로를 타야 한다.
+    settings = CrawlSettings(
+        match_similarity_threshold=0.6,
+        prune_similarity_threshold=0.5,
+        min_cluster_size=3,
+        grace_period_hours=48,
+        display_window_days=7,
+        source_failure_threshold=2,
+    )
+    source_repo = FakeSourceRepository()
+    block_page = "<html><body>비정상적인 접근이 감지되었습니다</body></html>".encode()
+
+    for _ in range(2):
+        run_ingest_cycle(
+            sources=[_dcinside_source()],
+            settings=settings,
+            post_repo=FakePostRepository(),
+            source_repo=source_repo,
+            check_robots_allowed=lambda target_url: 0,
+            fetch_feed=lambda url: block_page,
+        )
+
+    assert source_repo.disabled == [1]
+    assert source_repo.alerts == [(1, "디시인사이드(보정갤)", 2)]
+
+
+def test_run_ingest_cycle_resets_failure_count_only_when_entries_are_parsed():
+    source_repo = FakeSourceRepository()
+    source_repo.failure_counts[1] = 3
+    list_html = (FIXTURES_DIR / "dcinside_bosu_list.html").read_bytes()
+
+    run_ingest_cycle(
+        sources=[_dcinside_source()],
+        settings=SETTINGS,
+        post_repo=FakePostRepository(),
+        source_repo=source_repo,
+        check_robots_allowed=lambda target_url: 0,
+        fetch_feed=lambda url: list_html if "board/lists" in url else b"",
+    )
+
+    assert source_repo.failure_counts[1] == 0
