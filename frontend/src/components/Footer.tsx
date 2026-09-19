@@ -21,7 +21,7 @@ export function Footer() {
       </nav>
       {/* 구독 기능은 아직 공개 전 — 준비되면 NewsletterForm을 다시 렌더링 */}
       <p>
-        {appName}는 공개된 커뮤니티 게시물의 제목·요약·출처 링크만 수집해 병렬 비교합니다. 원문
+        {appName}는 공개된 커뮤니티 게시물의 제목과 출처 링크를 모아 병렬 비교합니다. 원문
         저작권은 각 원 커뮤니티 및 작성자에게 있습니다.
       </p>
       <p className="mt-1">© {appName}</p>

@@ -69,16 +69,25 @@ export function VoteWidget({ pairId, pair }: { pairId: string; pair: TopicPairDe
 
       {error && <p className="mb-1.5 text-[11px] text-right-red">{error}</p>}
 
-      <div className="mb-1.5 flex h-2.5 overflow-hidden rounded-full border border-line">
-        <span className="block h-full bg-left-blue" style={{ width: `${leftPct}%` }} />
-        <span className="block h-full bg-playground" style={{ width: `${neutralPct}%` }} />
-        <span className="block h-full bg-right-red" style={{ width: `${rightPct}%` }} />
-      </div>
-      <div className="flex justify-between text-[11px] text-[#767268]">
-        <span>좌에 공감 {leftPct}%</span>
-        <span>중립 {neutralPct}%</span>
-        <span>우에 공감 {rightPct}%</span>
-      </div>
+      {/* 스펙 2.1: 집계 그래프는 "투표 후" 공개. 투표 전에도 0%·0%·0%를 보여주면
+          빈 사이트처럼 보이고(2026-09-19 종합 검토), 남의 선택을 먼저 보고
+          따라가는 효과도 생긴다. */}
+      {pair.myStance ? (
+        <>
+          <div className="mb-1.5 flex h-2.5 overflow-hidden rounded-full border border-line">
+            <span className="block h-full bg-left-blue" style={{ width: `${leftPct}%` }} />
+            <span className="block h-full bg-playground" style={{ width: `${neutralPct}%` }} />
+            <span className="block h-full bg-right-red" style={{ width: `${rightPct}%` }} />
+          </div>
+          <div className="flex justify-between text-[11px] text-[#767268]">
+            <span>좌에 공감 {leftPct}%</span>
+            <span>중립 {neutralPct}%</span>
+            <span>우에 공감 {rightPct}%</span>
+          </div>
+        </>
+      ) : (
+        <p className="text-center text-[11px] text-[#767268]">입장을 고르면 다른 사람들의 선택을 볼 수 있어요.</p>
+      )}
     </div>
   );
 }

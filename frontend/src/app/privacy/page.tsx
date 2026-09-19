@@ -4,7 +4,8 @@ import { BackLink } from "@/components/BackLink";
 
 const appName = "시소";
 const CONTACT_EMAIL = "siso.contact.help@gmail.com";
-const EFFECTIVE_DATE = "2026-08-01";
+const EFFECTIVE_DATE = "2026-09-19";
+const PREVIOUS_EFFECTIVE_DATE = "2026-08-01";
 
 export const metadata: Metadata = {
   title: `개인정보처리방침 - ${appName}`,
@@ -15,7 +16,9 @@ export default function PrivacyPage() {
     <div className="mx-auto w-full max-w-3xl px-4 py-10">
       <BackLink />
       <h1 className="mb-2 text-2xl font-extrabold tracking-tight">개인정보처리방침</h1>
-      <p className="mb-8 text-sm text-[#767268]">시행일: {EFFECTIVE_DATE}</p>
+      <p className="mb-8 text-sm text-[#767268]">
+        시행일: {EFFECTIVE_DATE} (이전 버전 시행일: {PREVIOUS_EFFECTIVE_DATE})
+      </p>
 
       <div className="space-y-8 text-[14px] leading-relaxed text-[#33322E]">
         <section>
@@ -54,6 +57,17 @@ export default function PrivacyPage() {
             <li>
               <b>이메일 주소(선택)</b>: 제보·건의하기 폼에서 답변을 원해 이메일을 남긴 경우에만
               수집합니다.
+            </li>
+            <li>
+              <b>광고 관련 정보(Google)</b>: 서비스는 Google 애드센스 광고 스크립트를 사용합니다.
+              Google을 비롯한 제3자 광고 사업자는 쿠키를 사용하여 이용자의 이 사이트 및 다른
+              사이트 방문 기록을 바탕으로 광고를 게재할 수 있습니다. 이 정보는 서비스 운영자가
+              아닌 Google이 직접 수집·처리합니다.
+            </li>
+            <li>
+              <b>자동화 악용 방지 정보(Google reCAPTCHA)</b>: 댓글 작성 시 자동 프로그램에 의한
+              도배를 막기 위해 Google reCAPTCHA를 사용하며, 이 과정에서 기기·브라우저 정보 등이
+              Google에 전송됩니다. 여기에는 Google 개인정보처리방침과 서비스 약관이 적용됩니다.
             </li>
           </ul>
         </section>
@@ -105,9 +119,10 @@ export default function PrivacyPage() {
             모델 사용 시 실제 처리 사업자는 호출마다 달라질 수 있습니다. 이 처리 결과는
             운영자의 검토를 돕는 참고용 힌트로만 쓰이며, 게시물을 자동으로 삭제·차단하지
             않습니다. 뉴스레터 구독 확인 메일 및 주간 리포트 발송을 위해 Resend(이메일
-            발송 서비스)에 구독 신청 시 입력한 이메일 주소를 위탁합니다. 이 외에 개인정보
-            처리를 외부에 위탁하고 있지 않으며, 위탁 범위가 추가로 늘어날 경우 사전에 이
-            방침에 반영하여 고지합니다.
+            발송 서비스)에 구독 신청 시 입력한 이메일 주소를 위탁합니다. 광고 게재와 자동화
+            악용 방지를 위해 Google의 서비스(애드센스, reCAPTCHA)를 사용하며, 이 과정에서
+            Google이 쿠키 등을 통해 직접 정보를 수집할 수 있습니다(1항 참고). 위탁 범위가
+            추가로 늘어날 경우 사전에 이 방침에 반영하여 고지합니다.
           </p>
         </section>
 
@@ -118,13 +133,36 @@ export default function PrivacyPage() {
             있으나, 이 경우 투표 중복 방지, 댓글 작성 등 일부 기능이 정상적으로 동작하지 않을 수
             있습니다.
           </p>
+          <p className="mt-2">
+            광고 쿠키: Google 등 제3자 광고 사업자는 쿠키를 사용해 관심 기반(맞춤) 광고를 게재할 수
+            있습니다. 이용자는{" "}
+            <a
+              href="https://adssettings.google.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-playground underline"
+            >
+              Google 광고 설정
+            </a>
+            에서 맞춤 광고를 해제하거나,{" "}
+            <a
+              href="https://www.aboutads.info/choices"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-playground underline"
+            >
+              www.aboutads.info
+            </a>
+            에서 제3자 사업자의 맞춤 광고용 쿠키 사용을 거부할 수 있습니다.
+          </p>
         </section>
 
         <section>
           <h2 className="mb-2 text-[16px] font-bold">7. 수집된 게시물의 삭제 요청</h2>
           <p>
-            서비스는 각 커뮤니티에 게시된 글의 제목, 200자 이내 요약, 원문 링크만 수집·노출하며
-            본문 전체나 이미지를 복제하지 않습니다. 원 게시물의 작성자 또는 운영자가 삭제를
+            서비스 화면에는 각 커뮤니티에 게시된 글의 제목과 원문 링크만 표시합니다. 토론 주제
+            합성을 위해 본문 앞부분 일부(200자 이내)를 저장할 수 있으나 화면에 그대로 노출하지
+            않으며, 본문 전체나 이미지를 복제하지 않습니다. 원 게시물의 작성자 또는 운영자가 삭제를
             요청하는 경우 아래 연락처로 접수해 주시면 영업일 기준 24시간 이내 1차 검토 후
             처리합니다.
           </p>
