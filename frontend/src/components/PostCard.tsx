@@ -1,4 +1,5 @@
 import { formatRelativeTime } from "@/lib/format";
+import { maskProfanity } from "@/lib/profanity";
 import type { PostSummary, Side } from "@/lib/posts";
 
 export const ACCENT: Record<Side, string> = {
@@ -25,10 +26,11 @@ export function PostCard({ post, side }: { post: PostSummary; side: Side }) {
           {formatRelativeTime(post.publishedAt ?? post.collectedAt)}
         </time>
       </div>
-      <h3 className="mb-1 line-clamp-2 text-sm font-bold tracking-tight">{post.title}</h3>
-      {post.summary && (
-        <p className="line-clamp-2 text-[12.5px] leading-snug text-[#767268]">{post.summary}</p>
-      )}
+      {/* 원문 발췌(summary)는 표시하지 않는다 — 크롤러가 상세 본문 앞부분을
+          그대로 잘라 담는 경우가 많아 비속어 노출(종합 검토: 이틀간 29건)과
+          원문 복제 리스크(CLAUDE.md 19.3, "발췌보다 재작성")가 함께 있었음.
+          제목 + 출처 + 원문 링크만으로 목록 역할은 충분하다. */}
+      <h3 className="mb-1 line-clamp-2 text-sm font-bold tracking-tight">{maskProfanity(post.title)}</h3>
       <div className="mt-2 text-[11px] text-[#767268]">
         <a href={post.originUrl} target="_blank" rel="noopener noreferrer">
           원문 보기 ↗

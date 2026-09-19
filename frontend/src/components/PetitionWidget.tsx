@@ -39,8 +39,12 @@ export function PetitionWidget({ petitions }: { petitions: Petition[] }) {
 
   return (
     <div className="mb-2.5 overflow-hidden rounded-xl border border-line bg-white">
-      <div className="flex items-center justify-between bg-playground px-4 py-2.5 text-white">
-        <b className="text-[13px] tracking-wide">🔥 실시간 청원 랭킹</b>
+      {/* 출처·정렬 기준을 밝힌다 — 우리가 고른 목록처럼 보이면 중립 존의
+          다른 콘텐츠(AI 합성 주제)와 달리 근거가 안 보인다는 지적(2026-09-19
+          종합 검토). 동기화 주기 동작이라 "실시간" 표현도 뺌. */}
+      <div className="bg-playground px-4 py-2.5 text-white">
+        <b className="text-[13px] tracking-wide">📜 국민동의청원 순위</b>
+        <p className="mt-0.5 text-[10.5px] text-white/80">출처: 국회 국민동의청원 · 진행 중 청원 동의 수 순</p>
       </div>
       <ol className="divide-y divide-line">
         {visible.map((petition, index) => (
