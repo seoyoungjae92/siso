@@ -21,7 +21,16 @@ def synthesize_pending_topics(
             logger.warning("주제 합성 실패(pair_id=%d): %s", pair_id, exc)
             continue
 
-        repo.update_pair_synthesis(pair_id, result.title, result.left_stance, result.right_stance)
+        repo.update_pair_synthesis(
+            pair_id,
+            result.title,
+            result.left_stance,
+            result.right_stance,
+            background=result.background,
+            left_points=result.left_points,
+            right_points=result.right_points,
+            discussion_questions=result.discussion_questions,
+        )
         synthesized += 1
 
     return synthesized

@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { fetchPairs } from "@/lib/pairs";
+import { fetchPairs, isEnriched } from "@/lib/pairs";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -12,7 +12,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: siteUrl, changeFrequency: "hourly", priority: 1 },
     { url: `${siteUrl}/about`, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${siteUrl}/feedback`, changeFrequency: "monthly", priority: 0.3 },
     { url: `${siteUrl}/privacy`, changeFrequency: "yearly", priority: 0.1 },
     { url: `${siteUrl}/terms`, changeFrequency: "yearly", priority: 0.1 },
   ];
@@ -21,6 +20,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (let page = 0; page < MAX_PAIR_PAGES; page++) {
     const { pairs, hasMore } = await fetchPairs(page);
     for (const pair of pairs) {
+      // 보강 없는 주제 페이지는 noindex라(pairs/[id]/page.tsx) sitemap에도 넣지 않는다.
+      if (!isEnriched(pair)) continue;
       pairRoutes.push({
         url: `${siteUrl}/pairs/${pair.id}`,
         lastModified: pair.createdAt,

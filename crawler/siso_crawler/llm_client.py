@@ -114,7 +114,30 @@ SYSTEM_PROMPT = """너는 한국 정치 커뮤니티 좌/우 게시글을 보고
    짧아지더라도 정확하지 않은 내용을 넣느니 차라리 짧게 끝내라.
 7. 응답은 반드시 자연스러운 한국어 문장으로만 작성해라. 러시아어, 아랍어
    등 다른 문자 체계나 알파벳 조각이 단어 중간에 섞이면 절대 안 된다.
-   오탈자·문법 오류 없이 매끄럽게 다듬어라."""
+   오탈자·문법 오류 없이 매끄럽게 다듬어라.
+8. 토론 페이지를 읽는 사람을 위한 보조 설명 3가지를 함께 작성해라. 모두
+   3번 규칙(원문 밖 사실 창작 금지)과 1번 규칙(좌/우 대칭)이 그대로
+   적용된다 — 원문에서 확인되지 않는 배경지식·수치·날짜·인물 정보를
+   덧붙이지 마라. 원문만으로 채울 내용이 부족하면 짧게 써라.
+   - background: 이 쟁점이 무엇에 관한 것인지(누가 무엇을 했고, 어떤
+     사건·정책·발언이 논란이 됐는지)를 사실만으로 설명하는 중립적인 문장
+     3~5개, 200~350자로 써라. 우려·비판·기대 같은 평가는 넣지 마라. 반응을
+     언급해야 한다면 "찬반이 엇갈린다"처럼 양쪽을 같은 무게로 한 번에
+     언급하고, 한쪽 진영의 우려나 주장만 따로 소개하지 마라(그건
+     left_stance/right_stance의 몫이다).
+   - left_points, right_points: 각 진영이 "왜 자기 입장이 옳다고 보는지"에
+     대한 이유를 각각 2~3개씩, 항목당 60자 이내의 짧은 문장으로 써라.
+     "~이므로 ~해야 한다", "~할 위험이 있다"처럼 이유가 드러나야 한다 —
+     "법안은 A당이 주도했다" 같은 사실 나열은 논거가 아니다. 좌/우 항목
+     개수는 반드시 같아야 하고, left_stance/right_stance 문장을 그대로
+     반복하지 마라.
+   - discussion_questions: 독자가 스스로 판단해볼 수 있는 열린 질문
+     2~3개를 써라. 답이 한쪽으로 유도되는 질문(예: "~는 잘못 아닌가?")과,
+     한쪽 진영의 해석(의도·목적·동기 등)을 사실처럼 전제한 질문(예:
+     "특정인을 겨냥한 이 법안은 타당한가?")은 금지 — 좌/우 어느 쪽 독자가
+     읽어도 공정하다고 느낄 질문이어야 한다.
+   no_clear_issue가 true면 background는 빈 문자열(""), 나머지 세 목록은
+   빈 배열([])로 반환해라."""
 
 RESPONSE_JSON_SCHEMA = {
     "type": "object",
@@ -123,10 +146,35 @@ RESPONSE_JSON_SCHEMA = {
         "title": {"type": "string"},
         "left_stance": {"type": "string"},
         "right_stance": {"type": "string"},
+        "background": {"type": "string"},
+        "left_points": {"type": "array", "items": {"type": "string"}},
+        "right_points": {"type": "array", "items": {"type": "string"}},
+        "discussion_questions": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["no_clear_issue", "title", "left_stance", "right_stance"],
+    "required": [
+        "no_clear_issue",
+        "title",
+        "left_stance",
+        "right_stance",
+        "background",
+        "left_points",
+        "right_points",
+        "discussion_questions",
+    ],
     "additionalProperties": False,
 }
+
+# 보강 필드(쟁점 배경/핵심 논거/생각해볼 질문) 분량 상한과 최소 개수.
+# 애드센스 "가치가 별로 없는 콘텐츠" 반려(2026-09) 대응으로 토론 페이지를
+# 두껍게 만들기 위해 추가 — 필수 필드(제목/좌우 입장)와 달리 이 필드들이
+# 부족하거나 형식이 어긋나도 주제 자체는 버리지 않고 보강 없이 발행한다
+# (주제 생성량이 이미 목표보다 적은 상황이라 합성 실패율을 올리면 안 됨).
+# 보강 없는 주제 페이지는 프론트에서 noindex 처리된다.
+MAX_BACKGROUND_CHARS = 600
+MAX_POINT_CHARS = 100
+MAX_QUESTION_CHARS = 120
+MIN_ENRICHMENT_ITEMS = 2
+MAX_ENRICHMENT_ITEMS = 3
 
 
 class SynthesizedTopicSchema(pydantic.BaseModel):
@@ -134,6 +182,11 @@ class SynthesizedTopicSchema(pydantic.BaseModel):
     title: str
     left_stance: str
     right_stance: str
+    # 보강 필드는 빠져도 파싱 자체는 통과시킨다(위 MAX_BACKGROUND_CHARS 주석 참고).
+    background: str = ""
+    left_points: list[str] = []
+    right_points: list[str] = []
+    discussion_questions: list[str] = []
 
 
 # 무료 라우터가 매번 다른 모델을 고르다 보니, 가끔 한글 요청에 러시아어/
@@ -176,6 +229,40 @@ class SynthesizedTopic:
     title: str
     left_stance: str
     right_stance: str
+    # 보강 필드 — 전부 채워졌거나(검증 통과) 전부 비었거나 둘 중 하나다
+    # (_clean_enrichment 참고). background가 비었으면 보강 없음.
+    background: str = ""
+    left_points: tuple[str, ...] = ()
+    right_points: tuple[str, ...] = ()
+    discussion_questions: tuple[str, ...] = ()
+
+
+def _clean_items(items: list[str], max_chars: int) -> list[str]:
+    return [item.strip()[:max_chars] for item in items if item.strip()][:MAX_ENRICHMENT_ITEMS]
+
+
+def _clean_enrichment(
+    parsed: SynthesizedTopicSchema,
+) -> tuple[str, tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    """보강 필드를 정리하고, 하나라도 기준에 못 미치면 전부 버린다(부분 보강은
+    페이지 구성이 어색하고 noindex 판단도 애매해짐). 좌/우 논거 개수가 다르면
+    적은 쪽에 맞춰 자른다 — 한쪽만 논거가 더 많아 보이면 안 됨(대칭성, CLAUDE.md §1)."""
+    empty: tuple[str, tuple[str, ...], tuple[str, ...], tuple[str, ...]] = ("", (), (), ())
+
+    background = parsed.background.strip()[:MAX_BACKGROUND_CHARS]
+    left_points = _clean_items(parsed.left_points, MAX_POINT_CHARS)
+    right_points = _clean_items(parsed.right_points, MAX_POINT_CHARS)
+    questions = _clean_items(parsed.discussion_questions, MAX_QUESTION_CHARS)
+
+    point_count = min(len(left_points), len(right_points))
+    if not background or point_count < MIN_ENRICHMENT_ITEMS or len(questions) < MIN_ENRICHMENT_ITEMS:
+        return empty
+
+    enrichment_text = " ".join([background, *left_points, *right_points, *questions])
+    if _korean_ratio(enrichment_text) < MIN_KOREAN_RATIO or _has_disallowed_script(enrichment_text):
+        return empty
+
+    return background, tuple(left_points[:point_count]), tuple(right_points[:point_count]), tuple(questions)
 
 
 class SynthesisFailed(Exception):
@@ -204,7 +291,7 @@ class SynthesisFailed(Exception):
 SECOND_PASS_VERIFICATION_MODEL = "google/gemini-2.5-flash"
 
 LEGAL_SAFETY_CHECK_PROMPT = """너는 한국 정치 콘텐츠의 법적 안전성을 검토하는
-감사관이야. 아래 합성된 주제(제목 + 좌/우 시각 요약)를 보고 다음 세 가지 중
+감사관이야. 아래 합성된 주제(제목 + 좌/우 시각 요약 + 있으면 보충 설명)를 보고 다음 세 가지 중
 하나라도 해당하는지 판단해라:
 
 1. 5·18민주화운동의 발생 사실을 부정하거나 북한군 개입설 등으로 왜곡·비방하는
@@ -234,11 +321,18 @@ class LegalSafetyCheckSchema(pydantic.BaseModel):
     reason: str
 
 
-def _check_legal_safety(api_key: str, title: str, left_stance: str, right_stance: str) -> None:
+def _check_legal_safety(
+    api_key: str, title: str, left_stance: str, right_stance: str, supplementary: str = ""
+) -> None:
     """위반 시 SynthesisFailed를 던진다. 이 검사 자체가 실패(API 에러 등)해도
     안전하게 SynthesisFailed로 처리한다 — 검사가 안 됐는데 그냥 통과시키는
-    쪽보다, 이번 사이클엔 버리고 다음 사이클에 재시도하는 쪽이 항상 안전하다."""
+    쪽보다, 이번 사이클엔 버리고 다음 사이클에 재시도하는 쪽이 항상 안전하다.
+
+    supplementary는 보강 필드(쟁점 배경/논거/질문)를 합친 텍스트 — 이것도
+    우리 사이트에 직접 게시되는 내용이라 같은 검사를 받아야 한다."""
     user_prompt = f"제목: {title}\n[좌] {left_stance}\n[우] {right_stance}"
+    if supplementary:
+        user_prompt += f"\n[보충 설명]\n{supplementary}"
     try:
         response = httpx.post(
             OPENROUTER_URL,
@@ -447,9 +541,22 @@ class OpenRouterTopicSynthesizer:
         right_stance = parsed.right_stance.strip()[:500]
 
         _check_stance_divergence(self._api_key, left_stance, right_stance)
-        _check_legal_safety(self._api_key, title, left_stance, right_stance)
 
-        return SynthesizedTopic(title=title, left_stance=left_stance, right_stance=right_stance)
+        background, left_points, right_points, questions = _clean_enrichment(parsed)
+        supplementary = "\n".join(
+            [background, *(f"[좌 논거] {p}" for p in left_points), *(f"[우 논거] {p}" for p in right_points), *questions]
+        ).strip()
+        _check_legal_safety(self._api_key, title, left_stance, right_stance, supplementary)
+
+        return SynthesizedTopic(
+            title=title,
+            left_stance=left_stance,
+            right_stance=right_stance,
+            background=background,
+            left_points=left_points,
+            right_points=right_points,
+            discussion_questions=questions,
+        )
 
 
 def build_topic_synthesizer(api_key: str | None, model: str | None = None) -> TopicSynthesizer | None:

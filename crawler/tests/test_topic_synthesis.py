@@ -68,3 +68,23 @@ def test_synthesize_pending_topics_passes_full_cohort_to_synthesizer():
 
     assert synthesized == 1
     assert repo.synthesized_pairs == [(1, "t", "l", "r")]
+
+
+def test_synthesize_pending_topics_passes_enrichment_to_repo():
+    repo = FakeMatchingRepository(
+        pairs_missing_synthesis=[(1, [("좌 제목", "좌 요약")], [("우 제목", "우 요약")])]
+    )
+    topic = SynthesizedTopic(
+        "합성 제목",
+        "좌 입장",
+        "우 입장",
+        background="배경",
+        left_points=("좌1", "좌2"),
+        right_points=("우1", "우2"),
+        discussion_questions=("질문1", "질문2"),
+    )
+    synthesizer = FakeTopicSynthesizer(results={("좌 제목", "우 제목"): topic})
+
+    synthesize_pending_topics(repo, synthesizer)
+
+    assert repo.synthesized_enrichments[1] == ("배경", ("좌1", "좌2"), ("우1", "우2"), ("질문1", "질문2"))

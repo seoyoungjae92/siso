@@ -7,6 +7,8 @@ const appName = "시소";
 
 export const metadata: Metadata = {
   title: `뉴스레터 구독 확인 - ${appName}`,
+  // 토큰 링크로만 들어오는 얇은 페이지라 검색 색인에서 제외.
+  robots: { index: false },
 };
 
 export default async function NewsletterConfirmPage({

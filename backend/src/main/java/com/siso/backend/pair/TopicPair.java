@@ -6,6 +6,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 
@@ -33,6 +35,21 @@ public class TopicPair {
 
     @Column(name = "right_stance")
     private String rightStance;
+
+    // 보강 필드(V28) — 보강 없는 주제는 네 컬럼 모두 NULL.
+    private String background;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "left_points")
+    private String[] leftPoints;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "right_points")
+    private String[] rightPoints;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "discussion_questions")
+    private String[] discussionQuestions;
 
     protected TopicPair() {
     }
@@ -63,5 +80,21 @@ public class TopicPair {
 
     public String getRightStance() {
         return rightStance;
+    }
+
+    public String getBackground() {
+        return background;
+    }
+
+    public String[] getLeftPoints() {
+        return leftPoints;
+    }
+
+    public String[] getRightPoints() {
+        return rightPoints;
+    }
+
+    public String[] getDiscussionQuestions() {
+        return discussionQuestions;
     }
 }
