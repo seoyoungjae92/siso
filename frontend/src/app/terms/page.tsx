@@ -4,7 +4,8 @@ import { BackLink } from "@/components/BackLink";
 
 const appName = "시소";
 const CONTACT_EMAIL = "siso.contact.help@gmail.com";
-const EFFECTIVE_DATE = "2026-08-01";
+const EFFECTIVE_DATE = "2026-09-19";
+const PREVIOUS_EFFECTIVE_DATE = "2026-08-01";
 
 export const metadata: Metadata = {
   title: `이용약관 - ${appName}`,
@@ -15,7 +16,9 @@ export default function TermsPage() {
     <div className="mx-auto w-full max-w-3xl px-4 py-10">
       <BackLink />
       <h1 className="mb-2 text-2xl font-extrabold tracking-tight">이용약관</h1>
-      <p className="mb-8 text-sm text-[#767268]">시행일: {EFFECTIVE_DATE}</p>
+      <p className="mb-8 text-sm text-[#767268]">
+        시행일: {EFFECTIVE_DATE} (이전 버전 시행일: {PREVIOUS_EFFECTIVE_DATE})
+      </p>
 
       <div className="space-y-8 text-[14px] leading-relaxed text-[#33322E]">
         <section>
@@ -30,7 +33,7 @@ export default function TermsPage() {
           <h2 className="mb-2 text-[16px] font-bold">제2조 (서비스의 내용)</h2>
           <p>서비스는 다음과 같은 기능을 제공합니다.</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>좌·우 성향 커뮤니티에 게시된 글의 제목, 요약, 출처를 병렬로 모아 보여주는 피드</li>
+            <li>좌·우 성향 커뮤니티에 게시된 글의 제목과 출처를 병렬로 모아 보여주는 피드</li>
             <li>같은 주제에 대한 좌·우 입장을 나란히 비교해 볼 수 있는 &ldquo;놀이터&rdquo;</li>
             <li>회원가입 없이 익명으로 참여할 수 있는 댓글, 추천, 입장 투표</li>
           </ul>
@@ -70,8 +73,9 @@ export default function TermsPage() {
         <section>
           <h2 className="mb-2 text-[16px] font-bold">제6조 (저작권)</h2>
           <p>
-            서비스가 수집하는 각 커뮤니티의 글은 제목, 200자 이내 요약, 원문 링크로만
-            구성되며, 원문 전체나 이미지를 복제하지 않습니다. 원문에 대한 저작권은 원 작성자 및
+            서비스가 화면에 표시하는 각 커뮤니티의 글은 제목과 원문 링크로만 구성되며(주제
+            합성을 위해 본문 앞부분 200자 이내를 저장할 수 있으나 그대로 노출하지 않음), 원문
+            전체나 이미지를 복제하지 않습니다. 원문에 대한 저작권은 원 작성자 및
             해당 커뮤니티에 있으며, 원문 확인은 제공된 링크를 통해 원 사이트에서 이루어집니다.
             원 게시물의 삭제를 원하는 작성자 또는 커뮤니티 운영자는 개인정보처리방침에 안내된
             연락처로 요청할 수 있습니다. 이용자가 서비스 내에 직접 작성한 댓글 등 게시물의
@@ -93,8 +97,8 @@ export default function TermsPage() {
           <h2 className="mb-2 text-[16px] font-bold">제8조 (면책조항)</h2>
           <p>
             서비스는 천재지변, 시스템 점검, 원 커뮤니티의 사정 등 통제할 수 없는 사유로 인한
-            서비스 중단에 대해 책임을 지지 않습니다. 서비스가 수집·노출하는 요약 및 링크는 원
-            게시물 작성자의 견해를 요약한 것으로, 서비스 운영자의 입장을 대변하지 않으며 그
+            서비스 중단에 대해 책임을 지지 않습니다. 서비스가 노출하는 게시물 제목·링크와 AI가
+            합성한 토론 주제는 원 게시물 작성자들의 견해를 옮기거나 종합한 것으로, 서비스 운영자의 입장을 대변하지 않으며 그
             정확성·완전성을 보장하지 않습니다.
           </p>
         </section>
