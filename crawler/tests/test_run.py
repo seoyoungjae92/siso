@@ -4,7 +4,12 @@ from pathlib import Path
 from siso_crawler.fetch import CrawlNotAllowed
 from siso_crawler.llm_client import SynthesizedTopic
 from siso_crawler.models import Source
-from siso_crawler.run import run_cycle, run_ingest_cycle, run_postprocess_cycle
+from siso_crawler.run import (
+    _build_detail_fetcher,
+    run_cycle,
+    run_ingest_cycle,
+    run_postprocess_cycle,
+)
 from siso_crawler.settings_repository import CrawlSettings
 
 from .fakes import (
@@ -724,6 +729,36 @@ def test_run_ingest_cycle_gives_each_source_its_own_detail_fetch_budget():
     assert detail_fetch_count == 6
     summaries = [p["summary"] for p in post_repo.inserted]
     assert summaries.count("본문") == 6
+
+
+def test_detail_fetcher_waits_min_interval_before_every_detail_request():
+    # 상세 요청을 간격 없이 연달아 보내면 사이트당 최소 10초 규칙을 어기고
+    # 봇 차단(82쿡 자동 비활성화, 디시 스로틀)을 부른다 — 목록 요청 직후인
+    # 첫 상세 요청을 포함해 매 요청 전에 min_interval만큼 쉬어야 한다.
+    events = []
+
+    def fetch_feed(url):
+        events.append(("fetch", url))
+        return '<div class="write_div"><p>본문</p></div>'.encode()
+
+    fetch_detail_text = _build_detail_fetcher(
+        check_robots_allowed=lambda url: 0,
+        fetch_feed=fetch_feed,
+        limit=2,
+        min_interval=10.0,
+        sleep=lambda seconds: events.append(("sleep", seconds)),
+    )
+    dc_url = "https://gall.dcinside.com/mgallery/board/view/?id=x&no="
+
+    for no in (1, 2, 3):
+        fetch_detail_text(f"{dc_url}{no}")
+
+    assert events == [
+        ("sleep", 10.0),
+        ("fetch", f"{dc_url}1"),
+        ("sleep", 10.0),
+        ("fetch", f"{dc_url}2"),
+    ]  # 상한(2) 초과분은 요청도, 대기도 하지 않음
 
 
 def test_run_postprocess_cycle_runs_matching_without_ingest():

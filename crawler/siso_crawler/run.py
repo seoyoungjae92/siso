@@ -37,14 +37,21 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 
-def _build_detail_fetcher(check_robots_allowed, fetch_feed, limit: int):
+def _build_detail_fetcher(check_robots_allowed, fetch_feed, limit: int, min_interval: float, sleep=time.sleep):
     """상세 페이지 파서가 등록된 사이트(html_parsers.get_detail_parser)의
     글만, 사이클당 최대 limit건까지 본문을 가져온다 — 목록 페이지 파서는
     항상 summary=""를 주므로(제목만 있음) 이걸로 실제 내용을 채운다.
     사이트당 robots.txt 재확인 포함(다른 URL이니 재확인 필요) + 실패 시
     빈 문자열로 안전하게 폴백(그 글은 지금까지처럼 제목만으로 처리됨).
     limit을 두는 이유는 새 글이 몰리는 사이클에 상세 페이지 요청까지
-    쏟아지면 사이트에 부담이 크고 사이클 자체도 너무 느려지기 때문."""
+    쏟아지면 사이트에 부담이 크고 사이클 자체도 너무 느려지기 때문.
+
+    상세 요청마다(목록 요청 직후인 첫 요청 포함) min_interval만큼 쉰다 —
+    원래는 목록 요청 사이에만 간격을 두고 상세 요청은 1~2초 간격으로
+    연달아 보내서 사이트당 최소 10초 규칙(CLAUDE.md 4.1)을 어기고 있었음.
+    상세 수집 도입(2026-09-03) 이후 82쿡 자동 비활성화(09-07, 09-16)와
+    디시 좌측 갤러리 장기 스로틀(09-15~)이 Railway IP에서만 발생한 유력
+    원인으로 판단(로컬 fetch는 전부 정상, 2026-09-19 확인)."""
     remaining = limit
 
     def fetch_detail_text(url: str) -> str:
@@ -53,6 +60,7 @@ def _build_detail_fetcher(check_robots_allowed, fetch_feed, limit: int):
         if parser is None or remaining <= 0:
             return ""
         remaining -= 1
+        sleep(min_interval)
         try:
             check_robots_allowed(url)
             raw = fetch_feed(url)
@@ -126,7 +134,9 @@ def run_ingest_cycle(
         # 많은 소스 하나가 먼저 다 써버려서 뒤에 처리되는 다른 소스는
         # 이번 사이클에 상세 페이지를 아예 못 가져간다(2026-09, 디시인사이드
         # 갤러리 8개 중 한 곳만 계속 요약이 채워지는 걸로 발견).
-        fetch_detail_text = _build_detail_fetcher(check_robots_allowed, fetch_feed, settings.detail_fetch_limit)
+        fetch_detail_text = _build_detail_fetcher(
+            check_robots_allowed, fetch_feed, settings.detail_fetch_limit, min_interval
+        )
 
         try:
             result = ingest_source(
