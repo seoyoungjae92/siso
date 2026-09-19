@@ -1,0 +1,57 @@
+# 주 1회 운영 DB(Supabase) 백업 — 2026-09-19 종합 검토에서 "백업 0"으로 지적됨
+# (Supabase Free 백업 정책 미확인, CLAUDE.md 19.4/20.6).
+#
+# - public 스키마 전체 구조 + posts를 제외한 데이터. posts(수백 MB, 임베딩)는
+#   크롤링으로 다시 채울 수 있고 보관 기간도 7일이라 제외 — 복구가 불가능한
+#   댓글/투표/신고/설정/합성 주제 등만 확실히 남긴다.
+# - 레포가 public이라 아티팩트를 받을 수 있는 사람이 많으므로 반드시 암호화
+#   (GPG 대칭키 AES256). 90일 보관.
+#
+# 필요한 레포 시크릿(Settings → Secrets and variables → Actions):
+#   BACKUP_DATABASE_URL  Supabase Session Pooler 접속 URL(크롤러와 같은 값)
+#   BACKUP_PASSPHRASE    긴 무작위 문자열 — 잃어버리면 백업을 못 푼다, 따로 보관할 것
+#
+# 복구:
+#   gpg --decrypt siso.dump.gpg > siso.dump
+#   pg_restore --no-owner --no-privileges -d "<대상 DB URL>" siso.dump
+name: db-backup
+
+on:
+  schedule:
+    - cron: "0 18 * * 0" # 매주 월요일 03:00 KST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Dump and encrypt
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL}" ] || [ -z "${BACKUP_PASSPHRASE}" ]; then
+            echo "::error::BACKUP_DATABASE_URL / BACKUP_PASSPHRASE 시크릿이 설정되지 않았습니다"
+            exit 1
+          fi
+          # 서버(PostgreSQL 17)와 같은 메이저 버전의 pg_dump를 써야 한다.
+          docker run --rm -e DATABASE_URL postgres:17 \
+            sh -c 'pg_dump "$DATABASE_URL" --schema=public --exclude-table-data=public.posts --no-owner --no-privileges --format=custom' \
+            > siso.dump
+          test -s siso.dump
+          printf '%s' "${BACKUP_PASSPHRASE}" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 --output siso.dump.gpg siso.dump
+          rm siso.dump
+          ls -l siso.dump.gpg
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: siso-db-backup-${{ github.run_number }}
+          path: siso.dump.gpg
+          retention-days: 90
+          if-no-files-found: error
