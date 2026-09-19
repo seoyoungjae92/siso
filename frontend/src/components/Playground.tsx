@@ -99,7 +99,6 @@ export function Playground({
 
   return (
     <>
-      <PetitionWidget petitions={petitions} />
       {hideVotes && (
         <p className="mb-2.5 rounded-lg border border-line bg-[#F5F4F0] px-3 py-2 text-[11px] text-[#6B6960]">
           선거 기간 중에는 투표 기능이 일시 중단됩니다.
@@ -119,6 +118,9 @@ export function Playground({
       <div className={newIds.has(today.id) ? "animate-new-item" : ""}>
         <PairCard pair={today} large hideVotes={hideVotes} />
       </div>
+      {/* 청원 순위는 보조 정보라 "오늘의 링" 아래로 — 첫 화면의 주인공은
+          AI 합성 토론 주제여야 한다(2026-09-19 종합 검토). */}
+      <PetitionWidget petitions={petitions} />
       {rest.map((pair, index) => (
         <div key={pair.id} className={newIds.has(pair.id) ? "animate-new-item" : ""}>
           <PairCard pair={pair} hideVotes={hideVotes} />
