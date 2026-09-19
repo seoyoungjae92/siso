@@ -7,6 +7,8 @@ const appName = "시소";
 
 export const metadata: Metadata = {
   title: `제보·건의하기 - ${appName}`,
+  // 폼만 있는 얇은 페이지라 검색 색인에서 제외(애드센스 저가치 콘텐츠 판정 대응).
+  robots: { index: false },
 };
 
 export default function FeedbackPage() {

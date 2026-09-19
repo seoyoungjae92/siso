@@ -441,3 +441,93 @@ def test_classify_fails_when_response_missing_choices(monkeypatch):
 
     with pytest.raises(PoliticalClassificationFailed):
         _classifier().is_political("제목", "요약")
+
+
+def _enriched_content(**overrides) -> str:
+    import json
+
+    body = {
+        "no_clear_issue": False,
+        "title": "제목",
+        "left_stance": "좌 입장",
+        "right_stance": "우 입장",
+        "background": "국회에서 관련 법안이 발의되며 논란이 시작됐다.",
+        "left_points": ["좌 논거 하나", "좌 논거 둘", "좌 논거 셋"],
+        "right_points": ["우 논거 하나", "우 논거 둘"],
+        "discussion_questions": ["이 법안의 기준은 적절한가?", "부작용은 어떻게 막을 수 있을까?"],
+    }
+    body.update(overrides)
+    return json.dumps(body, ensure_ascii=False)
+
+
+def test_synthesize_returns_enrichment_with_symmetric_point_counts(monkeypatch):
+    # 좌 논거 3개 / 우 논거 2개로 오면 한쪽만 더 많아 보이지 않도록 적은
+    # 쪽(2개)에 맞춰 잘라야 한다(대칭성).
+    monkeypatch.setattr(
+        httpx, "post", _sequence_post(_enriched_content(), _DIVERGES_CONTENT, _SAFE_CHECK_CONTENT)
+    )
+
+    result = _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
+
+    assert result.background == "국회에서 관련 법안이 발의되며 논란이 시작됐다."
+    assert result.left_points == ("좌 논거 하나", "좌 논거 둘")
+    assert result.right_points == ("우 논거 하나", "우 논거 둘")
+    assert result.discussion_questions == ("이 법안의 기준은 적절한가?", "부작용은 어떻게 막을 수 있을까?")
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"background": "  "},
+        {"right_points": ["우 논거 하나"]},
+        {"discussion_questions": ["질문 하나?"]},
+        {"background": "Этот вопрос касается нового закона и его последствий для общества."},
+    ],
+)
+def test_synthesize_drops_incomplete_enrichment_but_keeps_topic(monkeypatch, overrides):
+    # 보강 필드가 부족하거나 깨져 있어도 주제 자체는 발행해야 한다(생성량이
+    # 이미 목표보다 적음) — 대신 보강은 전부 비워서 부분 보강 상태를 막는다.
+    monkeypatch.setattr(
+        httpx, "post", _sequence_post(_enriched_content(**overrides), _DIVERGES_CONTENT, _SAFE_CHECK_CONTENT)
+    )
+
+    result = _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
+
+    assert result.title == "제목"
+    assert (result.background, result.left_points, result.right_points, result.discussion_questions) == (
+        "",
+        (),
+        (),
+        (),
+    )
+
+
+def test_synthesize_sends_enrichment_to_legal_safety_check(monkeypatch):
+    # 보강 필드도 우리 사이트에 직접 게시되는 내용이라 법적 안전성 검사에
+    # 같이 들어가야 한다.
+    requests = []
+    inner = _sequence_post(_enriched_content(), _DIVERGES_CONTENT, _SAFE_CHECK_CONTENT)
+
+    def fake_post(*args, **kwargs):
+        requests.append(kwargs["json"])
+        return inner(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
+
+    legal_user_prompt = requests[2]["messages"][1]["content"]
+    assert "국회에서 관련 법안이 발의되며 논란이 시작됐다." in legal_user_prompt
+    assert "[좌 논거] 좌 논거 하나" in legal_user_prompt
+    assert "부작용은 어떻게 막을 수 있을까?" in legal_user_prompt
+
+
+def test_synthesize_rejects_topic_when_legal_check_flags_enrichment(monkeypatch):
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        _sequence_post(_enriched_content(), _DIVERGES_CONTENT, '{"violates": true, "reason": "보충 설명에 단정적 혐의"}'),
+    )
+
+    with pytest.raises(SynthesisFailed):
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])

@@ -217,6 +217,39 @@ class PairServiceTest {
         assertThat(dto.leftVotes()).isEqualTo(0.0);
         assertThat(dto.rightVotes()).isEqualTo(0.0);
         assertThat(dto.neutralVotes()).isEqualTo(0.0);
+        // 보강 없는 주제(V28 이전 주제 포함)는 background null + 빈 목록
+        assertThat(dto.background()).isNull();
+        assertThat(dto.leftPoints()).isEmpty();
+        assertThat(dto.rightPoints()).isEmpty();
+        assertThat(dto.discussionQuestions()).isEmpty();
+    }
+
+    @Test
+    void getPairs_mapsEnrichmentFieldsToDto() {
+        stubDisplayWindowAndElectionMode(7, false);
+        PairService pairService = newService();
+        Pageable pageable = PageRequest.of(0, 20);
+
+        TopicPair pair = new TopicPair();
+        ReflectionTestUtils.setField(pair, "id", 101L);
+        ReflectionTestUtils.setField(pair, "title", "보강된 주제");
+        ReflectionTestUtils.setField(pair, "createdAt", OffsetDateTime.parse("2026-09-19T00:00:00Z"));
+        ReflectionTestUtils.setField(pair, "background", "쟁점 배경");
+        ReflectionTestUtils.setField(pair, "leftPoints", new String[] {"좌1", "좌2"});
+        ReflectionTestUtils.setField(pair, "rightPoints", new String[] {"우1", "우2"});
+        ReflectionTestUtils.setField(pair, "discussionQuestions", new String[] {"질문1", "질문2"});
+
+        when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
+                        eq("active"), any(OffsetDateTime.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(pair)));
+        when(voteRepository.countByPairIdsGroupByStance(List.of(101L))).thenReturn(List.of());
+
+        TopicPairDto dto = pairService.getPairs(pageable).getContent().get(0);
+
+        assertThat(dto.background()).isEqualTo("쟁점 배경");
+        assertThat(dto.leftPoints()).containsExactly("좌1", "좌2");
+        assertThat(dto.rightPoints()).containsExactly("우1", "우2");
+        assertThat(dto.discussionQuestions()).containsExactly("질문1", "질문2");
     }
 
     @Test

@@ -41,7 +41,17 @@ class MatchingRepository(Protocol):
         self, limit: int
     ) -> list[tuple[int, list[tuple[str, str]], list[tuple[str, str]]]]: ...
 
-    def update_pair_synthesis(self, pair_id: int, title: str, left_stance: str, right_stance: str) -> None: ...
+    def update_pair_synthesis(
+        self,
+        pair_id: int,
+        title: str,
+        left_stance: str,
+        right_stance: str,
+        background: str = "",
+        left_points: tuple[str, ...] = (),
+        right_points: tuple[str, ...] = (),
+        discussion_questions: tuple[str, ...] = (),
+    ) -> None: ...
 
     def rollback(self) -> None: ...
 
@@ -399,14 +409,38 @@ class PsycopgMatchingRepository:
 
         return [(pid, by_pair[pid]["left"], by_pair[pid]["right"]) for pid in pair_ids]
 
-    def update_pair_synthesis(self, pair_id: int, title: str, left_stance: str, right_stance: str) -> None:
+    def update_pair_synthesis(
+        self,
+        pair_id: int,
+        title: str,
+        left_stance: str,
+        right_stance: str,
+        background: str = "",
+        left_points: tuple[str, ...] = (),
+        right_points: tuple[str, ...] = (),
+        discussion_questions: tuple[str, ...] = (),
+    ) -> None:
+        # 보강이 없으면(background 빈 값) 네 컬럼 모두 NULL — "보강 없음"을
+        # 빈 배열과 섞지 않고 한 가지 상태로만 표현한다(백엔드/프론트가
+        # background IS NULL 하나로 판단).
+        enriched = bool(background)
         with self._conn.cursor() as cur:
             cur.execute(
                 """
                 UPDATE topic_pairs
-                SET title = %s, left_stance = %s, right_stance = %s
+                SET title = %s, left_stance = %s, right_stance = %s,
+                    background = %s, left_points = %s, right_points = %s, discussion_questions = %s
                 WHERE id = %s
                 """,
-                (title, left_stance, right_stance, pair_id),
+                (
+                    title,
+                    left_stance,
+                    right_stance,
+                    background if enriched else None,
+                    list(left_points) if enriched else None,
+                    list(right_points) if enriched else None,
+                    list(discussion_questions) if enriched else None,
+                    pair_id,
+                ),
             )
         self._conn.commit()

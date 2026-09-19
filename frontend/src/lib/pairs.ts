@@ -1,6 +1,22 @@
 import { BACKEND_API_URL } from "@/lib/posts";
 
-export type TopicPair = {
+// 토론 페이지 보강 필드(쟁점 배경 / 좌우 핵심 논거 / 생각해볼 질문).
+// 보강 없는 주제는 background가 null이고 목록들은 빈 배열.
+export type TopicEnrichment = {
+  background: string | null;
+  leftPoints: string[];
+  rightPoints: string[];
+  discussionQuestions: string[];
+};
+
+// 보강 없는 주제 페이지는 본문이 좌우 요약 몇 줄뿐이라 애드센스·검색엔진이
+// "가치가 낮은 콘텐츠"로 보는 원인이 됨 — 이 판정으로 noindex/sitemap
+// 제외를 결정한다.
+export function isEnriched(pair: TopicEnrichment): boolean {
+  return Boolean(pair.background);
+}
+
+export type TopicPair = TopicEnrichment & {
   id: number;
   title: string;
   leftStance: string;

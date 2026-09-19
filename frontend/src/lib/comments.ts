@@ -1,7 +1,8 @@
 import { getAnonId } from "@/lib/anon";
+import type { TopicEnrichment } from "@/lib/pairs";
 import { BACKEND_API_URL } from "@/lib/posts";
 
-export type TopicPairDetail = {
+export type TopicPairDetail = TopicEnrichment & {
   id: number;
   title: string;
   leftStance: string;
