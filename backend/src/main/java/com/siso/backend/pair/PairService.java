@@ -34,9 +34,11 @@ public class PairService {
     private static final short SETTINGS_ID = 1;
 
     // display_window_days 창 안에 이 개수를 못 채우면(소스 정리 등으로 최근
-    // 주제가 일시적으로 적어진 경우) 창을 무시하고 전체 활성 주제에서 채운다
-    // — 목록이 텅 비어 보이는 것보다 약간 오래된 주제가 섞이는 게 낫다는
-    // 판단(2026-08-14).
+    // 주제가 일시적으로 적어진 경우) 창을 가장 최근 이 개수만큼의 주제까지만
+    // 넓혀서 채운다 — 목록이 텅 비어 보이는 것보다 약간 오래된 주제가 섞이는
+    // 게 낫다는 판단(2026-08-14). 원래는 창을 아예 없애서 전체 활성 주제(150건+)
+    // 가 한꺼번에 떴는데, 주제를 주 10건 안팎으로 줄인 뒤(2026-09-15)엔 창이
+    // 자주 비어서 "주제가 너무 많다"는 체감의 원인이 됨(2026-09-19 수정).
     private static final int MIN_VISIBLE_PAIRS = 5;
     private static final OffsetDateTime NO_WINDOW = OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, java.time.ZoneOffset.UTC);
 
@@ -85,8 +87,11 @@ public class PairService {
         Page<TopicPair> pairs = topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                 ACTIVE_STATUS, since, pageable);
         if (pairs.getTotalElements() < MIN_VISIBLE_PAIRS) {
+            List<OffsetDateTime> recent =
+                    topicPairRepository.findRecentActiveCreatedAts(PageRequest.of(0, MIN_VISIBLE_PAIRS));
+            OffsetDateTime fallbackSince = recent.isEmpty() ? NO_WINDOW : recent.get(recent.size() - 1);
             pairs = topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
-                    ACTIVE_STATUS, NO_WINDOW, pageable);
+                    ACTIVE_STATUS, fallbackSince, pageable);
         }
 
         // D10: 선거 모드 중엔 공직선거법상 여론조사 결과 공표 리스크를 피하기

@@ -27,6 +27,12 @@ public interface TopicPairRepository extends JpaRepository<TopicPair, Long> {
     Page<TopicPair> findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
             @Param("status") String status, @Param("since") OffsetDateTime since, Pageable pageable);
 
+    // getPairs의 최소 노출 fallback용 — 최신 활성 주제 N건의 생성 시각만
+    // 가져와서, 창을 전체로 풀지 않고 "최근 N건"까지만 넓히는 기준점으로 쓴다.
+    @Query("SELECT p.createdAt FROM TopicPair p WHERE p.status = 'active' AND p.title IS NOT NULL "
+            + "ORDER BY p.createdAt DESC")
+    List<OffsetDateTime> findRecentActiveCreatedAts(Pageable pageable);
+
     // 뉴스레터 주간 리포트/오늘의 링 선정용 — 신뢰도 가중치까지는 필요 없는
     // 단순 랭킹이라(VoteRepository의 가중합 대신) 투표+댓글 단순 카운트
     // 합으로 정렬한다. 참여도가 0인 주제끼리는 동점이라 최신순을 2차
