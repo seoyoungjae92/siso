@@ -144,7 +144,7 @@ class PairServiceTest {
     }
 
     @Test
-    void getPairs_fewerThanMinimumWithinDisplayWindow_fallsBackToAllActivePairs() {
+    void getPairs_fewerThanMinimumWithinDisplayWindow_widensWindowOnlyToMostRecentMinimum() {
         stubDisplayWindowAndElectionMode(7, false);
         PairService pairService = newService();
         Pageable pageable = PageRequest.of(0, 20);
@@ -159,6 +159,17 @@ class PairServiceTest {
         ReflectionTestUtils.setField(older, "title", "오래된 주제");
         ReflectionTestUtils.setField(older, "createdAt", OffsetDateTime.parse("2026-01-01T00:00:00Z"));
 
+        // 최신 5건 중 가장 오래된 것의 생성 시각까지만 창을 넓혀야 한다 —
+        // 전체 활성 주제(수백 건)로 풀어버리면 안 됨.
+        OffsetDateTime fifthMostRecent = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+        when(topicPairRepository.findRecentActiveCreatedAts(PageRequest.of(0, 5)))
+                .thenReturn(List.of(
+                        OffsetDateTime.now(),
+                        OffsetDateTime.parse("2026-03-01T00:00:00Z"),
+                        OffsetDateTime.parse("2026-02-01T00:00:00Z"),
+                        OffsetDateTime.parse("2026-01-15T00:00:00Z"),
+                        fifthMostRecent));
+
         ArgumentCaptor<OffsetDateTime> sinceCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
         when(topicPairRepository.findByStatusAndTitleIsNotNullAndCreatedAtAfterOrderByEngagement(
                         eq("active"), sinceCaptor.capture(), eq(pageable)))
@@ -172,7 +183,8 @@ class PairServiceTest {
         assertThat(result.getContent()).extracting(TopicPairDto::id).containsExactly(1L, 2L);
         List<OffsetDateTime> sinceValues = sinceCaptor.getAllValues();
         assertThat(sinceValues).hasSize(2);
-        assertThat(sinceValues.get(0)).isAfter(sinceValues.get(1)); // 두 번째 호출은 훨씬 더 과거로 창을 넓힘
+        assertThat(sinceValues.get(0)).isAfter(sinceValues.get(1)); // 두 번째 호출은 더 과거로 창을 넓힘
+        assertThat(sinceValues.get(1)).isEqualTo(fifthMostRecent);
     }
 
     @Test
