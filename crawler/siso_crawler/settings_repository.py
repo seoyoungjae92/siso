@@ -21,6 +21,7 @@ class CrawlSettings:
     detail_fetch_limit: int = 20
     post_retention_days: int = 10
     stale_post_scan_limit: int = 200
+    max_topics_per_day: int = 2
 
 
 class SettingsRepository(Protocol):
@@ -48,7 +49,8 @@ class PsycopgSettingsRepository:
                            synthesis_limit, synthesis_model, dead_link_scan_limit,
                            prune_scan_limit, source_failure_threshold,
                            cohort_similarity_threshold, synthesis_min_posts_per_side,
-                           detail_fetch_limit, post_retention_days, stale_post_scan_limit
+                           detail_fetch_limit, post_retention_days, stale_post_scan_limit,
+                           max_topics_per_day
                     FROM crawl_settings WHERE id = 1
                     """
                 )

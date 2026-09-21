@@ -78,6 +78,12 @@ const NUMBER_FIELDS: {
     hint: "1=지금과 동일(변경 없음). 올리면 그 순간부터 좌·우 각각 이 개수 이상 모여야 새 주제가 뜸",
   },
   {
+    key: "maxTopicsPerDay",
+    label: "하루 주제 생성 상한",
+    step: "1",
+    hint: "KST 하루 기준 새 주제 개수 상한 — 임계값만으로는 뉴스 상황에 따라 생성량이 출렁여서 상한으로 못 박는다. 상한에 걸린 후보는 버려지지 않고 다음 날 후보로 남음",
+  },
+  {
     key: "detailFetchLimit",
     label: "상세 페이지 본문 수집 사이클당 처리 개수",
     step: "1",
@@ -114,6 +120,7 @@ export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
     detailFetchLimit: initial.detailFetchLimit,
     postRetentionDays: initial.postRetentionDays,
     stalePostScanLimit: initial.stalePostScanLimit,
+    maxTopicsPerDay: initial.maxTopicsPerDay,
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

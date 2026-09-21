@@ -88,3 +88,48 @@ def test_synthesize_pending_topics_passes_enrichment_to_repo():
     synthesize_pending_topics(repo, synthesizer)
 
     assert repo.synthesized_enrichments[1] == ("배경", ("좌1", "좌2"), ("우1", "우2"), ("질문1", "질문2"))
+
+
+def test_synthesize_pending_topics_stops_at_daily_cap():
+    # 임계값만으로는 뉴스 상황에 따라 하루 생성량이 출렁여서(2026-09-21 실측:
+    # 하루 1~2건을 노린 설정에서 8건) 상한으로 못 박는다. 오늘 이미 1건을
+    # 만들었고 상한이 2면 이번 사이클엔 1건만 합성해야 한다.
+    repo = FakeMatchingRepository(
+        pairs_missing_synthesis=[
+            (1, [("좌1", "")], [("우1", "")]),
+            (2, [("좌2", "")], [("우2", "")]),
+        ],
+        topics_created_today=1,
+    )
+    synthesizer = FakeTopicSynthesizer(
+        results={
+            ("좌1", "우1"): SynthesizedTopic("t1", "l1", "r1"),
+            ("좌2", "우2"): SynthesizedTopic("t2", "l2", "r2"),
+        }
+    )
+
+    synthesized = synthesize_pending_topics(repo, synthesizer, max_topics_per_day=2)
+
+    assert synthesized == 1
+    assert [p[0] for p in repo.synthesized_pairs] == [1]
+
+
+def test_synthesize_pending_topics_skips_entirely_when_cap_reached():
+    repo = FakeMatchingRepository(
+        pairs_missing_synthesis=[(1, [("좌1", "")], [("우1", "")])],
+        topics_created_today=2,
+    )
+    synthesizer = FakeTopicSynthesizer(results={("좌1", "우1"): SynthesizedTopic("t1", "l1", "r1")})
+
+    assert synthesize_pending_topics(repo, synthesizer, max_topics_per_day=2) == 0
+    assert repo.synthesized_pairs == []
+
+
+def test_synthesize_pending_topics_without_cap_is_unchanged():
+    repo = FakeMatchingRepository(
+        pairs_missing_synthesis=[(1, [("좌1", "")], [("우1", "")])],
+        topics_created_today=99,
+    )
+    synthesizer = FakeTopicSynthesizer(results={("좌1", "우1"): SynthesizedTopic("t1", "l1", "r1")})
+
+    assert synthesize_pending_topics(repo, synthesizer) == 1

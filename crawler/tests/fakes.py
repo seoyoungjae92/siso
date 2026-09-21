@@ -64,6 +64,7 @@ class FakeMatchingRepository:
         link_check_candidates: list[tuple[int, str]] | None = None,
         pairs_missing_synthesis: list[tuple[int, list[tuple[str, str]], list[tuple[str, str]]]] | None = None,
         recent_similar_pairs: dict[int, tuple[int, float]] | None = None,
+        topics_created_today: int = 0,
     ):
         self.pending_embeddings = pending_embeddings or []
         self.unmatched_left = unmatched_left or []
@@ -82,7 +83,11 @@ class FakeMatchingRepository:
         self.pairs_missing_synthesis = pairs_missing_synthesis or []
         self.synthesized_pairs: list[tuple[int, str, str, str]] = []
         self.synthesized_enrichments: dict[int, tuple] = {}
+        self.topics_created_today = topics_created_today
         self.rollback_calls = 0
+
+    def count_topics_created_today(self) -> int:
+        return self.topics_created_today
 
     def find_posts_missing_embedding(self, limit: int) -> list[tuple[int, str, str]]:
         return self.pending_embeddings[:limit]

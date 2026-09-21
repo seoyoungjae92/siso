@@ -41,6 +41,8 @@ class MatchingRepository(Protocol):
         self, limit: int
     ) -> list[tuple[int, list[tuple[str, str]], list[tuple[str, str]]]]: ...
 
+    def count_topics_created_today(self) -> int: ...
+
     def update_pair_synthesis(
         self,
         pair_id: int,
@@ -62,6 +64,21 @@ class PsycopgMatchingRepository:
 
         register_vector(conn)
         self._conn = conn
+
+    def count_topics_created_today(self) -> int:
+        """오늘(KST) 만들어진 합성 완료 주제 수 — 하루 상한 계산용.
+        status는 보지 않는다(품질 문제로 숨긴 주제도 그날 생성 예산을 쓴
+        것으로 본다)."""
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT count(*) FROM topic_pairs
+                WHERE title IS NOT NULL
+                  AND (created_at AT TIME ZONE 'Asia/Seoul')::date
+                      = (now() AT TIME ZONE 'Asia/Seoul')::date
+                """
+            )
+            return cur.fetchone()[0]
 
     def rollback(self) -> None:
         # postprocess 단계(매칭/정리/데드링크/합성)가 커넥션 하나를 공유하는데,
@@ -377,13 +394,18 @@ class PsycopgMatchingRepository:
     ) -> list[tuple[int, list[tuple[str, str]], list[tuple[str, str]]]]:
         """아직 AI 합성이 안 된(title이 NULL인) 쌍만 대상. 최근 매칭된
         것부터 처리해 한정된 limit 예산이 오래된(반복 실패했을 수 있는)
-        쌍보다 새로 노출될 쌍에 먼저 쓰이게 한다."""
+        쌍보다 새로 노출될 쌍에 먼저 쓰이게 한다. 같은 날 후보가 여럿이면
+        코호트가 두꺼운(= 같은 이야기를 하는 글이 많이 모인) 쌍을 먼저
+        쓴다 — 하루 상한(max_topics_per_day)이 생기면서 "어떤 후보를
+        고를지"가 실제 노출 품질을 좌우하게 됐기 때문."""
         with self._conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id FROM topic_pairs
-                WHERE status = 'active' AND title IS NULL
-                ORDER BY created_at DESC
+                SELECT t.id FROM topic_pairs t
+                WHERE t.status = 'active' AND t.title IS NULL
+                ORDER BY (t.created_at AT TIME ZONE 'Asia/Seoul')::date DESC,
+                         (SELECT count(*) FROM posts p WHERE p.topic_pair_id = t.id) DESC,
+                         t.created_at DESC
                 LIMIT %s
                 """,
                 (limit,),

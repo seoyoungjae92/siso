@@ -18,5 +18,6 @@ public record CrawlSettingsDto(
         int detailFetchLimit,
         int postRetentionDays,
         int stalePostScanLimit,
+        int maxTopicsPerDay,
         OffsetDateTime updatedAt) {
 }

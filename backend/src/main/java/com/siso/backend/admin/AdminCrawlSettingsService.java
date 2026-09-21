@@ -42,6 +42,7 @@ public class AdminCrawlSettingsService {
                 request.detailFetchLimit(),
                 request.postRetentionDays(),
                 request.stalePostScanLimit(),
+                request.maxTopicsPerDay(),
                 OffsetDateTime.now());
         return toDto(settings);
     }
@@ -67,6 +68,7 @@ public class AdminCrawlSettingsService {
                 settings.getDetailFetchLimit(),
                 settings.getPostRetentionDays(),
                 settings.getStalePostScanLimit(),
+                settings.getMaxTopicsPerDay(),
                 settings.getUpdatedAt());
     }
 }

@@ -15,5 +15,6 @@ public record CrawlSettingsRequest(
         int synthesisMinPostsPerSide,
         int detailFetchLimit,
         int postRetentionDays,
-        int stalePostScanLimit) {
+        int stalePostScanLimit,
+        int maxTopicsPerDay) {
 }
