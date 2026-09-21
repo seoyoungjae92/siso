@@ -125,6 +125,7 @@ export type CrawlSettings = {
   detailFetchLimit: number;
   postRetentionDays: number;
   stalePostScanLimit: number;
+  maxTopicsPerDay: number;
   updatedAt: string;
 };
 

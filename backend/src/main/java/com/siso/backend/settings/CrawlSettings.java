@@ -59,6 +59,9 @@ public class CrawlSettings {
     @Column(name = "stale_post_scan_limit", nullable = false)
     private int stalePostScanLimit;
 
+    @Column(name = "max_topics_per_day", nullable = false)
+    private int maxTopicsPerDay;
+
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
@@ -129,6 +132,10 @@ public class CrawlSettings {
         return stalePostScanLimit;
     }
 
+    public int getMaxTopicsPerDay() {
+        return maxTopicsPerDay;
+    }
+
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -149,6 +156,7 @@ public class CrawlSettings {
             int detailFetchLimit,
             int postRetentionDays,
             int stalePostScanLimit,
+            int maxTopicsPerDay,
             OffsetDateTime updatedAt) {
         this.matchSimilarityThreshold = matchSimilarityThreshold;
         this.pruneSimilarityThreshold = pruneSimilarityThreshold;
@@ -165,6 +173,7 @@ public class CrawlSettings {
         this.detailFetchLimit = detailFetchLimit;
         this.postRetentionDays = postRetentionDays;
         this.stalePostScanLimit = stalePostScanLimit;
+        this.maxTopicsPerDay = maxTopicsPerDay;
         this.updatedAt = updatedAt;
     }
 }

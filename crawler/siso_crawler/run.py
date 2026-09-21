@@ -259,7 +259,10 @@ def run_postprocess_cycle(
     if topic_synthesizer is not None:
         try:
             synthesized = synthesize_pending_topics(
-                matching_repo, topic_synthesizer, limit=settings.synthesis_limit
+                matching_repo,
+                topic_synthesizer,
+                limit=settings.synthesis_limit,
+                max_topics_per_day=settings.max_topics_per_day,
             )
             logger.info("주제 합성: %d건", synthesized)
         except Exception as exc:  # noqa: BLE001

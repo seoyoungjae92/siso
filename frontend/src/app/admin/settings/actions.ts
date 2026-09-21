@@ -33,6 +33,7 @@ export type CrawlSettingsInput = {
   detailFetchLimit: number;
   postRetentionDays: number;
   stalePostScanLimit: number;
+  maxTopicsPerDay: number;
 };
 
 export async function postUpdateCrawlSettings(input: CrawlSettingsInput) {
