@@ -84,6 +84,18 @@ const NUMBER_FIELDS: {
     hint: "KST 하루 기준 새 주제 개수 상한 — 임계값만으로는 뉴스 상황에 따라 생성량이 출렁여서 상한으로 못 박는다. 상한에 걸린 후보는 버려지지 않고 다음 날 후보로 남음",
   },
   {
+    key: "dedupSimilarityThreshold",
+    label: "주제 중복 판정 유사도",
+    step: "0.01",
+    hint: "새 주제 후보가 최근 주제와 이 값 이상 비슷하면 새로 만들지 않고 그 주제로 글을 흡수한다(기존 주제의 제목·요약은 건드리지 않음). 실측: 같은 이슈끼리 중앙값 0.82, 다른 이슈는 0.77 이하",
+  },
+  {
+    key: "dedupLookbackHours",
+    label: "주제 중복 판정 조회 기간(시간)",
+    step: "1",
+    hint: "이 시간 안에 만들어진 주제와만 비교. 노출 기간(7일=168h)보다 짧으면 며칠 이어지는 이슈가 매번 새 주제로 생성됨",
+  },
+  {
     key: "detailFetchLimit",
     label: "상세 페이지 본문 수집 사이클당 처리 개수",
     step: "1",
@@ -121,6 +133,8 @@ export function CrawlSettingsForm({ initial }: { initial: CrawlSettings }) {
     postRetentionDays: initial.postRetentionDays,
     stalePostScanLimit: initial.stalePostScanLimit,
     maxTopicsPerDay: initial.maxTopicsPerDay,
+    dedupSimilarityThreshold: initial.dedupSimilarityThreshold,
+    dedupLookbackHours: initial.dedupLookbackHours,
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

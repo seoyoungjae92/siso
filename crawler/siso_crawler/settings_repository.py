@@ -22,6 +22,8 @@ class CrawlSettings:
     post_retention_days: int = 10
     stale_post_scan_limit: int = 200
     max_topics_per_day: int = 2
+    dedup_similarity_threshold: float = 0.78
+    dedup_lookback_hours: int = 168
 
 
 class SettingsRepository(Protocol):
@@ -50,7 +52,8 @@ class PsycopgSettingsRepository:
                            prune_scan_limit, source_failure_threshold,
                            cohort_similarity_threshold, synthesis_min_posts_per_side,
                            detail_fetch_limit, post_retention_days, stale_post_scan_limit,
-                           max_topics_per_day
+                           max_topics_per_day, dedup_similarity_threshold,
+                           dedup_lookback_hours
                     FROM crawl_settings WHERE id = 1
                     """
                 )

@@ -34,6 +34,8 @@ export type CrawlSettingsInput = {
   postRetentionDays: number;
   stalePostScanLimit: number;
   maxTopicsPerDay: number;
+  dedupSimilarityThreshold: number;
+  dedupLookbackHours: number;
 };
 
 export async function postUpdateCrawlSettings(input: CrawlSettingsInput) {

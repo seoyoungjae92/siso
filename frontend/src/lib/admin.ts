@@ -126,6 +126,8 @@ export type CrawlSettings = {
   postRetentionDays: number;
   stalePostScanLimit: number;
   maxTopicsPerDay: number;
+  dedupSimilarityThreshold: number;
+  dedupLookbackHours: number;
   updatedAt: string;
 };
 

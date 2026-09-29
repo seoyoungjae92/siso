@@ -62,6 +62,12 @@ public class CrawlSettings {
     @Column(name = "max_topics_per_day", nullable = false)
     private int maxTopicsPerDay;
 
+    @Column(name = "dedup_similarity_threshold", nullable = false)
+    private float dedupSimilarityThreshold;
+
+    @Column(name = "dedup_lookback_hours", nullable = false)
+    private int dedupLookbackHours;
+
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
@@ -136,6 +142,14 @@ public class CrawlSettings {
         return maxTopicsPerDay;
     }
 
+    public float getDedupSimilarityThreshold() {
+        return dedupSimilarityThreshold;
+    }
+
+    public int getDedupLookbackHours() {
+        return dedupLookbackHours;
+    }
+
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -157,6 +171,8 @@ public class CrawlSettings {
             int postRetentionDays,
             int stalePostScanLimit,
             int maxTopicsPerDay,
+            float dedupSimilarityThreshold,
+            int dedupLookbackHours,
             OffsetDateTime updatedAt) {
         this.matchSimilarityThreshold = matchSimilarityThreshold;
         this.pruneSimilarityThreshold = pruneSimilarityThreshold;
@@ -174,6 +190,8 @@ public class CrawlSettings {
         this.postRetentionDays = postRetentionDays;
         this.stalePostScanLimit = stalePostScanLimit;
         this.maxTopicsPerDay = maxTopicsPerDay;
+        this.dedupSimilarityThreshold = dedupSimilarityThreshold;
+        this.dedupLookbackHours = dedupLookbackHours;
         this.updatedAt = updatedAt;
     }
 }

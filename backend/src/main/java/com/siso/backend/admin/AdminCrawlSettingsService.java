@@ -43,6 +43,8 @@ public class AdminCrawlSettingsService {
                 request.postRetentionDays(),
                 request.stalePostScanLimit(),
                 request.maxTopicsPerDay(),
+                request.dedupSimilarityThreshold(),
+                request.dedupLookbackHours(),
                 OffsetDateTime.now());
         return toDto(settings);
     }
@@ -69,6 +71,8 @@ public class AdminCrawlSettingsService {
                 settings.getPostRetentionDays(),
                 settings.getStalePostScanLimit(),
                 settings.getMaxTopicsPerDay(),
+                settings.getDedupSimilarityThreshold(),
+                settings.getDedupLookbackHours(),
                 settings.getUpdatedAt());
     }
 }

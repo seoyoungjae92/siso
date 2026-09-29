@@ -95,7 +95,8 @@ def test_match_pending_posts_attaches_to_existing_pair_instead_of_duplicating():
         recent_similar_pairs={10: (999, 0.75)},
     )
 
-    matched = match_pending_posts(repo, threshold=0.6, cohort_threshold=0.6)
+    # 중복 판정 임계값은 코호트 임계값과 별개 인자다(2026-09-29 분리).
+    matched = match_pending_posts(repo, threshold=0.6, cohort_threshold=0.6, dedup_threshold=0.6)
 
     assert matched == 0  # 새로 "생성"된 주제는 없음
     assert repo.created_pairs == []
@@ -218,3 +219,28 @@ def test_delete_stale_posts_respects_limit():
 
     assert deleted == 2
     assert repo.deleted_posts == [1, 2]
+
+
+def test_match_pending_posts_uses_dedup_settings_not_cohort_threshold():
+    # 중복 판정은 코호트 임계값과 분리돼야 한다 — 생성량을 줄이려고 코호트
+    # 임계값을 올리면 중복 억제까지 같이 빡빡해져서 같은 이슈가 매번 새
+    # 주제로 쪼개졌다(2026-09-29 실측: 화면의 15개 중 6개가 같은 사건).
+    repo = FakeMatchingRepository(
+        unmatched_left=[1],
+        best_matches={1: (2, 0.9)},
+        same_side_similar={1: [(3, 0.9)], 2: [(4, 0.9)]},
+        recent_similar_pairs={1: (77, 0.80)},
+    )
+
+    matched = match_pending_posts(
+        repo,
+        threshold=0.6,
+        cohort_threshold=0.85,  # 코호트는 빡빡해도
+        min_posts_per_side=2,
+        dedup_threshold=0.78,  # 중복 판정은 이 값으로만 결정
+        dedup_lookback_hours=168,
+    )
+
+    assert matched == 0  # 새 주제를 만들지 않고
+    assert repo.attached_pairs == [(77, [1, 3], [2, 4])]  # 기존 주제로 흡수
+    assert repo.dedup_calls == [(1, "left", 0.78, 168)]
