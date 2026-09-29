@@ -33,9 +33,17 @@ SYNTHESIS_MIN_POSTS_PER_SIDE_DEFAULT = 1
 # 새 코호트가 최근 이 시간 이내 만들어진 활성 주제와 같은 이야기로 보이면
 # (코호트 결속 임계값과 같은 기준 재사용) 새 topic_pair를 또 만들지 않고
 # 그 기존 주제로 조용히 흡수시킨다 — 같은 이슈가 하루에도 여러 개의 별도
-# 주제로 쪼개지던 중복 문제 완화(2026-09 사용자 발견). 너무 길면 며칠 전
-# "끝난" 이슈에 오늘 글이 억지로 흡수될 수 있어 하루 정도로 제한.
-DEDUP_LOOKBACK_HOURS = 24
+# 주제로 쪼개지던 중복 문제 완화(2026-09 사용자 발견).
+#
+# 아래 두 값은 crawl_settings(dedup_similarity_threshold / dedup_lookback_hours)에서
+# 읽어오며 여기 상수는 폴백 기본값이다. 원래는 코호트 임계값과 24시간 고정값을
+# 그대로 썼는데 두 가지가 문제였다(2026-09-29 실측: 화면의 15개 중 6개가 같은
+# "DMZ 지뢰 폭발 사고"):
+#  - 코호트 임계값을 생성량 조절 목적으로 올리면 중복 판정까지 같이 빡빡해짐
+#  - 창이 노출 기간(7일)보다 짧아 며칠 이어지는 이슈는 매번 새 주제가 됨
+# 기본값 0.78은 같은 이슈 주제쌍(중앙값 0.82)과 다른 이슈(최대 0.773) 사이.
+DEDUP_SIMILARITY_THRESHOLD = 0.78
+DEDUP_LOOKBACK_HOURS = 168
 
 
 def embed_pending_posts(
@@ -53,6 +61,8 @@ def match_pending_posts(
     threshold: float = MATCH_SIMILARITY_THRESHOLD,
     cohort_threshold: float = COHORT_SIMILARITY_THRESHOLD,
     min_posts_per_side: int = SYNTHESIS_MIN_POSTS_PER_SIDE_DEFAULT,
+    dedup_threshold: float = DEDUP_SIMILARITY_THRESHOLD,
+    dedup_lookback_hours: int = DEDUP_LOOKBACK_HOURS,
 ) -> int:
     matched = 0
     # 이번 사이클에서 이미 어떤 코호트에 편입된 post_id — find_unmatched_posts가
@@ -89,7 +99,7 @@ def match_pending_posts(
         if len(right_ids) < min_posts_per_side:
             continue
 
-        existing = repo.find_recent_similar_pair(post_id, "left", cohort_threshold, DEDUP_LOOKBACK_HOURS)
+        existing = repo.find_recent_similar_pair(post_id, "left", dedup_threshold, dedup_lookback_hours)
         if existing is not None:
             existing_pair_id, _ = existing
             repo.attach_to_existing_pair(existing_pair_id, left_ids, right_ids)

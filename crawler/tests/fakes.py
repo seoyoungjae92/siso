@@ -74,6 +74,7 @@ class FakeMatchingRepository:
         self.created_pairs: list[tuple[list[int], list[int], float]] = []
         self.recent_similar_pairs = recent_similar_pairs or {}
         self.attached_pairs: list[tuple[int, list[int], list[int]]] = []
+        self.dedup_calls: list[tuple[int, str, float, int]] = []
         self.similar_counts = similar_counts or {}
         self.prunable_posts = prunable_posts or []
         self.stale_post_ids = stale_post_ids or []
@@ -110,6 +111,7 @@ class FakeMatchingRepository:
     def find_recent_similar_pair(
         self, post_id: int, side: str, threshold: float, window_hours: int
     ) -> tuple[int, float] | None:
+        self.dedup_calls.append((post_id, side, threshold, window_hours))
         result = self.recent_similar_pairs.get(post_id)
         if result is None or result[1] < threshold:
             return None

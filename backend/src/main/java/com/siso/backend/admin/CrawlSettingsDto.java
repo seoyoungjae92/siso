@@ -19,5 +19,7 @@ public record CrawlSettingsDto(
         int postRetentionDays,
         int stalePostScanLimit,
         int maxTopicsPerDay,
+        float dedupSimilarityThreshold,
+        int dedupLookbackHours,
         OffsetDateTime updatedAt) {
 }

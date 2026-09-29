@@ -16,5 +16,7 @@ public record CrawlSettingsRequest(
         int detailFetchLimit,
         int postRetentionDays,
         int stalePostScanLimit,
-        int maxTopicsPerDay) {
+        int maxTopicsPerDay,
+        float dedupSimilarityThreshold,
+        int dedupLookbackHours) {
 }

@@ -212,6 +212,8 @@ def run_postprocess_cycle(
             threshold=settings.match_similarity_threshold,
             cohort_threshold=settings.cohort_similarity_threshold,
             min_posts_per_side=settings.synthesis_min_posts_per_side,
+            dedup_threshold=settings.dedup_similarity_threshold,
+            dedup_lookback_hours=settings.dedup_lookback_hours,
         )
         logger.info("매칭: %d쌍 생성", matched)
     except Exception as exc:  # noqa: BLE001

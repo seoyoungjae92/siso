@@ -174,8 +174,8 @@ class PsycopgMatchingRepository:
     def find_recent_similar_pair(
         self, post_id: int, side: str, threshold: float, window_hours: int
     ) -> tuple[int, float] | None:
-        """post_id와 같은 side이면서, 최근 window_hours 이내 생성된 이미
-        합성 완료된 활성 주제에 묶인 글 중 가장 가까운 것 — 있으면 "이미
+        """post_id와 같은 side이면서, 최근 window_hours 이내 생성된 활성
+        주제에 묶인 글 중 가장 가까운 것 — 있으면 "이미
         다루고 있는 같은 이야기"로 보고 새 주제를 또 만들지 않기 위한
         중복 억제용(같은 이슈가 하루에도 여러 개의 별도 topic_pair로
         쪼개지던 문제, 2026-08-02/2026-09 사용자 발견). 기존 주제의
@@ -183,7 +183,12 @@ class PsycopgMatchingRepository:
         수 있어 재작성하면 그 흐름이 깨진다(사용자 명시적 요구). 대상
         후보군이 "최근 활성 주제에 묶인 글"뿐이라 이미 작아서, 인덱스
         없이 거리 계산해도 count_similar_posts 같은 전체 스캔 문제가
-        생기지 않는다."""
+        생기지 않는다.
+
+        아직 합성 안 된 주제(title IS NULL)도 후보에 포함한다 — 하루 생성
+        상한(max_topics_per_day) 도입 이후로는 매칭만 되고 합성은 며칠 뒤에
+        되는 주제가 정상적으로 존재하는데, 이걸 후보에서 빼면 그 사이에
+        같은 이슈로 새 주제가 계속 만들어진다(2026-09-29 실측)."""
         with self._conn.cursor() as cur:
             cur.execute(
                 """
@@ -194,7 +199,6 @@ class PsycopgMatchingRepository:
                     JOIN topic_pairs tp ON tp.id = p2.topic_pair_id
                     WHERE s2.side = %s
                       AND tp.status = 'active'
-                      AND tp.title IS NOT NULL
                       AND tp.created_at > now() - (%s || ' hours')::interval
                 )
                 SELECT c.topic_pair_id, 1 - (p1.embedding <=> c.embedding) AS similarity

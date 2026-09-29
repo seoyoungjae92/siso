@@ -44,6 +44,8 @@ class AdminCrawlSettingsServiceTest {
         ReflectionTestUtils.setField(settings, "postRetentionDays", 10);
         ReflectionTestUtils.setField(settings, "stalePostScanLimit", 200);
         ReflectionTestUtils.setField(settings, "maxTopicsPerDay", 2);
+        ReflectionTestUtils.setField(settings, "dedupSimilarityThreshold", 0.78f);
+        ReflectionTestUtils.setField(settings, "dedupLookbackHours", 168);
         ReflectionTestUtils.setField(settings, "updatedAt", OffsetDateTime.now());
         return settings;
     }
@@ -70,6 +72,8 @@ class AdminCrawlSettingsServiceTest {
         assertThat(dto.postRetentionDays()).isEqualTo(10);
         assertThat(dto.stalePostScanLimit()).isEqualTo(200);
         assertThat(dto.maxTopicsPerDay()).isEqualTo(2);
+        assertThat(dto.dedupSimilarityThreshold()).isEqualTo(0.78f);
+        assertThat(dto.dedupLookbackHours()).isEqualTo(168);
     }
 
     @Test
@@ -78,7 +82,7 @@ class AdminCrawlSettingsServiceTest {
         when(crawlSettingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
 
         CrawlSettingsRequest request = new CrawlSettingsRequest(
-                0.6f, 0.4f, 5, 72, 14, 20, "anthropic/claude-haiku-4.5", 50, 60, 7, 0.7f, 2, 30, 15, 300, 3);
+                0.6f, 0.4f, 5, 72, 14, 20, "anthropic/claude-haiku-4.5", 50, 60, 7, 0.7f, 2, 30, 15, 300, 3, 0.8f, 72);
         CrawlSettingsDto dto = newService().update(request);
 
         assertThat(dto.matchSimilarityThreshold()).isEqualTo(0.6f);
@@ -97,5 +101,7 @@ class AdminCrawlSettingsServiceTest {
         assertThat(dto.postRetentionDays()).isEqualTo(15);
         assertThat(dto.stalePostScanLimit()).isEqualTo(300);
         assertThat(dto.maxTopicsPerDay()).isEqualTo(3);
+        assertThat(dto.dedupSimilarityThreshold()).isEqualTo(0.8f);
+        assertThat(dto.dedupLookbackHours()).isEqualTo(72);
     }
 }
