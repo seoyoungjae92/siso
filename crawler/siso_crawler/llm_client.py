@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -112,8 +113,10 @@ SYSTEM_PROMPT = """너는 한국 정치 커뮤니티 좌/우 게시글을 보고
    전달해라. 단, 3번 규칙(원문 밖 사실 창작 금지)이 항상 이 분량보다
    우선이다 — 짧게 쓰다 보면 오히려 사실을 함부로 요약하기 쉬우니, 더
    짧아지더라도 정확하지 않은 내용을 넣느니 차라리 짧게 끝내라.
-7. 응답은 반드시 자연스러운 한국어 문장으로만 작성해라. 러시아어, 아랍어
-   등 다른 문자 체계나 알파벳 조각이 단어 중간에 섞이면 절대 안 된다.
+7. 응답은 반드시 자연스러운 한국어 문장으로만 작성해라. **제목도 반드시
+   한국어로 써라** — 영어 문장으로 된 제목은 거부된다(고유명사·약어는 허용).
+   러시아어, 아랍어 등 다른 문자 체계나 알파벳 조각이 단어 중간에 섞이면
+   절대 안 된다.
    오탈자·문법 오류 없이 매끄럽게 다듬어라.
 8. 토론 페이지를 읽는 사람을 위한 보조 설명 3가지를 함께 작성해라. 모두
    3번 규칙(원문 밖 사실 창작 금지)과 1번 규칙(좌/우 대칭)이 그대로
@@ -207,6 +210,24 @@ def _korean_ratio(text: str) -> float:
     if not letters:
         return 1.0
     return sum(1 for ch in letters if _is_hangul(ch)) / len(letters)
+
+
+_WORD_RE = re.compile(r"[^\W_]+", re.UNICODE)
+
+
+def _is_mostly_english(text: str) -> bool:
+    """한글 단어가 하나도 없거나, 알파벳으로만 된 단어가 한글이 든 단어보다
+    많으면 영어 문장으로 본다.
+
+    _korean_ratio는 제목+좌/우 요약을 합쳐서 보기 때문에, 요약이 한국어면
+    제목만 영어여도 통과한다 — 실제로 제목이 "The term '좌아하게' and its
+    political implications"로 나간 사례가 있었다(2026-10-02, 합산 비율
+    0.895라 통과). 그렇다고 제목에 단순 비율을 적용하면 "AI·ESG 규제 논란"
+    처럼 약어가 많은 정상 제목이 걸리므로, 글자 비율 대신 단어 수로 센다."""
+    words = _WORD_RE.findall(text)
+    korean = sum(1 for w in words if any(_is_hangul(ch) for ch in w))
+    english = sum(1 for w in words if w.isascii() and w.isalpha())
+    return korean == 0 or english > korean
 
 
 def _has_disallowed_script(text: str) -> bool:
@@ -535,6 +556,16 @@ class OpenRouterTopicSynthesizer:
 
         if _has_disallowed_script(combined):
             raise SynthesisFailed("응답에 한글/영문 외 문자 체계(러시아어·아랍어 등)가 섞여있음")
+
+        # 합산 비율 검사만으로는 "짧은 영어 제목 + 긴 한국어 요약"을 못 잡는다
+        # (_is_mostly_english docstring 참고) — 필드별로 따로 본다.
+        for field, value in (
+            ("제목", parsed.title),
+            ("좌 입장", parsed.left_stance),
+            ("우 입장", parsed.right_stance),
+        ):
+            if _is_mostly_english(value):
+                raise SynthesisFailed(f"{field}이(가) 한국어가 아님: {value[:60]}")
 
         title = parsed.title.strip()[:200]
         left_stance = parsed.left_stance.strip()[:500]
