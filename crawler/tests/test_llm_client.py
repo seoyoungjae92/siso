@@ -531,3 +531,42 @@ def test_synthesize_rejects_topic_when_legal_check_flags_enrichment(monkeypatch)
 
     with pytest.raises(SynthesisFailed):
         _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
+
+
+def test_synthesize_rejects_english_title_with_korean_stances(monkeypatch):
+    # 합산 한글 비율 검사(제목+좌+우)만 있을 때, 요약이 한국어면 제목만
+    # 영어여도 통과했다 — 실제로 "The term '좌아하게' and its political
+    # implications" 제목이 운영에 노출됨(2026-10-02, 합산 비율 0.895).
+    content = _enriched_content(title="The term '좌아하게' and its political implications")
+    monkeypatch.setattr(httpx, "post", _sequence_post(content, _DIVERGES_CONTENT, _SAFE_CHECK_CONTENT))
+
+    with pytest.raises(SynthesisFailed):
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
+
+
+def test_synthesize_rejects_english_stance(monkeypatch):
+    content = _enriched_content(left_stance="The ruling party argues that the bill is necessary now.")
+    monkeypatch.setattr(httpx, "post", _sequence_post(content, _DIVERGES_CONTENT, _SAFE_CHECK_CONTENT))
+
+    with pytest.raises(SynthesisFailed):
+        _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
+
+
+@pytest.mark.parametrize(
+    "title",
+    ["DMZ 지뢰 폭발 사고 원인 및 책임 공방", "AI·ESG 규제 논란", "김민석 vs 한동훈, '관종' 공방"],
+)
+def test_synthesize_keeps_korean_title_with_acronyms(monkeypatch, title):
+    # 약어·영문 고유명사가 섞인 정상 제목까지 걸리면 안 된다 — 그래서 글자
+    # 비율이 아니라 단어 수로 판정한다. 입장 요약은 운영과 비슷한 분량으로
+    # 둔다(짧으면 합산 한글 비율 검사가 약어 비중을 과대평가함).
+    content = _enriched_content(
+        title=title,
+        left_stance="여당은 해당 법안이 지금 반드시 필요하다고 주장하며 신속한 처리를 요구하고 있다.",
+        right_stance="야당은 절차적 정당성이 부족하다며 법안 처리를 미루고 충분히 논의해야 한다고 맞서고 있다.",
+    )
+    monkeypatch.setattr(httpx, "post", _sequence_post(content, _DIVERGES_CONTENT, _SAFE_CHECK_CONTENT))
+
+    result = _synthesizer().synthesize([("좌제목", "좌요약")], [("우제목", "우요약")])
+
+    assert result.title == title
