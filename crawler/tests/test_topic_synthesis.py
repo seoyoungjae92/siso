@@ -99,7 +99,7 @@ def test_synthesize_pending_topics_stops_at_daily_cap():
             (1, [("좌1", "")], [("우1", "")]),
             (2, [("좌2", "")], [("우2", "")]),
         ],
-        topics_created_today=1,
+        topics_synthesized_today=1,
     )
     synthesizer = FakeTopicSynthesizer(
         results={
@@ -117,7 +117,7 @@ def test_synthesize_pending_topics_stops_at_daily_cap():
 def test_synthesize_pending_topics_skips_entirely_when_cap_reached():
     repo = FakeMatchingRepository(
         pairs_missing_synthesis=[(1, [("좌1", "")], [("우1", "")])],
-        topics_created_today=2,
+        topics_synthesized_today=2,
     )
     synthesizer = FakeTopicSynthesizer(results={("좌1", "우1"): SynthesizedTopic("t1", "l1", "r1")})
 
@@ -128,8 +128,21 @@ def test_synthesize_pending_topics_skips_entirely_when_cap_reached():
 def test_synthesize_pending_topics_without_cap_is_unchanged():
     repo = FakeMatchingRepository(
         pairs_missing_synthesis=[(1, [("좌1", "")], [("우1", "")])],
-        topics_created_today=99,
+        topics_synthesized_today=99,
     )
     synthesizer = FakeTopicSynthesizer(results={("좌1", "우1"): SynthesizedTopic("t1", "l1", "r1")})
 
     assert synthesize_pending_topics(repo, synthesizer) == 1
+
+
+def test_daily_cap_counts_synthesis_time_not_match_time():
+    # 상한에 걸린 후보는 다음 날로 넘어가므로 "며칠 전 매칭 + 오늘 합성"이
+    # 정상인데, 매칭 시각으로 세면 그 주제가 오늘 예산을 안 쓴 것으로 처리돼
+    # 상한이 무력화된다(2026-10-04 실측: 상한 2건인데 하루 7건 노출).
+    repo = FakeMatchingRepository(
+        pairs_missing_synthesis=[(1, [("좌1", "")], [("우1", "")])],
+        topics_synthesized_today=2,  # 오늘 합성된 2건(매칭은 며칠 전일 수 있음)
+    )
+    synthesizer = FakeTopicSynthesizer(results={("좌1", "우1"): SynthesizedTopic("t1", "l1", "r1")})
+
+    assert synthesize_pending_topics(repo, synthesizer, max_topics_per_day=2) == 0

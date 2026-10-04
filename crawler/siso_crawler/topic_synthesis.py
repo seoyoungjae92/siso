@@ -22,7 +22,7 @@ def synthesize_pending_topics(
     결정적으로 보장하지 못한다. 상한에 걸린 후보는 버리지 않고 title이 NULL인
     채 남아 다음 날 후보가 된다."""
     if max_topics_per_day is not None:
-        remaining_today = max_topics_per_day - repo.count_topics_created_today()
+        remaining_today = max_topics_per_day - repo.count_topics_synthesized_today()
         if remaining_today <= 0:
             logger.info("오늘 주제 생성 상한(%d건) 도달 — 합성 건너뜀", max_topics_per_day)
             return 0
