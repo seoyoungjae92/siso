@@ -41,7 +41,7 @@ class MatchingRepository(Protocol):
         self, limit: int
     ) -> list[tuple[int, list[tuple[str, str]], list[tuple[str, str]]]]: ...
 
-    def count_topics_created_today(self) -> int: ...
+    def count_topics_synthesized_today(self) -> int: ...
 
     def update_pair_synthesis(
         self,
@@ -65,16 +65,21 @@ class PsycopgMatchingRepository:
         register_vector(conn)
         self._conn = conn
 
-    def count_topics_created_today(self) -> int:
-        """오늘(KST) 만들어진 합성 완료 주제 수 — 하루 상한 계산용.
-        status는 보지 않는다(품질 문제로 숨긴 주제도 그날 생성 예산을 쓴
-        것으로 본다)."""
+    def count_topics_synthesized_today(self) -> int:
+        """오늘(KST) 합성된 주제 수 — 하루 상한 계산용.
+
+        매칭 시각(created_at)이 아니라 합성 시각으로 센다. 상한에 걸린 후보는
+        다음 날로 넘어가므로 "며칠 전 매칭 + 오늘 합성"이 정상 동작인데,
+        매칭 시각으로 세면 그런 주제가 오늘 예산을 전혀 소모하지 않아 상한이
+        무력화된다(2026-10-04 실측: 상한 2건인데 하루 7건 노출).
+
+        status는 보지 않는다(품질 문제로 숨긴 주제도 그날 예산을 쓴 것으로 본다)."""
         with self._conn.cursor() as cur:
             cur.execute(
                 """
                 SELECT count(*) FROM topic_pairs
                 WHERE title IS NOT NULL
-                  AND (created_at AT TIME ZONE 'Asia/Seoul')::date
+                  AND (coalesce(synthesized_at, created_at) AT TIME ZONE 'Asia/Seoul')::date
                       = (now() AT TIME ZONE 'Asia/Seoul')::date
                 """
             )
@@ -455,7 +460,8 @@ class PsycopgMatchingRepository:
                 """
                 UPDATE topic_pairs
                 SET title = %s, left_stance = %s, right_stance = %s,
-                    background = %s, left_points = %s, right_points = %s, discussion_questions = %s
+                    background = %s, left_points = %s, right_points = %s, discussion_questions = %s,
+                    synthesized_at = now()
                 WHERE id = %s
                 """,
                 (
