@@ -43,6 +43,10 @@ class MatchingRepository(Protocol):
 
     def count_topics_synthesized_today(self) -> int: ...
 
+    def find_recent_topic_titles(self, window_hours: int, limit: int) -> list[str]: ...
+
+    def mark_pair_duplicate(self, pair_id: int) -> None: ...
+
     def update_pair_synthesis(
         self,
         pair_id: int,
@@ -84,6 +88,29 @@ class PsycopgMatchingRepository:
                 """
             )
             return cur.fetchone()[0]
+
+    def find_recent_topic_titles(self, window_hours: int, limit: int) -> list[str]:
+        """최근 노출 중인(활성·합성 완료) 주제 제목 — 새 주제가 같은 사건을
+        또 다루는지 LLM으로 확인할 때 비교 대상으로 쓴다."""
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT title FROM topic_pairs
+                WHERE status = 'active' AND title IS NOT NULL
+                  AND created_at > now() - (%s || ' hours')::interval
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (window_hours, limit),
+            )
+            return [row[0] for row in cur.fetchall()]
+
+    def mark_pair_duplicate(self, pair_id: int) -> None:
+        """중복으로 판정된 쌍은 숨김 처리한다 — 그냥 두면 매 사이클 다시
+        합성을 시도해 LLM 예산만 쓰고, 묶인 글도 계속 붙잡고 있게 된다."""
+        with self._conn.cursor() as cur:
+            cur.execute("UPDATE topic_pairs SET status = 'hidden' WHERE id = %s", (pair_id,))
+        self._conn.commit()
 
     def rollback(self) -> None:
         # postprocess 단계(매칭/정리/데드링크/합성)가 커넥션 하나를 공유하는데,

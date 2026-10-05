@@ -590,6 +590,124 @@ class OpenRouterTopicSynthesizer:
         )
 
 
+DUPLICATE_CHECK_PROMPT = """너는 뉴스 큐레이션 편집자다. 새로 만든 토론 주제가
+이미 사이트에 올라와 있는 주제들과 "같은 사건·같은 쟁점"을 다루는지 판단해라.
+
+같은 것으로 본다:
+- 같은 사건을 다루는데 각도만 다른 경우(예: "A 사고 원인 논란" vs "A 사고 정부 대응 논란")
+- 같은 인물의 같은 발언·행위를 다루는 경우
+- 표현만 다를 뿐 독자가 "아까 본 그 주제"라고 느낄 경우
+
+다른 것으로 본다:
+- 같은 인물이나 같은 분야가 등장하지만 구체적 사건이 다른 경우
+  (예: "검찰개혁 법안 논쟁" vs "특정 후보자 인선 논란")
+- 후속 전개가 아니라 명백히 새로운 사건인 경우
+
+판단이 애매하면 duplicate를 true로 해라 — 중복이 하나 더 노출되는 것보다
+비슷한 주제를 하루 미루는 쪽이 낫다.
+
+반드시 JSON으로만 답해라."""
+
+DUPLICATE_CHECK_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "duplicate": {"type": "boolean"},
+        "matched_title": {"type": "string"},
+        "reason": {"type": "string"},
+    },
+    "required": ["duplicate", "matched_title", "reason"],
+    "additionalProperties": False,
+}
+
+
+class DuplicateCheckSchema(pydantic.BaseModel):
+    duplicate: bool
+    matched_title: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class DuplicateVerdict:
+    duplicate: bool
+    matched_title: str
+    reason: str
+
+
+class TopicDuplicateChecker(Protocol):
+    def check(self, topic: SynthesizedTopic, existing_titles: list[str]) -> DuplicateVerdict: ...
+
+
+class OpenRouterTopicDuplicateChecker:
+    """합성된 주제가 최근 노출 중인 주제와 같은 사건인지 LLM으로 확인한다.
+
+    임베딩 유사도만으로는 한계가 분명했다(2026-10-04 실측: 같은 이슈 주제쌍은
+    최소 0.657, 서로 다른 이슈는 최대 0.857로 구간이 겹침) — 임계값을 낮추면
+    다른 사건까지 합쳐지고, 높이면 같은 사건이 매일 새 주제로 올라온다.
+    제목은 짧고 맥락이 또렷해서 이 판단만 따로 물으면 정확도가 훨씬 높다."""
+
+    def __init__(self, api_key: str, model: str = SECOND_PASS_VERIFICATION_MODEL):
+        self._api_key = api_key
+        self._model = model
+
+    def check(self, topic: SynthesizedTopic, existing_titles: list[str]) -> DuplicateVerdict:
+        if not existing_titles:
+            return DuplicateVerdict(False, "", "비교할 기존 주제 없음")
+
+        existing = "\n".join(f"- {t}" for t in existing_titles)
+        user_prompt = (
+            f"[새 주제]\n제목: {topic.title}\n배경: {topic.background or '(없음)'}\n"
+            f"좌: {topic.left_stance}\n우: {topic.right_stance}\n\n[이미 올라와 있는 주제]\n{existing}"
+        )
+        try:
+            response = httpx.post(
+                OPENROUTER_URL,
+                timeout=TIMEOUT_SECONDS,
+                headers={
+                    "Authorization": f"Bearer {self._api_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://github.com/seoyoungjae92/siso",
+                    "X-Title": OPENROUTER_APP_TITLE,
+                },
+                json={
+                    "model": self._model,
+                    "max_tokens": MAX_TOKENS,
+                    "messages": [
+                        {"role": "system", "content": DUPLICATE_CHECK_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "duplicate_check",
+                            "strict": True,
+                            "schema": DUPLICATE_CHECK_RESPONSE_SCHEMA,
+                        },
+                    },
+                    "provider": {"require_parameters": True},
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            choice = data["choices"][0]
+            if choice["finish_reason"] != "stop":
+                raise SynthesisFailed(f"중복 검사 응답 비정상 종료: {choice['finish_reason']}")
+            parsed = DuplicateCheckSchema.model_validate_json(choice["message"]["content"])
+        except SynthesisFailed:
+            raise
+        except (httpx.HTTPError, KeyError, IndexError, ValueError, pydantic.ValidationError) as exc:
+            # 검사가 안 됐는데 그냥 올리면 중복이 그대로 노출된다 — 이번 사이클만
+            # 건너뛰고 다음 사이클에 다시 시도한다(쌍은 미합성으로 남음).
+            raise SynthesisFailed(f"중복 검사 실패: {exc}") from exc
+
+        return DuplicateVerdict(parsed.duplicate, parsed.matched_title, parsed.reason)
+
+
+def build_topic_duplicate_checker(api_key: str | None) -> TopicDuplicateChecker | None:
+    if not api_key:
+        return None
+    return OpenRouterTopicDuplicateChecker(api_key)
+
+
 def build_topic_synthesizer(api_key: str | None, model: str | None = None) -> TopicSynthesizer | None:
     if not api_key:
         return None

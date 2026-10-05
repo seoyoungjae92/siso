@@ -85,10 +85,18 @@ class FakeMatchingRepository:
         self.synthesized_pairs: list[tuple[int, str, str, str]] = []
         self.synthesized_enrichments: dict[int, tuple] = {}
         self.topics_synthesized_today = topics_synthesized_today
+        self.recent_topic_titles: list[str] = []
+        self.duplicate_marked: list[int] = []
         self.rollback_calls = 0
 
     def count_topics_synthesized_today(self) -> int:
         return self.topics_synthesized_today
+
+    def find_recent_topic_titles(self, window_hours: int, limit: int) -> list[str]:
+        return self.recent_topic_titles[:limit]
+
+    def mark_pair_duplicate(self, pair_id: int) -> None:
+        self.duplicate_marked.append(pair_id)
 
     def find_posts_missing_embedding(self, limit: int) -> list[tuple[int, str, str]]:
         return self.pending_embeddings[:limit]
