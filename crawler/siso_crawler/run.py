@@ -17,6 +17,7 @@ from .html_parsers import get_detail_parser
 from .linkcheck import scan_dead_links
 from .llm_client import (
     build_post_political_classifier,
+    build_topic_duplicate_checker,
     build_topic_synthesizer,
 )
 from .matching import (
@@ -185,6 +186,7 @@ def run_postprocess_cycle(
     check_dead_link=_check_dead_link,
     fetch_robots_parser=_fetch_robots_parser,
     topic_synthesizer=None,
+    duplicate_checker=None,
 ) -> None:
     # 매칭/정리/데드링크/합성은 서로 독립적으로 DB를 다시 조회하는
     # 단계라 하나가 실패해도 나머지를 막을 이유가 없다 — 예전엔 여기
@@ -265,6 +267,8 @@ def run_postprocess_cycle(
                 topic_synthesizer,
                 limit=settings.synthesis_limit,
                 max_topics_per_day=settings.max_topics_per_day,
+                duplicate_checker=duplicate_checker,
+                duplicate_lookback_hours=settings.dedup_lookback_hours,
             )
             logger.info("주제 합성: %d건", synthesized)
         except Exception as exc:  # noqa: BLE001
@@ -286,6 +290,7 @@ def run_cycle(
     check_dead_link=_check_dead_link,
     fetch_robots_parser=_fetch_robots_parser,
     topic_synthesizer=None,
+    duplicate_checker=None,
     summarizer=None,
     political_classifier=None,
 ) -> None:
@@ -310,6 +315,7 @@ def run_cycle(
         check_dead_link=check_dead_link,
         fetch_robots_parser=fetch_robots_parser,
         topic_synthesizer=topic_synthesizer,
+        duplicate_checker=duplicate_checker,
     )
 
 
@@ -365,7 +371,14 @@ def main() -> None:
             matching_repo = PsycopgMatchingRepository(conn)
             embedder = SentenceTransformerEmbeddingProvider()
             topic_synthesizer = build_topic_synthesizer(api_key, model=settings.synthesis_model)
-            run_postprocess_cycle(settings, matching_repo, embedder, topic_synthesizer=topic_synthesizer)
+            duplicate_checker = build_topic_duplicate_checker(api_key)
+            run_postprocess_cycle(
+                settings,
+                matching_repo,
+                embedder,
+                topic_synthesizer=topic_synthesizer,
+                duplicate_checker=duplicate_checker,
+            )
 
 
 if __name__ == "__main__":

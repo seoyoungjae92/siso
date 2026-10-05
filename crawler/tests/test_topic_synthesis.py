@@ -146,3 +146,61 @@ def test_daily_cap_counts_synthesis_time_not_match_time():
     synthesizer = FakeTopicSynthesizer(results={("좌1", "우1"): SynthesizedTopic("t1", "l1", "r1")})
 
     assert synthesize_pending_topics(repo, synthesizer, max_topics_per_day=2) == 0
+
+
+class FakeDuplicateChecker:
+    """duplicate_titles에 있는 제목이면 중복으로 판정. fail=True면 검사 자체가 실패."""
+
+    def __init__(self, duplicate_titles: set | None = None, fail: bool = False):
+        self.duplicate_titles = duplicate_titles or set()
+        self.fail = fail
+        self.calls: list[tuple] = []
+
+    def check(self, topic, existing_titles):
+        from siso_crawler.llm_client import DuplicateVerdict, SynthesisFailed
+
+        self.calls.append((topic.title, tuple(existing_titles)))
+        if self.fail:
+            raise SynthesisFailed("검사 실패")
+        if topic.title in self.duplicate_titles:
+            return DuplicateVerdict(True, "기존 주제", "같은 사건")
+        return DuplicateVerdict(False, "", "다른 사건")
+
+
+def _repo_with_one_pending():
+    repo = FakeMatchingRepository(pairs_missing_synthesis=[(1, [("좌1", "")], [("우1", "")])])
+    repo.recent_topic_titles = ["기존 주제 A", "기존 주제 B"]
+    return repo
+
+
+def test_synthesize_skips_and_hides_duplicate_topic():
+    # 임베딩 유사도만으로는 같은 사건을 못 거르는 구간이 있어(2026-10-04 실측)
+    # 합성 직후 기존 주제 제목과 비교하는 LLM 게이트를 둔다.
+    repo = _repo_with_one_pending()
+    synthesizer = FakeTopicSynthesizer(results={("좌1", "우1"): SynthesizedTopic("t1", "l1", "r1")})
+    checker = FakeDuplicateChecker(duplicate_titles={"t1"})
+
+    assert synthesize_pending_topics(repo, synthesizer, duplicate_checker=checker) == 0
+    assert repo.synthesized_pairs == []  # 저장하지 않고
+    assert repo.duplicate_marked == [1]  # 다시 시도하지 않도록 숨김
+    assert checker.calls == [("t1", ("기존 주제 A", "기존 주제 B"))]
+
+
+def test_synthesize_saves_when_not_duplicate():
+    repo = _repo_with_one_pending()
+    synthesizer = FakeTopicSynthesizer(results={("좌1", "우1"): SynthesizedTopic("t1", "l1", "r1")})
+
+    assert synthesize_pending_topics(repo, synthesizer, duplicate_checker=FakeDuplicateChecker()) == 1
+    assert [p[0] for p in repo.synthesized_pairs] == [1]
+    assert repo.duplicate_marked == []
+
+
+def test_synthesize_retries_later_when_duplicate_check_fails():
+    # 검사가 안 된 채로 올리면 중복이 그대로 노출된다 — 이번 사이클만 건너뛰고
+    # 쌍은 미합성으로 남겨 다음 사이클에 다시 시도한다(숨김 처리도 하지 않음).
+    repo = _repo_with_one_pending()
+    synthesizer = FakeTopicSynthesizer(results={("좌1", "우1"): SynthesizedTopic("t1", "l1", "r1")})
+
+    assert synthesize_pending_topics(repo, synthesizer, duplicate_checker=FakeDuplicateChecker(fail=True)) == 0
+    assert repo.synthesized_pairs == []
+    assert repo.duplicate_marked == []
