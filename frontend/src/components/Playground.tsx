@@ -95,21 +95,24 @@ export function Playground({
   // 있으므로(다른 페이지의 글일 수 있음) 별도로 받아오고, 목록에 같은
   // 글이 있으면 중복 노출되지 않게 걸러낸다.
   const today = featured ?? pairs[0];
-  const rest = featured ? pairs.filter((pair) => pair.id !== featured.id) : pairs.slice(1);
+  const rest = featured
+    ? pairs.filter((pair) => pair.id !== featured.id)
+    : pairs.slice(1);
 
   return (
     <>
       {hideVotes && (
-        <p className="mb-2.5 rounded-lg border border-line bg-[#F5F4F0] px-3 py-2 text-[11px] text-[#6B6960]">
+        <p className="mb-2.5 rounded-lg border border-line bg-[#F5F4F0] px-3 py-2 text-[13px] text-[#6B6960]">
           선거 기간 중에는 투표 기능이 일시 중단됩니다.
         </p>
       )}
-      <div className="mb-3.5 flex items-center gap-4 rounded-lg bg-paper px-3 py-2 text-[11px] font-semibold text-ink">
+      <div className="mb-3.5 flex items-center gap-4 rounded-lg bg-paper px-3 py-2 text-[13px] font-semibold text-ink">
         <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-left-blue" />좌 시각
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-playground" />중립
+          <span className="h-2 w-2 rounded-full bg-playground" />
+          중립
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-right-red" />우 시각
@@ -122,7 +125,10 @@ export function Playground({
           AI 합성 토론 주제여야 한다(2026-09-19 종합 검토). */}
       <PetitionWidget petitions={petitions} />
       {rest.map((pair, index) => (
-        <div key={pair.id} className={newIds.has(pair.id) ? "animate-new-item" : ""}>
+        <div
+          key={pair.id}
+          className={newIds.has(pair.id) ? "animate-new-item" : ""}
+        >
           <PairCard pair={pair} hideVotes={hideVotes} />
           {(index + 1) % AD_EVERY === 0 && <AdSlot position="playground" />}
         </div>
@@ -131,7 +137,7 @@ export function Playground({
       {hasMore && (
         <div ref={sentinelRef} className="flex h-6 items-center justify-center">
           {isPending && (
-            <span className="text-xs text-[#767268]" role="status">
+            <span className="text-xs text-[#6B6960]" role="status">
               불러오는 중...
             </span>
           )}

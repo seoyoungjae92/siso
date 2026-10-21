@@ -13,3 +13,7 @@ crawler/.pytest_cache/
 
 # IDE
 .idea/
+
+# 로컬 미리보기 설정 / taste-skill 측정 결과물
+.claude/launch.json
+.taste-skill/

@@ -7,25 +7,23 @@ import { AdSlot } from "@/components/AdSlot";
 import { PostCard } from "@/components/PostCard";
 import type { PostSummary, Side } from "@/lib/posts";
 
-const COLUMN: Record<
-  Side,
-  { head: string; heading: string; tag: string; tagLabel: string; title: string }
-> = {
-  left: {
-    head: "bg-gradient-to-b from-blue-tint to-white",
-    heading: "text-left-blue",
-    tag: "bg-left-blue",
-    tagLabel: "LEFT",
-    title: "좌 성향 커뮤니티",
-  },
-  right: {
-    head: "bg-gradient-to-b from-red-tint to-white",
-    heading: "text-right-red",
-    tag: "bg-right-red",
-    tagLabel: "RIGHT",
-    title: "우 성향 커뮤니티",
-  },
-};
+// 좌/우는 1px 테두리가 아니라 "면"으로 가른다 — 카드마다 테두리를 두르면
+// 화면 전체가 회색 그물로 보이고(실측: 홈에 테두리 박스 92개), 모처럼 정한
+// 청/홍 색 언어가 배지 안에만 갇힌다. 컬럼 바닥을 틴트로 깔고 카드는 흰
+// 면으로 띄우면 테두리 없이 단계가 생긴다(CLAUDE.md 11절 "틴트 4~6%").
+const COLUMN: Record<Side, { field: string; heading: string; title: string }> =
+  {
+    left: {
+      field: "bg-blue-tint",
+      heading: "text-left-blue",
+      title: "좌 성향 커뮤니티",
+    },
+    right: {
+      field: "bg-red-tint",
+      heading: "text-right-red",
+      title: "우 성향 커뮤니티",
+    },
+  };
 
 const AD_EVERY = 5;
 
@@ -38,7 +36,7 @@ export function FeedColumn({
   posts: PostSummary[];
   hasMore: boolean;
 }) {
-  const { head, heading, tag, tagLabel, title } = COLUMN[side];
+  const { field, heading, title } = COLUMN[side];
   const [posts, setPosts] = useState(initialPosts);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [newIds, setNewIds] = useState<Set<number>>(new Set());
@@ -101,15 +99,12 @@ export function FeedColumn({
     // 내용만큼만 높이를 차지해 그 아래로 배경이 끊겨 보임 — 최소 부모
     // 높이만큼은 채우도록 보정(데스크톱 grid에서는 이미 grid stretch로
     // 채워지고 있어 영향 없음).
-    <section className="min-h-full">
-      <div className={`border-b border-line px-[18px] py-5 ${head}`}>
-        <span
-          className={`mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10.5px] font-extrabold tracking-wide text-white ${tag}`}
-        >
-          {tagLabel}
-        </span>
-        <h2 className={`text-[22px] font-extrabold tracking-tight ${heading}`}>{title}</h2>
-        <p className="mt-0.5 text-xs text-[#767268]">자동 수집</p>
+    <section className={`min-h-full ${field}`}>
+      <div className="px-[18px] pt-6 pb-3">
+        <h2 className={`text-[22px] font-extrabold tracking-tight ${heading}`}>
+          {title}
+        </h2>
+        <p className="mt-1 text-[13px] text-[#6B6960]">자동 수집</p>
       </div>
 
       <div className="px-[18px] py-5">
@@ -118,16 +113,24 @@ export function FeedColumn({
         )}
 
         {posts.map((post, index) => (
-          <div key={post.id} className={newIds.has(post.id) ? "animate-new-item" : ""}>
+          <div
+            key={post.id}
+            className={newIds.has(post.id) ? "animate-new-item" : ""}
+          >
             <PostCard post={post} side={side} />
-            {(index + 1) % AD_EVERY === 0 && <AdSlot position={`feed-${side}`} />}
+            {(index + 1) % AD_EVERY === 0 && (
+              <AdSlot position={`feed-${side}`} />
+            )}
           </div>
         ))}
 
         {hasMore && (
-          <div ref={sentinelRef} className="flex h-6 items-center justify-center">
+          <div
+            ref={sentinelRef}
+            className="flex h-6 items-center justify-center"
+          >
             {isPending && (
-              <span className="text-xs text-[#767268]" role="status">
+              <span className="text-xs text-[#6B6960]" role="status">
                 불러오는 중...
               </span>
             )}

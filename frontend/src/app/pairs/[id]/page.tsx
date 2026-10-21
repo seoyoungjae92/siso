@@ -30,7 +30,8 @@ export async function generateMetadata({
 
   // 보강된 주제는 중립적인 쟁점 배경이 좌/우 한쪽을 먼저 보여주는 것보다
   // 설명으로 더 적합하다(대칭성) — 보강 없는 주제만 기존 방식 유지.
-  const raw = pair.background ?? `좌: ${pair.leftStance} 우: ${pair.rightStance}`;
+  const raw =
+    pair.background ?? `좌: ${pair.leftStance} 우: ${pair.rightStance}`;
   const description = raw.length > 150 ? `${raw.slice(0, 150)}…` : raw;
 
   return {
@@ -67,32 +68,46 @@ export default async function PairDetailPage({
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="mx-auto w-full max-w-3xl px-4 py-6">
+      <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-10">
         <Link
           href="/"
           className="mb-4 inline-block text-[13px] font-bold text-[#6B6960]"
         >
           ← 목록으로
         </Link>
-        <h1 className="mb-2 text-lg font-extrabold tracking-tight">{pair.title}</h1>
+        <h1 className="mb-3 text-[26px] font-extrabold leading-tight tracking-tight sm:text-[32px]">
+          {pair.title}
+        </h1>
         <ShareButton title={pair.title} />
-        <p className="mb-4 text-[12px] text-[#767268]">
-          🤖 AI가 좌·우 커뮤니티 원문을 분석해 합성한 주제입니다. 원문의 비속어·저품질 표현은
-          순화되며, 원문에 없는 사실은 추가하지 않습니다.
+        <p className="mb-5 text-[13px] leading-relaxed text-[#6B6960]">
+          AI가 좌·우 커뮤니티 원문을 분석해 합성한 주제입니다. 원문의
+          비속어·저품질 표현은 순화되며, 원문에 없는 사실은 추가하지 않습니다.
         </p>
         {/* gap이 배지(h-9=36px)보다 넓어야(gap-10=40px) 배지가 카드 안쪽
             padding/텍스트 영역을 절대 침범하지 않는다 — 좌우 글 길이가
             달라 배지가 세로 어느 위치에 오든 안전(텍스트 가림 버그 수정,
             2026-08-13). */}
         {pair.background && (
-          <section className="mb-4 rounded-[10px] border border-line bg-white p-3">
-            <h2 className="mb-1 text-[11px] font-bold text-playground">쟁점 배경</h2>
-            <p className="text-[13px] leading-relaxed text-[#4A4842]">{pair.background}</p>
+          <section className="mb-5 rounded-[10px] bg-white p-4">
+            <h2 className="mb-1.5 text-[12px] font-bold text-playground">
+              쟁점 배경
+            </h2>
+            <p className="text-[15px] leading-relaxed text-[#33322E]">
+              {pair.background}
+            </p>
           </section>
         )}
         <div className="relative mb-4 grid grid-cols-2 gap-10">
-          <StanceCard side="left" text={pair.leftStance} points={pair.leftPoints} />
-          <StanceCard side="right" text={pair.rightStance} points={pair.rightPoints} />
+          <StanceCard
+            side="left"
+            text={pair.leftStance}
+            points={pair.leftPoints}
+          />
+          <StanceCard
+            side="right"
+            text={pair.rightStance}
+            points={pair.rightPoints}
+          />
           <span
             aria-hidden="true"
             className="absolute left-1/2 top-1/2 z-10 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-playground text-[10px] font-black tracking-wide text-white shadow-[0_6px_16px_rgba(110,61,116,.35),0_0_0_4px_var(--paper)]"
@@ -101,9 +116,11 @@ export default async function PairDetailPage({
           </span>
         </div>
         {discussionQuestions.length > 0 && (
-          <section className="mb-4 rounded-[10px] border border-line bg-white p-3">
-            <h2 className="mb-1 text-[11px] font-bold text-playground">생각해볼 질문</h2>
-            <ol className="list-decimal space-y-1 pl-4 text-[13px] text-[#4A4842] marker:font-bold marker:text-playground">
+          <section className="mb-5 rounded-[10px] bg-white p-4">
+            <h2 className="mb-1.5 text-[12px] font-bold text-playground">
+              생각해볼 질문
+            </h2>
+            <ol className="list-decimal space-y-1.5 pl-4 text-[15px] leading-relaxed text-[#33322E] marker:font-bold marker:text-playground">
               {discussionQuestions.map((question) => (
                 <li key={question}>{question}</li>
               ))}

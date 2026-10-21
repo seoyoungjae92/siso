@@ -5,7 +5,7 @@ import { useState } from "react";
 export function ShareButton({
   title,
   url,
-  label = "🔗 공유하기",
+  label = "공유하기",
   className = "mb-4 flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-[#6B6960]",
 }: {
   title: string;

@@ -12,7 +12,11 @@ type Tab = "left" | "playground" | "right";
 
 const TAB_CONFIG: Record<Tab, { label: string; text: string; bar: string }> = {
   left: { label: "좌", text: "text-left-blue", bar: "bg-left-blue" },
-  playground: { label: "놀이터", text: "text-playground", bar: "bg-playground" },
+  playground: {
+    label: "놀이터",
+    text: "text-playground",
+    bar: "bg-playground",
+  },
   right: { label: "우", text: "text-right-red", bar: "bg-right-red" },
 };
 
@@ -45,9 +49,11 @@ export function MobileTabs({
   const [offsetPx, setOffsetPx] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const gesture = useRef<{ startX: number; startY: number; horizontal: boolean | null } | null>(
-    null,
-  );
+  const gesture = useRef<{
+    startX: number;
+    startY: number;
+    horizontal: boolean | null;
+  } | null>(null);
 
   // 각 탭 패널의 overflow-y-auto가 실제로 스크롤을 가둬야(clip) 짧은
   // 플레이그라운드 탭이 옆의 긴 좌/우 탭 길이만큼 스크롤되는 문제가
@@ -69,7 +75,11 @@ export function MobileTabs({
 
   function handleTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
-    gesture.current = { startX: t.clientX, startY: t.clientY, horizontal: null };
+    gesture.current = {
+      startX: t.clientX,
+      startY: t.clientY,
+      horizontal: null,
+    };
     setDragging(true);
   }
 
@@ -135,7 +145,11 @@ export function MobileTabs({
     <div
       ref={rootRef}
       className="flex flex-col"
-      style={offsetPx != null ? { height: `calc(100dvh - ${offsetPx}px)` } : undefined}
+      style={
+        offsetPx != null
+          ? { height: `calc(100dvh - ${offsetPx}px)` }
+          : undefined
+      }
     >
       <div
         ref={containerRef}
@@ -150,7 +164,9 @@ export function MobileTabs({
           style={{
             width: "300%",
             transform: `translateX(calc(${(-index * 100) / 3}% + ${dragPx}px))`,
-            transition: dragging ? "none" : "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
+            transition: dragging
+              ? "none"
+              : "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
           }}
         >
           <div className="h-full w-1/3 shrink-0 overflow-y-auto">
@@ -166,12 +182,16 @@ export function MobileTabs({
             />
           </div>
           <div className="h-full w-1/3 shrink-0 overflow-y-auto">
-            <FeedColumn side="right" posts={rightPosts} hasMore={rightHasMore} />
+            <FeedColumn
+              side="right"
+              posts={rightPosts}
+              hasMore={rightHasMore}
+            />
           </div>
         </div>
       </div>
 
-      <div className="sticky bottom-0 grid grid-cols-3 border-t border-line bg-white">
+      <div className="sticky bottom-0 grid grid-cols-3 bg-white shadow-[0_-2px_12px_rgba(27,27,34,.07)]">
         {TABS.map((t, i) => {
           const config = TAB_CONFIG[t];
           const active = i === index;
@@ -180,10 +200,12 @@ export function MobileTabs({
               key={t}
               type="button"
               onClick={() => setIndex(i)}
-              className={`relative py-2.5 pb-3.5 text-[11px] font-extrabold ${active ? config.text : "text-[#767268]"}`}
+              className={`relative py-2.5 pb-3.5 text-[13px] font-extrabold ${active ? config.text : "text-[#6B6960]"}`}
             >
               {active && (
-                <span className={`absolute inset-x-[20%] top-0 h-[3px] rounded-b ${config.bar}`} />
+                <span
+                  className={`absolute inset-x-[20%] top-0 h-[3px] rounded-b ${config.bar}`}
+                />
               )}
               {config.label}
             </button>
