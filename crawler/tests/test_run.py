@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from siso_crawler.fetch import CrawlNotAllowed
@@ -555,7 +555,7 @@ def test_run_ingest_cycle_skips_source_still_in_throttle_cooldown(sample_feed_by
         feed_url="https://example-community.test/rss",
         crawl_type="rss",
         enabled=True,
-        throttled_until=datetime.now(timezone.utc) + timedelta(minutes=30),
+        throttled_until=datetime.now(UTC) + timedelta(minutes=30),
     )
 
     def fail_if_called(url):
@@ -584,7 +584,7 @@ def test_run_ingest_cycle_fetches_source_once_throttle_cooldown_has_passed(sampl
         feed_url="https://example-community.test/rss",
         crawl_type="rss",
         enabled=True,
-        throttled_until=datetime.now(timezone.utc) - timedelta(minutes=1),
+        throttled_until=datetime.now(UTC) - timedelta(minutes=1),
     )
 
     run_ingest_cycle(
