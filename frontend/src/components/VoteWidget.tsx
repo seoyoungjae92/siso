@@ -32,7 +32,13 @@ const STANCE_STYLE: Record<Stance, { idle: string; active: string }> = {
   },
 };
 
-export function VoteWidget({ pairId, pair }: { pairId: string; pair: TopicPairDetail }) {
+export function VoteWidget({
+  pairId,
+  pair,
+}: {
+  pairId: string;
+  pair: TopicPairDetail;
+}) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const { leftPct, neutralPct, rightPct } = calculateVotePercentages(pair);
@@ -67,7 +73,7 @@ export function VoteWidget({ pairId, pair }: { pairId: string; pair: TopicPairDe
         ))}
       </div>
 
-      {error && <p className="mb-1.5 text-[11px] text-right-red">{error}</p>}
+      {error && <p className="mb-1.5 text-[13px] text-right-red">{error}</p>}
 
       {/* 스펙 2.1: 집계 그래프는 "투표 후" 공개. 투표 전에도 0%·0%·0%를 보여주면
           빈 사이트처럼 보이고(2026-09-19 종합 검토), 남의 선택을 먼저 보고
@@ -75,18 +81,29 @@ export function VoteWidget({ pairId, pair }: { pairId: string; pair: TopicPairDe
       {pair.myStance ? (
         <>
           <div className="mb-1.5 flex h-2.5 overflow-hidden rounded-full border border-line">
-            <span className="block h-full bg-left-blue" style={{ width: `${leftPct}%` }} />
-            <span className="block h-full bg-playground" style={{ width: `${neutralPct}%` }} />
-            <span className="block h-full bg-right-red" style={{ width: `${rightPct}%` }} />
+            <span
+              className="block h-full bg-left-blue"
+              style={{ width: `${leftPct}%` }}
+            />
+            <span
+              className="block h-full bg-playground"
+              style={{ width: `${neutralPct}%` }}
+            />
+            <span
+              className="block h-full bg-right-red"
+              style={{ width: `${rightPct}%` }}
+            />
           </div>
-          <div className="flex justify-between text-[11px] text-[#767268]">
+          <div className="flex justify-between text-[13px] text-[#6B6960]">
             <span>좌에 공감 {leftPct}%</span>
             <span>중립 {neutralPct}%</span>
             <span>우에 공감 {rightPct}%</span>
           </div>
         </>
       ) : (
-        <p className="text-center text-[11px] text-[#767268]">입장을 고르면 다른 사람들의 선택을 볼 수 있어요.</p>
+        <p className="text-center text-[13px] text-[#6B6960]">
+          입장을 고르면 다른 사람들의 선택을 볼 수 있어요.
+        </p>
       )}
     </div>
   );

@@ -7,14 +7,21 @@ import { CommentForm } from "@/components/CommentForm";
 import type { Comment } from "@/lib/comments";
 import { formatRelativeTime } from "@/lib/format";
 
-const STANCE_LABEL: Record<string, string> = { left: "좌", right: "우", neutral: "중립" };
+const STANCE_LABEL: Record<string, string> = {
+  left: "좌",
+  right: "우",
+  neutral: "중립",
+};
 const STANCE_COLOR: Record<string, string> = {
   left: "bg-left-blue",
   right: "bg-right-red",
   neutral: "bg-playground",
 };
 
-const REPORT_REASONS: { value: "abuse" | "hate" | "spam" | "etc"; label: string }[] = [
+const REPORT_REASONS: {
+  value: "abuse" | "hate" | "spam" | "etc";
+  label: string;
+}[] = [
   { value: "abuse", label: "욕설·인신공격" },
   { value: "hate", label: "혐오 표현" },
   { value: "spam", label: "도배·스팸" },
@@ -43,8 +50,10 @@ function ReactionButton({
       type="button"
       disabled={isPending}
       onClick={() => onReact(pairId, commentId, type)}
-      className={`rounded-full border px-2 py-0.5 text-[11px] font-bold disabled:opacity-50 ${
-        active ? "border-playground bg-pg-tint text-playground" : "border-line text-[#767268]"
+      className={`rounded-full border px-2 py-0.5 text-[13px] font-bold disabled:opacity-50 ${
+        active
+          ? "border-playground bg-pg-tint text-playground"
+          : "border-line text-[#6B6960]"
       }`}
     >
       {type === "up" ? "👍" : "👎"} {count}
@@ -52,14 +61,20 @@ function ReactionButton({
   );
 }
 
-function ReportControl({ pairId, commentId }: { pairId: string; commentId: number }) {
+function ReportControl({
+  pairId,
+  commentId,
+}: {
+  pairId: string;
+  commentId: number;
+}) {
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   if (done) {
-    return <span className="text-[11px] text-[#767268]">신고 접수됨</span>;
+    return <span className="text-[13px] text-[#6B6960]">신고 접수됨</span>;
   }
 
   if (!open) {
@@ -67,7 +82,7 @@ function ReportControl({ pairId, commentId }: { pairId: string; commentId: numbe
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-[11px] font-bold text-[#767268]"
+        className="text-[13px] font-bold text-[#6B6960]"
       >
         신고
       </button>
@@ -92,7 +107,7 @@ function ReportControl({ pairId, commentId }: { pairId: string; commentId: numbe
               setDone(true);
             })
           }
-          className="rounded-full border border-line px-2 py-0.5 text-[10.5px] text-[#767268] disabled:opacity-50"
+          className="rounded-full border border-line px-2 py-0.5 text-[13px] text-[#6B6960] disabled:opacity-50"
         >
           {option.label}
         </button>
@@ -100,11 +115,11 @@ function ReportControl({ pairId, commentId }: { pairId: string; commentId: numbe
       <button
         type="button"
         onClick={() => setOpen(false)}
-        className="text-[10.5px] text-[#767268]"
+        className="text-[13px] text-[#6B6960]"
       >
         취소
       </button>
-      {error && <span className="text-[10.5px] text-right-red">{error}</span>}
+      {error && <span className="text-[13px] text-right-red">{error}</span>}
     </div>
   );
 }
@@ -125,7 +140,7 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
 
   return (
     <div className="rounded-[10px] border border-line bg-white p-2.5">
-      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold">
+      <div className="mb-1 flex items-center gap-1.5 text-[13px] font-bold">
         <span>{comment.nickname}</span>
         {comment.stance && (
           <span
@@ -135,15 +150,17 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
           </span>
         )}
         {comment.selfReply && (
-          <span className="rounded-full bg-[#767268] px-1.5 py-0.5 text-[9.5px] font-extrabold text-white">
+          <span className="rounded-full bg-[#6B6960] px-1.5 py-0.5 text-[9.5px] font-extrabold text-white">
             본인 댓글
           </span>
         )}
-        <time className="ml-auto font-medium text-[#767268]">
+        <time className="ml-auto font-medium text-[#6B6960]">
           {formatRelativeTime(comment.createdAt)}
         </time>
       </div>
-      <p className={`mb-2 break-words text-[13px] ${comment.blinded ? "italic text-[#767268]" : ""}`}>
+      <p
+        className={`mb-2 break-words text-[13px] ${comment.blinded ? "italic text-[#6B6960]" : ""}`}
+      >
         {comment.body}
       </p>
       {!comment.blinded && (
@@ -167,7 +184,7 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
             onReact={handleReact}
           />
           {reactionError && (
-            <span className="text-[10.5px] text-right-red">{reactionError}</span>
+            <span className="text-[13px] text-right-red">{reactionError}</span>
           )}
           <div className="ml-auto">
             <ReportControl pairId={pairId} commentId={comment.id} />
@@ -178,7 +195,13 @@ function CommentRow({ pairId, comment }: { pairId: string; comment: Comment }) {
   );
 }
 
-export function CommentThread({ pairId, comments }: { pairId: string; comments: Comment[] }) {
+export function CommentThread({
+  pairId,
+  comments,
+}: {
+  pairId: string;
+  comments: Comment[];
+}) {
   const [openReplyId, setOpenReplyId] = useState<number | null>(null);
 
   const topLevel = comments.filter((c) => c.parentId === null);
@@ -200,7 +223,9 @@ export function CommentThread({ pairId, comments }: { pairId: string; comments: 
       <CommentForm pairId={pairId} />
 
       {topLevel.length === 0 && (
-        <p className="text-sm text-[#6B6960]">아직 댓글이 없습니다. 첫 댓글을 남겨보세요.</p>
+        <p className="text-sm text-[#6B6960]">
+          아직 댓글이 없습니다. 첫 댓글을 남겨보세요.
+        </p>
       )}
 
       <div className="flex flex-col gap-2.5">
@@ -209,8 +234,10 @@ export function CommentThread({ pairId, comments }: { pairId: string; comments: 
             <CommentRow pairId={pairId} comment={comment} />
             <button
               type="button"
-              onClick={() => setOpenReplyId(openReplyId === comment.id ? null : comment.id)}
-              className="mt-1 text-[11px] font-bold text-[#767268]"
+              onClick={() =>
+                setOpenReplyId(openReplyId === comment.id ? null : comment.id)
+              }
+              className="mt-1 text-[13px] font-bold text-[#6B6960]"
             >
               답글
             </button>

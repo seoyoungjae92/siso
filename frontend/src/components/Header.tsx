@@ -29,13 +29,18 @@ export function Header() {
   const appName = "시소";
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-line bg-white px-4 py-3.5 sm:px-7">
-      <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight sm:gap-2.5 sm:text-xl">
+    <header className="sticky top-0 z-40 flex items-center justify-between gap-2 bg-white px-4 py-3.5 sm:px-7">
+      <Link
+        href="/"
+        className="flex items-center gap-2 text-lg font-extrabold tracking-tight sm:gap-2.5 sm:text-xl"
+      >
         <SeesawLogo />
         {appName}
-        <small className="hidden text-[11px] font-medium text-[#767268] sm:inline">같은 주제, 다른 시선</small>
+        <small className="hidden text-[11px] font-medium text-[#6B6960] sm:inline">
+          같은 주제, 다른 시선
+        </small>
       </Link>
-      <nav className="flex items-center gap-2 text-[11px] font-semibold whitespace-nowrap text-[#767268] sm:gap-3">
+      <nav className="flex items-center gap-2 text-[11px] font-semibold whitespace-nowrap text-[#6B6960] sm:gap-3">
         <Link href="/about" className="hover:text-[#6B6960] hover:underline">
           <span className="sm:hidden">소개</span>
           <span className="hidden sm:inline">서비스 소개</span>

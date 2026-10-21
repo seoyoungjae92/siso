@@ -4,27 +4,41 @@ export function Footer() {
   const appName = "시소";
 
   return (
-    <footer className="border-t border-line px-7 py-5 text-xs text-[#767268]">
-      <nav className="mb-2 flex flex-wrap gap-x-4 gap-y-1">
-        <Link href="/about" className="font-semibold text-[#6B6960] hover:underline">
-          서비스 소개
-        </Link>
-        <Link href="/terms" className="font-semibold text-[#6B6960] hover:underline">
-          이용약관
-        </Link>
-        <Link href="/privacy" className="font-semibold text-[#6B6960] hover:underline">
-          개인정보처리방침
-        </Link>
-        <Link href="/feedback" className="font-semibold text-[#6B6960] hover:underline">
-          제보·건의하기
-        </Link>
-      </nav>
-      {/* 구독 기능은 아직 공개 전 — 준비되면 NewsletterForm을 다시 렌더링 */}
-      <p>
-        {appName}는 공개된 커뮤니티 게시물의 제목과 출처 링크를 모아 병렬 비교합니다. 원문
-        저작권은 각 원 커뮤니티 및 작성자에게 있습니다.
-      </p>
-      <p className="mt-1">© {appName}</p>
+    <footer className="mt-10 bg-white px-4 py-8 text-[13px] text-[#6B6960] sm:px-7">
+      <div className="mx-auto max-w-5xl">
+        <nav className="mb-3 flex flex-wrap gap-x-4 gap-y-1">
+          <Link
+            href="/about"
+            className="font-semibold text-[#6B6960] hover:underline"
+          >
+            서비스 소개
+          </Link>
+          <Link
+            href="/terms"
+            className="font-semibold text-[#6B6960] hover:underline"
+          >
+            이용약관
+          </Link>
+          <Link
+            href="/privacy"
+            className="font-semibold text-[#6B6960] hover:underline"
+          >
+            개인정보처리방침
+          </Link>
+          <Link
+            href="/feedback"
+            className="font-semibold text-[#6B6960] hover:underline"
+          >
+            제보·건의하기
+          </Link>
+        </nav>
+        {/* 구독 기능은 아직 공개 전 — 준비되면 NewsletterForm을 다시 렌더링 */}
+        <p>
+          {appName}는 공개된 커뮤니티 게시물의 제목과 출처 링크를 모아 병렬
+          비교합니다. 원문 저작권은 각 원 커뮤니티 및 작성자에게 있습니다.
+        </p>
+        <p className="mt-1">© {appName}</p>
+      </div>
     </footer>
   );
 }

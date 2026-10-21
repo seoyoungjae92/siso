@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { BoxingGlovesIcon } from "@/components/BoxingGlovesIcon";
 import { VoteStampIcon } from "@/components/VoteStampIcon";
 import { calculateVotePercentages, type TopicPair } from "@/lib/pairs";
 
@@ -16,10 +15,10 @@ import { calculateVotePercentages, type TopicPair } from "@/lib/pairs";
 function StancePreview({ pair }: { pair: TopicPair }) {
   return (
     <div className="mt-3 grid grid-cols-2 gap-2">
-      <p className="line-clamp-2 border-l-2 border-l-left-blue pl-2 text-left text-[12px] leading-snug text-[#6B6960]">
+      <p className="line-clamp-2 border-l-2 border-l-left-blue pl-2.5 text-left text-[13.5px] leading-snug text-[#4A4842]">
         {pair.leftStance}
       </p>
-      <p className="line-clamp-2 border-r-2 border-r-right-red pr-3 text-right text-[12px] leading-snug text-[#6B6960]">
+      <p className="line-clamp-2 border-r-2 border-r-right-red pr-3 text-right text-[13.5px] leading-snug text-[#4A4842]">
         {pair.rightStance}
       </p>
     </div>
@@ -27,7 +26,8 @@ function StancePreview({ pair }: { pair: TopicPair }) {
 }
 
 function MiniVoteBar({ pair }: { pair: TopicPair }) {
-  const { leftPct, neutralPct, rightPct, total } = calculateVotePercentages(pair);
+  const { leftPct, neutralPct, rightPct, total } =
+    calculateVotePercentages(pair);
 
   if (total === 0) {
     return null;
@@ -35,9 +35,18 @@ function MiniVoteBar({ pair }: { pair: TopicPair }) {
 
   return (
     <div className="mt-3 flex h-1.5 w-full overflow-hidden rounded-full">
-      <span className="block h-full bg-left-blue" style={{ width: `${leftPct}%` }} />
-      <span className="block h-full bg-playground" style={{ width: `${neutralPct}%` }} />
-      <span className="block h-full bg-right-red" style={{ width: `${rightPct}%` }} />
+      <span
+        className="block h-full bg-left-blue"
+        style={{ width: `${leftPct}%` }}
+      />
+      <span
+        className="block h-full bg-playground"
+        style={{ width: `${neutralPct}%` }}
+      />
+      <span
+        className="block h-full bg-right-red"
+        style={{ width: `${rightPct}%` }}
+      />
     </div>
   );
 }
@@ -46,7 +55,13 @@ function MiniVoteBar({ pair }: { pair: TopicPair }) {
 // 트래픽 기준으로 잡은 값이라(대부분 0~4), 트래픽이 늘면 같이 올려야 함.
 const HOT_THRESHOLD = 5;
 
-function CardMeta({ pair, hideVotes }: { pair: TopicPair; hideVotes: boolean }) {
+function CardMeta({
+  pair,
+  hideVotes,
+}: {
+  pair: TopicPair;
+  hideVotes: boolean;
+}) {
   const showVoteCount = !hideVotes && pair.voteCount > 0;
 
   if (!showVoteCount && pair.commentCount === 0) {
@@ -54,14 +69,14 @@ function CardMeta({ pair, hideVotes }: { pair: TopicPair; hideVotes: boolean }) 
   }
 
   return (
-    <div className="mt-2 flex items-center gap-3 text-[11px] text-[#767268]">
+    <div className="mt-2.5 flex items-center gap-3 text-[13px] text-[#6B6960]">
       {showVoteCount && (
         <span className="flex items-center gap-1">
           <VoteStampIcon />
           {pair.voteCount}명 투표
         </span>
       )}
-      {pair.commentCount > 0 && <span>💬 {pair.commentCount}</span>}
+      {pair.commentCount > 0 && <span>댓글 {pair.commentCount}</span>}
     </div>
   );
 }
@@ -78,31 +93,31 @@ export function PairCard({
   // 오늘의 링(large)은 서버에서 이미 참여도 최상위로 골라 보내주는
   // 카드라 "인기" 표시가 항상 참이라 의미가 없다 — 목록 카드에서만 보여
   // 그중 눈에 띄는 것과 안 띄는 것을 구분해준다.
-  const isHot = !large && !hideVotes && pair.voteCount + pair.commentCount >= HOT_THRESHOLD;
+  const isHot =
+    !large && !hideVotes && pair.voteCount + pair.commentCount >= HOT_THRESHOLD;
 
+  // 쉬고 있는 요소에 그림자·테두리를 두르는 대신, 바닥 틴트 위에 흰 면으로
+  // 단계를 준다. "오늘의 링"은 그림자가 아니라 크기로 앞서게 한다.
   return (
     <Link
       href={`/pairs/${pair.id}`}
-      className={`mb-2.5 block overflow-hidden rounded-xl border border-line bg-white transition-shadow ${
-        large
-          ? "shadow-[0_8px_24px_rgba(110,61,116,.10)]"
-          : "hover:shadow-[0_6px_20px_rgba(27,27,34,.08)]"
-      }`}
+      className="mb-3 block overflow-hidden rounded-xl bg-white transition-colors hover:bg-[#FBFAF8]"
     >
       {large && (
-        <div className="flex items-center justify-between bg-gradient-to-r from-left-blue via-playground to-right-red px-4 py-2.5 text-white">
-          <b className="flex items-center gap-1.5 text-[13px] tracking-wide">
-            <BoxingGlovesIcon />
-            오늘의 링
-          </b>
+        <div className="flex items-center justify-between bg-playground px-4 py-3 text-white">
+          <b className="text-[14px] font-extrabold tracking-wide">오늘의 링</b>
         </div>
       )}
       <div className="p-4">
-        <h4 className="mb-3 line-clamp-3 text-[15px] font-bold leading-snug text-ink">
+        <h4
+          className={`mb-3 font-bold leading-snug tracking-tight text-ink ${
+            large ? "line-clamp-3 text-[24px]" : "line-clamp-3 text-[16.5px]"
+          }`}
+        >
           {pair.title}
           {isHot && (
-            <span className="ml-1.5 inline-flex items-center rounded-full bg-pg-tint px-2 py-0.5 align-middle text-[10px] font-extrabold text-playground">
-              🔥 인기
+            <span className="ml-1.5 inline-flex items-center rounded-full bg-pg-tint px-2 py-0.5 align-middle text-[11px] font-extrabold text-playground">
+              인기
             </span>
           )}
         </h4>
