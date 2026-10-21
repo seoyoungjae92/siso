@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 from .parser import RawEntry
 
@@ -27,7 +27,7 @@ def _clien_hot10_fixup(entry: RawEntry) -> RawEntry:
             published_at = (
                 datetime.strptime(raw, _CLIEN_PUBDATE_FORMAT)
                 .replace(tzinfo=_KST)
-                .astimezone(timezone.utc)
+                .astimezone(UTC)
                 .isoformat()
             )
         except ValueError:

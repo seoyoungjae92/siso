@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import psycopg
 
@@ -94,7 +94,7 @@ def run_ingest_cycle(
             logger.info("소스 건너뜀(feed_url 없음): %s", source.name)
             continue
 
-        if source.throttled_until is not None and source.throttled_until > datetime.now(timezone.utc):
+        if source.throttled_until is not None and source.throttled_until > datetime.now(UTC):
             logger.info(
                 "소스 건너뜀(스로틀 쿨다운 중, %s까지): %s",
                 source.throttled_until.isoformat(),
