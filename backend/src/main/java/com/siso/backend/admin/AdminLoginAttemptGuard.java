@@ -1,5 +1,6 @@
 package com.siso.backend.admin;
 
+import com.siso.backend.ratelimit.FixedWindowCounter;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -31,10 +32,7 @@ public class AdminLoginAttemptGuard {
 
     public void recordFailure(String ip) {
         String key = KEY_PREFIX + ip;
-        Long count = redisTemplate.opsForValue().increment(key);
-        if (count != null && count == 1L) {
-            redisTemplate.expire(key, LOCKOUT_WINDOW);
-        }
+        FixedWindowCounter.increment(redisTemplate, key, LOCKOUT_WINDOW);
     }
 
     public void recordSuccess(String ip) {

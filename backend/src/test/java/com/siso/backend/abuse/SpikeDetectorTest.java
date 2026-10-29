@@ -7,14 +7,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.RedisScript;
 
-import java.time.Duration;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,8 +24,6 @@ class SpikeDetectorTest {
     @Mock
     private StringRedisTemplate redisTemplate;
 
-    @Mock
-    private ValueOperations<String, String> valueOperations;
 
     @Mock
     private AdminAlertRepository adminAlertRepository;
@@ -36,8 +34,7 @@ class SpikeDetectorTest {
 
     @Test
     void countReachesExactlyThreshold_raisesOneAlert() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.increment(anyString())).thenReturn(30L);
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), any())).thenReturn(30L);
 
         newDetector().recordVoteAndCheck(1L, 30, 10);
 
@@ -46,8 +43,7 @@ class SpikeDetectorTest {
 
     @Test
     void countBelowThreshold_noAlert() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.increment(anyString())).thenReturn(5L);
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), any())).thenReturn(5L);
 
         newDetector().recordVoteAndCheck(1L, 30, 10);
 
@@ -56,8 +52,7 @@ class SpikeDetectorTest {
 
     @Test
     void countExceedsThresholdAfterAlreadyFired_doesNotRaiseAgain() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.increment(anyString())).thenReturn(31L);
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), any())).thenReturn(31L);
 
         newDetector().recordVoteAndCheck(1L, 30, 10);
 
@@ -65,19 +60,17 @@ class SpikeDetectorTest {
     }
 
     @Test
-    void firstIncrement_setsExpiry() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+    void increment_passesKeyAndWindowToAtomicScript() {
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), any())).thenReturn(1L);
 
         newDetector().recordVoteAndCheck(1L, 30, 10);
 
-        verify(redisTemplate, times(1)).expire(anyString(), any(Duration.class));
+        verify(redisTemplate).execute(any(RedisScript.class), eq(List.of("spike:vote:1")), eq("600000"));
     }
 
     @Test
     void reactionSpike_usesCommentIdKey() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.increment(anyString())).thenReturn(30L);
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), any())).thenReturn(30L);
 
         newDetector().recordReactionUpAndCheck(5L, 30, 10);
 

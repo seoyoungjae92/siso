@@ -6,14 +6,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.RedisScript;
 
-import java.time.Duration;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -56,24 +55,11 @@ class AdminLoginAttemptGuardTest {
     }
 
     @Test
-    void recordFailure_firstAttempt_setsExpiry() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.increment(anyString())).thenReturn(1L);
-
+    void recordFailure_incrementsWithLockoutWindowAtomically() {
         newGuard().recordFailure("1.2.3.4");
 
-        verify(redisTemplate, times(1))
-                .expire("admin-login-fail:1.2.3.4", AdminLoginAttemptGuard.LOCKOUT_WINDOW);
-    }
-
-    @Test
-    void recordFailure_subsequentAttempt_doesNotResetExpiry() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.increment(anyString())).thenReturn(2L);
-
-        newGuard().recordFailure("1.2.3.4");
-
-        verify(redisTemplate, never()).expire(anyString(), any(Duration.class));
+        verify(redisTemplate).execute(any(RedisScript.class), eq(List.of("admin-login-fail:1.2.3.4")),
+                eq(String.valueOf(AdminLoginAttemptGuard.LOCKOUT_WINDOW.toMillis())));
     }
 
     @Test
