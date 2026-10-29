@@ -56,7 +56,7 @@ public class PairController {
         pairService.vote(
                 pairId,
                 AnonIdHeader.parseAndVerify(anonId, anonSig, anonIdSigner),
-                ClientIp.resolve(servletRequest),
+                ClientIp.resolve(servletRequest, anonIdSigner),
                 request.stance());
     }
 }

@@ -29,6 +29,12 @@ export async function getSignedAnonHeaders(): Promise<Record<string, string> | n
   return {
     "X-Anon-Id": anonId,
     "X-Anon-Sig": signature,
-    ...(clientIp ? { "X-Client-Ip": clientIp } : {}),
+    // IP도 서명해서 보낸다. 백엔드는 서명이 맞는 X-Client-Ip만 믿는다("ip:" 접두어로 익명 ID 서명과 구분)
+    ...(clientIp
+      ? {
+          "X-Client-Ip": clientIp,
+          "X-Client-Ip-Sig": createHmac("sha256", secret).update(`ip:${clientIp}`).digest("hex"),
+        }
+      : {}),
   };
 }

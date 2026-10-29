@@ -2,6 +2,7 @@ package com.siso.backend.abuse;
 
 import com.siso.backend.alert.AdminAlert;
 import com.siso.backend.alert.AdminAlertRepository;
+import com.siso.backend.ratelimit.FixedWindowCounter;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -42,11 +43,8 @@ public class SpikeDetector {
     }
 
     private void check(String key, int threshold, int windowMinutes, Map<String, Object> payload) {
-        Long count = redisTemplate.opsForValue().increment(key);
-        if (count != null && count == 1L) {
-            redisTemplate.expire(key, Duration.ofMinutes(windowMinutes));
-        }
-        if (count != null && count == threshold) {
+        long count = FixedWindowCounter.increment(redisTemplate, key, Duration.ofMinutes(windowMinutes));
+        if (count == threshold) {
             payload.put("count", count);
             payload.put("windowMinutes", windowMinutes);
             adminAlertRepository.save(new AdminAlert("activity_spike", payload, OffsetDateTime.now()));

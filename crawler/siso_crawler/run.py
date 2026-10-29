@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 
 import psycopg
 
+from . import run_lock
 from .embedding import SentenceTransformerEmbeddingProvider
 from .fetch import CrawlNotAllowed
 from .fetch import check_dead_link as _check_dead_link
@@ -341,44 +342,57 @@ def main() -> None:
     사용 — 미설정이면 그 모드에서 활성 소스 전부를 대상으로 한다."""
     database_url = os.environ["CRAWLER_DATABASE_URL"]
     mode = os.environ.get("CRAWL_MODE")
+    lock_name = f"{mode or 'all'}:{os.environ.get('CRAWL_SIDE') or 'all'}"
     with psycopg.connect(database_url) as conn:
-        settings = PsycopgSettingsRepository(conn).get()
-        api_key = os.environ.get("OPENROUTER_API_KEY")
+        if not run_lock.try_acquire(conn, lock_name):
+            logger.warning("이전 실행(%s)이 아직 돌고 있어서 이번 실행은 건너뜁니다", lock_name)
+            return
+        try:
+            _run_cycles(conn, mode)
+        finally:
+            # 사이클이 쿼리 실패로 끝났으면 트랜잭션이 막혀 있어서 먼저 되돌려야 해제가 된다
+            conn.rollback()
+            run_lock.release(conn, lock_name)
 
-        if mode != "postprocess":
-            side = os.environ.get("CRAWL_SIDE")
-            source_repo = PsycopgSourceRepository(conn)
-            sources = source_repo.find_enabled()
-            if side:
-                sources = [s for s in sources if s.side == side]
-            post_repo = PsycopgPostRepository(conn)
-            # 좌우 피드는 제목+원문 링크만 보여주기로 함(AI 요약 생략) —
-            # 등록된 소스가 전부 HTML 스크래핑이라 entry.summary가 항상
-            # 비어있어(html_parsers.py) 요약 LLM 호출을 걸어도 어차피
-            # summarizer=None 폴백과 결과가 같았고(둘 다 빈 문자열),
-            # 요약 호출을 아예 빼면 글 하나당 LLM 호출이 절반으로 줄어
-            # 수집 사이클이 빨라지고 비용도 아낌.
-            political_classifier = build_post_political_classifier(api_key, model=settings.synthesis_model)
-            run_ingest_cycle(
-                sources,
-                settings,
-                post_repo,
-                source_repo,
-                political_classifier=political_classifier,
-            )
 
-        if mode != "ingest":
-            matching_repo = PsycopgMatchingRepository(conn)
-            embedder = SentenceTransformerEmbeddingProvider()
-            topic_synthesizer = build_topic_synthesizer(api_key, model=settings.synthesis_model)
-            duplicate_checker = build_topic_duplicate_checker(api_key)
-            run_postprocess_cycle(
-                settings,
-                matching_repo,
-                embedder,
-                topic_synthesizer=topic_synthesizer,
-                duplicate_checker=duplicate_checker,
-            )
+def _run_cycles(conn, mode: str | None) -> None:
+    settings = PsycopgSettingsRepository(conn).get()
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+
+    if mode != "postprocess":
+        side = os.environ.get("CRAWL_SIDE")
+        source_repo = PsycopgSourceRepository(conn)
+        sources = source_repo.find_enabled()
+        if side:
+            sources = [s for s in sources if s.side == side]
+        post_repo = PsycopgPostRepository(conn)
+        # 좌우 피드는 제목+원문 링크만 보여주기로 함(AI 요약 생략) —
+        # 등록된 소스가 전부 HTML 스크래핑이라 entry.summary가 항상
+        # 비어있어(html_parsers.py) 요약 LLM 호출을 걸어도 어차피
+        # summarizer=None 폴백과 결과가 같았고(둘 다 빈 문자열),
+        # 요약 호출을 아예 빼면 글 하나당 LLM 호출이 절반으로 줄어
+        # 수집 사이클이 빨라지고 비용도 아낌.
+        political_classifier = build_post_political_classifier(api_key, model=settings.synthesis_model)
+        run_ingest_cycle(
+            sources,
+            settings,
+            post_repo,
+            source_repo,
+            political_classifier=political_classifier,
+        )
+
+    if mode != "ingest":
+        matching_repo = PsycopgMatchingRepository(conn)
+        embedder = SentenceTransformerEmbeddingProvider()
+        topic_synthesizer = build_topic_synthesizer(api_key, model=settings.synthesis_model)
+        duplicate_checker = build_topic_duplicate_checker(api_key)
+        run_postprocess_cycle(
+            settings,
+            matching_repo,
+            embedder,
+            topic_synthesizer=topic_synthesizer,
+            duplicate_checker=duplicate_checker,
+        )
 
 
 if __name__ == "__main__":

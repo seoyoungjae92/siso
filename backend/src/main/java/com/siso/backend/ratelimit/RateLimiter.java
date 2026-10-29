@@ -46,10 +46,7 @@ public class RateLimiter {
     }
 
     private boolean tryConsume(String key, long limit, Duration window) {
-        Long count = redisTemplate.opsForValue().increment(key);
-        if (count != null && count == 1L) {
-            redisTemplate.expire(key, window);
-        }
-        return count != null && count <= limit;
+        long count = FixedWindowCounter.increment(redisTemplate, key, window);
+        return count <= limit;
     }
 }
