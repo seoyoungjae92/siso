@@ -50,7 +50,7 @@ public class CommentController {
         return commentService.create(
                 pairId,
                 AnonIdHeader.parseAndVerify(anonId, anonSig, anonIdSigner),
-                ClientIp.resolve(servletRequest),
+                ClientIp.resolve(servletRequest, anonIdSigner),
                 request.parentId(),
                 request.body(),
                 request.stance(),
